@@ -1,0 +1,11 @@
+We are looking for a frontend developer.
+
+Required:
+React
+JavaScript
+HTML
+CSS
+
+Preferred:
+TypeScript
+Git

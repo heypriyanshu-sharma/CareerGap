@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>CareerGap — Career Readiness Engine</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+
+<body>
+
+
+<!-- =========================================================
+     NAVBAR
+========================================================= -->
+
+<header class="navbar">
+
+    <div class="nav-inner">
+
+        <a href="#" class="brand">
+
+            <svg
+                class="brand-leaf"
+                viewBox="0 0 40 40"
+                aria-hidden="true"
+            >
+                <path
+                    d="M33 6C18 7 8 14 7 25c0 5 3 8 7 8 10-1 17-11 19-27Z"
+                />
+
+                <path
+                    d="M9 31C14 23 20 18 29 12"
+                />
+
+            </svg>
+
+            <span>CareerGap</span>
+
+        </a>
+
+
+        <nav class="nav-links">
+
+            <a href="#analyze">
+                Analyze
+            </a>
+
+            <a href="#how-it-works">
+                How it works
+            </a>
+
+        </nav>
+
+    </div>
+
+</header>
+
+
+
+<main>
+
+
+<!-- =========================================================
+     HERO
+========================================================= -->
+
+<section class="hero">
+
+    <div class="hero-content">
+
+        <p class="eyebrow">
+            CAREER READINESS ENGINE
+        </p>
+
+        <h1>
+            Build a career<br>
+            that actually grows.
+        </h1>
+
+        <p class="hero-description">
+            Understand where you stand, discover what's missing,
+            and turn the projects you've already built into
+            stronger career evidence.
+        </p>
+
+        <a
+            href="#analyze"
+            class="hero-button"
+        >
+            Analyze My Career Gap
+            <span>→</span>
+        </a>
+
+    </div>
+
+
+    <div class="hero-decoration">
+
+        <span>⌁</span>
+        <span>⌁</span>
+
+    </div>
+
+</section>
+
+
+
+<!-- =========================================================
+     HOW IT WORKS
+========================================================= -->
+
+<section
+    class="pillars"
+    id="how-it-works"
+>
+
+    <div class="section-heading">
+
+        <p class="eyebrow">
+            HOW IT WORKS
+        </p>
+
+        <h2>
+            Three steps.<br>
+            One clearer direction.
+        </h2>
+
+    </div>
+
+
+    <div class="pillar-grid">
+
+        <article class="pillar-card">
+
+            <div class="pillar-number">
+                01
+            </div>
+
+            <h3>
+                Identify
+            </h3>
+
+            <p>
+                Compare your current skills with the
+                requirements of your target role.
+            </p>
+
+        </article>
+
+
+        <article class="pillar-card">
+
+            <div class="pillar-number">
+                02
+            </div>
+
+            <h3>
+                Understand
+            </h3>
+
+            <p>
+                Use job importance, market evidence and
+                project context to understand the real gap.
+            </p>
+
+        </article>
+
+
+        <article class="pillar-card">
+
+            <div class="pillar-number">
+                03
+            </div>
+
+            <h3>
+                Strengthen
+            </h3>
+
+            <p>
+                Find practical ways to improve existing
+                projects instead of forcing unnecessary work.
+            </p>
+
+        </article>
+
+    </div>
+
+</section>
+
+
+
+<!-- =========================================================
+     ANALYSIS INPUT
+========================================================= -->
+
+<section
+    class="analysis-section"
+    id="analyze"
+>
+
+    <div class="analysis-intro">
+
+        <p class="eyebrow">
+            LET'S FIGURE THIS OUT
+        </p>
+
+        <h2>
+            Where do you stand
+            right now?
+        </h2>
+
+        <p>
+            Give us three things.
+            We'll handle the rest.
+        </p>
+
+    </div>
+
+
+    <div class="analysis-card">
+
+
+        <!-- RESUME -->
+
+        <div class="input-group">
+
+            <div class="input-heading">
+
+                <div class="input-number">
+                    01
+                </div>
+
+                <div>
+
+                    <h3>
+                        Your Resume
+                    </h3>
+
+                    <span>
+                        What you already know
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <textarea
+                id="resume"
+                placeholder="Paste your resume or describe your skills and experience..."
+            ></textarea>
+
+        </div>
+
+
+
+        <!-- JOB -->
+
+        <div class="input-group">
+
+            <div class="input-heading">
+
+                <div class="input-number">
+                    02
+                </div>
+
+                <div>
+
+                    <h3>
+                        Target Job
+                    </h3>
+
+                    <span>
+                        Where you want to go
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <textarea
+                id="job-description"
+                placeholder="Paste the job description here..."
+            ></textarea>
+
+        </div>
+
+
+
+        <!-- PROJECTS -->
+
+        <div class="input-group">
+
+            <div class="input-heading project-heading">
+
+                <div class="input-number">
+                    03
+                </div>
+
+                <div>
+
+                    <h3>
+                        Your Projects
+                    </h3>
+
+                    <span>
+                        What you've already built
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div
+                id="projects-container"
+                class="projects-container"
+            >
+
+                <div class="project-input">
+
+                    <input
+                        type="text"
+                        class="project-name"
+                        placeholder="Project name"
+                    >
+
+                    <textarea
+                        class="project-description"
+                        placeholder="What did you build? Mention technologies, features or problems you solved..."
+                    ></textarea>
+
+                </div>
+
+            </div>
+
+
+            <button
+                type="button"
+                id="add-project"
+                class="add-project-button"
+            >
+                + Add another project
+            </button>
+
+        </div>
+
+
+
+        <!-- ANALYZE -->
+
+        <button
+            type="button"
+            id="analyze-button"
+            class="analyze-button"
+        >
+            Analyze My Career Gap
+            <span>→</span>
+        </button>
+
+
+        <p class="input-note">
+            Your information is used only for this analysis.
+        </p>
+
+    </div>
+
+</section>
+
+
+
+<!-- =========================================================
+     LOADING
+========================================================= -->
+
+<section
+    id="loading"
+    class="loading-section hidden"
+>
+
+    <div class="loading-orbit"></div>
+
+    <p>
+        Reading your career landscape...
+    </p>
+
+</section>
+
+
+
+<!-- =========================================================
+     RESULTS
+========================================================= -->
+
+<section
+    id="results"
+    class="results hidden"
+>
+
+    <div class="results-container">
+
+
+        <!-- RESULTS HEADER -->
+
+        <div class="results-header">
+
+            <div>
+
+                <p class="eyebrow">
+                    YOUR RESULTS
+                </p>
+
+                <h2>
+                    Here's where you stand.
+                </h2>
+
+                <p>
+                    A clearer picture of your current
+                    career readiness.
+                </p>
+
+            </div>
+
+
+            <div class="results-quote">
+
+                <span class="quote-mark">
+                    “
+                </span>
+
+                <p>
+                    Grow With The Flow
+                </p>
+
+                <small>
+                    Let It Unfold
+                </small>
+
+                <span class="quote-leaf">
+                    ◜
+                </span>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- DYNAMIC RESULTS -->
+
+        <div id="results-content"></div>
+
+
+        <!-- RESULTS FOOTER -->
+
+        <div class="results-footer">
+
+            <span>
+                CareerGap
+            </span>
+
+            <strong>
+                Gap → Grind → Grow
+            </strong>
+
+            <span>
+                Let It Unfold
+            </span>
+
+        </div>
+
+    </div>
+
+</section>
+
+</main>
+
+
+
+<!-- =========================================================
+     FOOTER
+========================================================= -->
+
+<footer class="site-footer">
+
+    <div>
+
+        <strong>
+            CareerGap
+        </strong>
+
+        <span>
+            Keep growing.
+        </span>
+
+    </div>
+
+
+    <span>
+        © 2026 CareerGap
+    </span>
+
+</footer>
+
+
+
+<script src="script.js"></script>
+
+</body>
+
+</html>

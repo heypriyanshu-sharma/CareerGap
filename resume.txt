@@ -1,0 +1,4 @@
+I am a Python developer with experience in Python and Git.
+
+I have built software projects and understand Data Structures
+and Object-Oriented Programming.

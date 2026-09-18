@@ -1,0 +1,10 @@
+[
+    {
+        "name": "Student Management API",
+        "description": "A Python backend application using FastAPI and PostgreSQL to manage student records through a REST API."
+    },
+    {
+        "name": "Java Library System",
+        "description": "A Java application demonstrating Object-Oriented Programming, classes, inheritance and data structures."
+    }
+]
