@@ -182,3 +182,47 @@ def test_analyze_returns_500_for_unexpected_error(monkeypatch):
     assert response.json()["detail"] == (
         "CareerGap analysis failed unexpectedly."
     )
+
+
+def test_analyze_rate_limit_blocks_excessive_requests(monkeypatch):
+    expected_result = {
+        "status": "ok",
+    }
+
+    monkeypatch.setattr(
+        backend,
+        "run_careergap",
+        lambda resume, job_description, projects: expected_result,
+    )
+
+    # Reset the in-memory rate-limit storage so this test
+    # starts with a clean rate-limit window.
+    backend.limiter._storage.reset()
+
+    payload = {
+        "resume": "Python developer.",
+        "job_description": "Required: Python.",
+        "projects": [
+            {
+                "name": "Test Project",
+                "description": "A Python project.",
+            }
+        ],
+    }
+
+    responses = [
+        client.post("/analyze", json=payload)
+        for _ in range(10)
+    ]
+
+    assert all(
+        response.status_code == 200
+        for response in responses
+    )
+
+    blocked_response = client.post(
+        "/analyze",
+        json=payload,
+    )
+
+    assert blocked_response.status_code == 429

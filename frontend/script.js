@@ -38,6 +38,80 @@ document.addEventListener(
 
 
         // =================================================
+        // AUTO-GROW TEXTAREAS
+        // =================================================
+
+        const TEXTAREA_MAX_HEIGHT = 360;
+
+
+        function autoGrowTextarea(textarea) {
+
+            if (!textarea) {
+                return;
+            }
+
+            textarea.style.height = "auto";
+
+            const newHeight =
+                Math.min(
+                    textarea.scrollHeight,
+                    TEXTAREA_MAX_HEIGHT
+                );
+
+            textarea.style.height =
+                `${newHeight}px`;
+
+            textarea.style.overflowY =
+                textarea.scrollHeight > TEXTAREA_MAX_HEIGHT
+                    ? "auto"
+                    : "hidden";
+        }
+
+
+        function setupAutoGrow(textarea) {
+
+            if (!textarea) {
+                return;
+            }
+
+            autoGrowTextarea(textarea);
+
+            textarea.addEventListener(
+                "input",
+                function () {
+                    autoGrowTextarea(textarea);
+                }
+            );
+        }
+
+
+        setupAutoGrow(resumeInput);
+
+        setupAutoGrow(jobDescriptionInput);
+
+
+        projectsContainer
+            .querySelectorAll(".project-description")
+            .forEach(setupAutoGrow);
+
+
+        projectsContainer.addEventListener(
+            "input",
+            function (event) {
+
+                if (
+                    event.target.matches(
+                        ".project-description"
+                    )
+                ) {
+                    autoGrowTextarea(event.target);
+                }
+
+            }
+        );
+
+
+        // =================================================
         // ADD PROJECT
         // =================================================
 
@@ -93,6 +167,12 @@ document.addEventListener(
 
                 projectsContainer.appendChild(
                     project
+                );
+
+                setupAutoGrow(
+                    project.querySelector(
+                        ".project-description"
+                    )
                 );
 
             }
@@ -234,8 +314,10 @@ document.addEventListener(
 
         function escapeHTML(value) {
 
-            if (value === null ||
-                value === undefined) {
+            if (
+                value === null ||
+                value === undefined
+            ) {
 
                 return "";
 

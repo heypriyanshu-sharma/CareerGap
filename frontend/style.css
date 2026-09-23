@@ -727,13 +727,10 @@ textarea,
 
 
 textarea {
-
-    min-height: 155px;
-
+    min-height: 80px;
     padding: 18px;
-
-    resize: vertical;
-
+    resize: none;
+    overflow-y: hidden;
 }
 
 
