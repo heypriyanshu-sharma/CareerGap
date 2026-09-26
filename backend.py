@@ -7,6 +7,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
 from career_gap import run_careergap
+from ai_advisor import generate_career_advice
 from file_upload import (
     MAX_FILE_SIZE,
     process_uploaded_file,
@@ -145,11 +146,21 @@ def analyze(
     ]
 
     try:
-        return run_careergap(
+        results = run_careergap(
             career_gap_request.resume,
             career_gap_request.job_description,
             projects,
         )
+
+        # AI advice is an additional interpretation layer.
+        # The deterministic CareerGap analysis remains the source of truth.
+        try:
+            results["ai_advice"] = generate_career_advice(results)
+        except Exception as error:
+            print("AI ADVISOR ERROR:", error)
+            results["ai_advice"] = None
+
+        return results
 
     except ValueError as error:
         raise HTTPException(

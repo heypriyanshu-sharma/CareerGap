@@ -239,40 +239,49 @@ def search_github(skill, user_skills):
     # popular generic repositories that only mention the skill incidentally.
     query_map = {
         "fastapi": [
-            '"FastAPI" in:name,description,readme',
-            '"FastAPI" backend API language:python'
+            '"FastAPI" "tutorial" in:readme',
+            '"FastAPI" "example" in:readme language:python',
+            '"FastAPI" "project" in:readme language:python'
         ],
         "postgresql": [
-            '"PostgreSQL" in:name,description,readme',
-            '"PostgreSQL" backend database'
+            '"PostgreSQL" "tutorial" in:readme',
+            '"PostgreSQL" "example" in:readme',
+            '"PostgreSQL" "project" in:readme'
         ],
         "docker": [
-            '"Docker" in:name,description,readme',
-            '"Docker" containerized application'
+            '"Docker" "tutorial" in:readme',
+            '"Dockerfile" "Docker Compose" in:readme',
+            '"containerized" "Docker" in:readme'
         ],
         "aws": [
-            '"AWS" in:name,description,readme',
-            '"AWS" deployment backend'
+            '"AWS" "tutorial" in:readme',
+            '"AWS" "deployment" in:readme',
+            '"AWS" "project" in:readme'
         ],
         "javascript": [
-            '"JavaScript" in:name,description,readme language:JavaScript',
-            '"JavaScript" frontend application'
+            '"JavaScript" "tutorial" in:readme language:JavaScript',
+            '"JavaScript" "course" in:readme',
+            '"JavaScript" "exercises" in:readme'
         ],
         "typescript": [
-            '"TypeScript" in:name,description,readme language:TypeScript',
-            '"TypeScript" frontend application'
+            '"TypeScript" "tutorial" in:readme language:TypeScript',
+            '"TypeScript" "course" in:readme',
+            '"TypeScript" "exercises" in:readme'
         ],
         "html": [
-            '"HTML" in:name,description,readme language:HTML',
-            '"HTML" frontend website'
+            '"HTML" "tutorial" in:readme language:HTML',
+            '"HTML" "course" in:readme',
+            '"HTML" "exercises" in:readme'
         ],
         "css": [
-            '"CSS" in:name,description,readme language:CSS',
-            '"CSS" frontend styling'
+            '"CSS" "tutorial" in:readme language:CSS',
+            '"CSS" "course" in:readme',
+            '"CSS" "exercises" in:readme'
         ],
         "react": [
-            '"React" in:name,description,readme',
-            '"React" frontend application language:JavaScript'
+            '"React" "tutorial" in:readme',
+            '"React" "course" in:readme',
+            '"React" "project" in:readme language:JavaScript'
         ]
     }
 
@@ -287,10 +296,8 @@ def search_github(skill, user_skills):
     for query in queries:
         url = f'{GITHUB_API}/search/repositories'
         params = {
-            'q': query,
-            'per_page': 10,
-            'sort': 'stars',
-            'order': 'desc'
+            'q': f'{query} is:public archived:false fork:false',
+            'per_page': 20
         }
         try:
             response = requests.get(
@@ -322,16 +329,9 @@ def search_github(skill, user_skills):
         if classify_repository(repo) == 'project'
     ]
 
-    # Prefer repositories whose name or description directly identifies the skill.
-    def discovery_key(repo):
-        name = (repo.get('name') or '').lower()
-        description = (repo.get('description') or '').lower()
-        direct = int(skill_lower in name or skill_lower in description)
-        stars = repo.get('stargazers_count', 0)
-        return (direct, stars)
-
-    repositories.sort(key=discovery_key, reverse=True)
-    return repositories[:10]
+    # Keep GitHub's best-match order. Popularity is only a later ranking
+    # signal; it must never decide whether a repository is relevant.
+    return repositories[:20]
 
 
 def get_readme(repo):
@@ -423,7 +423,7 @@ def classify_repository(repo):
         return 'profile'
     if name in {'portfolio', 'resume', 'cv', 'personal-website', 'personal-site'}:
         return 'profile'
-    if name.startswith('awesome-') or any((word in combined for word in ['roadmap', 'cheatsheet', 'cheat sheet', 'awesome list', 'collection of resources', 'resource collection', 'book collection', 'interview questions'])):
+    if name.startswith('awesome-') or name in {'build-your-own-x', 'awesome', 'learning-resources'} or any((word in combined for word in ['roadmap', 'cheatsheet', 'cheat sheet', 'awesome list', 'collection of resources', 'resource collection', 'book collection', 'interview questions', 'curated list', 'list of resources'])):
         return 'collection'
     return 'project'
 
@@ -472,6 +472,17 @@ def analyze_project_files(files):
     deployment_files = []
     deployment_names = {'dockerfile', 'docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml'}
     deployment_directories = {'deployment', 'deploy', 'kubernetes', 'k8s', 'helm', 'terraform'}
+
+    aws_files = []
+    aws_path_signals = (
+        '.tf', 'terraform', 'cloudformation', 'cdk.json', 'cdk',
+        'samconfig', 'template.yaml', 'template.yml', 'serverless.yml',
+        'serverless.yaml', 'aws.yaml', 'aws.yml'
+    )
+    for path in files:
+        lower_path = path.lower()
+        if lower_path.endswith('.tf') or any(signal in lower_path for signal in aws_path_signals):
+            aws_files.append(path)
     for path in files:
         lower_path = path.lower()
         parts = lower_path.split('/')
@@ -480,7 +491,19 @@ def analyze_project_files(files):
             deployment_files.append(path)
         elif any((directory in deployment_directories for directory in parts[:-1])):
             deployment_files.append(path)
-    return {'files': files, 'total_files': len(files), 'dockerfile_present': dockerfile, 'docker_compose_present': docker_compose, 'requirements_present': requirements, 'python_file_count': len(python_files), 'python_files': python_files[:10], 'api_files': api_files[:10], 'database_files': database_files[:10], 'deployment_files': deployment_files[:10]}
+    return {
+        'files': files,
+        'total_files': len(files),
+        'dockerfile_present': dockerfile,
+        'docker_compose_present': docker_compose,
+        'requirements_present': requirements,
+        'python_file_count': len(python_files),
+        'python_files': python_files[:10],
+        'api_files': api_files[:10],
+        'database_files': database_files[:10],
+        'deployment_files': deployment_files[:10],
+        'aws_files': aws_files[:10],
+    }
 
 # ============================================================
 # Technology and project-domain detection
@@ -829,29 +852,295 @@ def _calculate_repository_score_impl(repo, analysis, file_analysis, skill, resum
 # Filtering, ranking, and display
 # ============================================================
 
+RESOURCE_EDUCATION_SIGNALS = {
+    "tutorial", "course", "curriculum", "lesson", "lessons", "exercise",
+    "exercises", "practice", "workshop", "guide", "learning", "learn",
+    "beginner", "getting started", "step by step", "challenge", "challenges",
+    "task", "tasks", "examples", "explained", "documentation", "cheatsheet",
+    "cheat sheet", "reference", "handbook", "style guide", "styleguide", "study"
+}
+
+NON_RESOURCE_SIGNALS = {
+    "animation library", "ui library", "component library", "template engine",
+    "template", "starter code", "starter kit", "boilerplate", "plugin",
+    "package", "framework", "library", "theme", "icons", "icon library",
+    "portfolio starter", "portfolio template", "admin framework",
+    "collection of resources", "collection of web development resources",
+    "list of resources", "curated resources", "resource collection",
+    "documentation repo for", "documentation repository for",
+    "sphinx-based", "generated documentation"
+}
+
+def _contains_any(text, phrases):
+    return any(phrase in text for phrase in phrases)
+
+def _skill_subject_evidence(skill, text, name, description):
+    skill = _normalise(skill)
+
+    subject_phrases = {
+        "javascript": (
+            "javascript tutorial", "javascript course", "learn javascript",
+            "learning javascript", "javascript exercises", "javascript practice",
+            "javascript guide", "javascript fundamentals", "javascript lessons",
+            "javascript examples", "javascript workshop", "modern javascript tutorial",
+            "javascript training"
+        ),
+        "typescript": (
+            "typescript tutorial", "typescript course", "learn typescript",
+            "learning typescript", "typescript exercises", "typescript practice",
+            "typescript guide", "typescript fundamentals", "typescript lessons",
+            "typescript examples", "typescript workshop"
+        ),
+        "html": (
+            "html tutorial", "html course", "learn html", "learning html",
+            "html exercises", "html practice", "html guide", "html fundamentals",
+            "html lessons", "html examples", "html workshop", "html basics",
+            "html5 basics"
+        ),
+        "css": (
+            "css tutorial", "css course", "learn css", "learning css",
+            "css exercises", "css practice", "css guide", "css fundamentals",
+            "css lessons", "css examples", "css workshop", "css basics"
+        ),
+        "react": (
+            "react tutorial", "react course", "learn react",
+            "learning react", "react exercises", "react practice",
+            "react guide", "react fundamentals", "react lessons",
+            "react workshop", "react training", "react course material"
+        ),
+    }
+
+    phrases = subject_phrases.get(skill, ())
+
+    identity_text = name + " " + description
+
+    # The repository identity is the strongest evidence.
+    if _contains_any(identity_text, phrases):
+        return True
+
+    if skill == "react":
+        # README mentions alone are not enough for React because
+        # React can be part of a Jenkins/Node/full-stack tutorial.
+        react_concepts = sum(
+            1
+            for signal in (
+                "react components",
+                "react hooks",
+                "react state",
+                "react props",
+                "react jsx",
+                "react context",
+                "react router",
+                "create react app"
+            )
+            if signal in text
+        )
+
+        react_teaching = _contains_any(text, phrases)
+
+        return bool(
+            react_teaching
+            and react_concepts >= 2
+        )
+
+    return _contains_any(text, phrases)
+
+def _is_real_learning_resource(skill, repo, readme, analysis, file_analysis):
+    name = _normalise(repo.get("name", ""))
+    description = _normalise(repo.get("description", ""))
+    text = f"{name} {description} {_normalise(readme)}"
+
+    if _contains_any(text, NON_RESOURCE_SIGNALS):
+        if not _skill_subject_evidence(skill, text, name, description):
+            return False
+
+    if skill == "html" and _contains_any(text, {
+        "documentation repo for", "documentation repository for",
+        "sphinx-based", "robotics", "moveit", "api documentation"
+    }):
+        return False
+
+    if skill == "css" and _contains_any(text, {
+        "animation library", "css animation library", "loading animations",
+        "tailwind css", "portfolio starter", "portfolio template"
+    }):
+        return False
+
+    if skill == "javascript" and _contains_any(text, {
+        "template engine", "templating engine", "node.js template",
+        "javascript template engine"
+    }):
+        return False
+
+    if skill == "react" and _contains_any(text, {
+        "component library", "ui library", "admin framework"
+    }) and not _skill_subject_evidence(skill, text, name, description):
+        return False
+
+    if _skill_subject_evidence(skill, text, name, description):
+        return True
+
+    educational_hits = sum(
+        1 for signal in RESOURCE_EDUCATION_SIGNALS if signal in text
+    )
+    project_signals = set(analysis.get("project_signals", []))
+    readme_length = analysis.get("readme_length", 0)
+    total_files = file_analysis.get("total_files", 0)
+
+    if skill == "react":
+        # A React repository must demonstrate that React itself
+        # is the subject of the resource, not merely a technology
+        # used inside an unrelated project/tutorial.
+        if not _skill_subject_evidence(
+            skill,
+            text,
+            name,
+            description
+        ):
+            return False
+
+        return bool(
+            educational_hits >= 2
+            and readme_length >= 500
+        )
+
+    if educational_hits >= 2 and readme_length >= 500:
+        return True
+
+    return False
+
+def has_resource_intent(repo, readme, analysis, file_analysis, skill):
+    return _is_real_learning_resource(
+        _normalise(skill),
+        repo,
+        readme,
+        analysis,
+        file_analysis,
+    )
+
+
 def has_skill_relevance(repo, readme, analysis, file_analysis, skill):
-    """Require concrete evidence that a repository actually uses the target skill."""
+    """Hard gate: only pass repositories with concrete target-skill evidence.
+
+    Popularity and generic README mentions are intentionally insufficient.
+    The gate is deliberately stricter for infrastructure skills such as Docker
+    and AWS because those terms appear frequently in broad engineering repos.
+    """
     skill_lower = _normalise(skill)
     name = _normalise(repo.get("name", ""))
     description = _normalise(repo.get("description", ""))
     text = _normalise(readme)
     language = _normalise(repo.get("language", ""))
-    skill_mentions = analysis.get("skill_mentions", 0)
     files = [str(path).lower() for path in file_analysis.get("files", [])]
+    meaningful = has_meaningful_project_evidence(
+        repo, readme, analysis, file_analysis
+    )
 
     direct_identity = skill_lower in name or skill_lower in description
+    mentions = analysis.get("skill_mentions", 0)
+
+    if skill_lower == "docker":
+        docker_artifact = (
+            file_analysis.get("dockerfile_present", False)
+            or file_analysis.get("docker_compose_present", False)
+        )
+        docker_terms = (
+            "dockerfile", "docker build", "docker run", "docker compose",
+            "docker image", "docker hub", "containerize", "containerized",
+            "containerisation", "containerization"
+        )
+        concrete_terms = sum(term in text for term in docker_terms)
+        explicit_docker = direct_identity or docker_artifact or concrete_terms >= 2
+        clearly_non_container = any(
+            phrase in text
+            for phrase in (
+                "non-containerized",
+                "non containerized",
+                "without docker",
+                "avoid docker",
+                "does not use docker",
+            )
+        )
+        if clearly_non_container and not docker_artifact and not direct_identity:
+            return False
+        return meaningful and explicit_docker
+
+    if skill_lower == "aws":
+        aws_code_terms = (
+            "boto3", "aws sdk", "aws-sdk", "@aws-sdk", "aws cdk",
+            "cloudformation", "terraform", "aws provider", "sam template",
+            "aws lambda", "amazon s3", "amazon ec2", "amazon rds",
+            "dynamodb", "api gateway", "ecs", "eks"
+        )
+        aws_code_evidence = any(term in text for term in aws_code_terms)
+        infrastructure_evidence = bool(file_analysis.get("aws_files"))
+        deployment_evidence = any(
+            signal in text
+            for signal in (
+                "deploy to aws", "deployed on aws", "aws deployment",
+                "aws infrastructure", "aws environment", "aws services"
+            )
+        )
+        # A repo named/described as AWS-specific is allowed when it is a real
+        # project/resource. A broad repo that merely discusses AWS is rejected.
+        return meaningful and (
+            infrastructure_evidence
+            or (direct_identity and (aws_code_evidence or deployment_evidence or mentions >= 2))
+            or (aws_code_evidence and (deployment_evidence or file_analysis.get("python_file_count", 0) > 0))
+        )
 
     if skill_lower == "javascript":
-        return (language == "javascript" or any(path.endswith((".js", ".jsx", ".mjs", ".cjs")) for path in files) or (skill_mentions >= 2 and ("frontend" in text or "javascript" in text or "node" in text)))
+        return (
+            language == "javascript"
+            or any(path.endswith((".js", ".jsx", ".mjs", ".cjs")) for path in files)
+            or (mentions >= 2 and ("frontend" in text or "javascript" in text or "node" in text))
+        )
+
     if skill_lower == "typescript":
-        return (language == "typescript" or any(path.endswith((".ts", ".tsx", ".mts", ".cts")) for path in files) or (skill_mentions >= 2 and "typescript" in text))
+        return (
+            language == "typescript"
+            or any(path.endswith((".ts", ".tsx", ".mts", ".cts")) for path in files)
+            or (mentions >= 2 and "typescript" in text)
+        )
+
     if skill_lower == "html":
-        return (language == "html" or any(path.endswith(".html") for path in files) or (skill_mentions >= 2 and "html" in text))
+        return (
+            language == "html"
+            or any(path.endswith(".html") for path in files)
+            or (mentions >= 2 and "html" in text)
+        )
+
     if skill_lower == "css":
-        return (language == "css" or any(path.endswith((".css", ".scss", ".sass", ".less")) for path in files) or (skill_mentions >= 2 and "css" in text))
+        return (
+            language == "css"
+            or any(path.endswith((".css", ".scss", ".sass", ".less")) for path in files)
+            or (mentions >= 2 and "css" in text)
+        )
+
     if skill_lower == "react":
-        return ((skill_mentions >= 2 and language in {"javascript", "typescript"}) or any(path.endswith((".jsx", ".tsx")) for path in files) or (direct_identity and skill_mentions >= 2 and "frontend" in text))
-    return bool(direct_identity or skill_mentions >= 2)
+        return (
+            any(path.endswith((".jsx", ".tsx")) for path in files)
+            or (mentions >= 2 and language in {"javascript", "typescript"})
+            or (direct_identity and mentions >= 2 and "frontend" in text)
+        )
+
+    if skill_lower == "python":
+        return language == "python" or any(path.endswith(".py") for path in files) or (direct_identity and mentions >= 2)
+
+    if skill_lower in {"sql", "postgresql", "mysql", "sqlite", "mongodb"}:
+        return (
+            any(path.endswith(".sql") for path in files)
+            or bool(file_analysis.get("database_files"))
+            or (direct_identity and mentions >= 2)
+        )
+
+    if skill_lower == "fastapi":
+        return (
+            direct_identity and meaningful
+            or (mentions >= 2 and (language == "python" or any(path.endswith(".py") for path in files)) and file_analysis.get("api_files"))
+        )
+
+    return bool(meaningful and (direct_identity or mentions >= 2))
 
 
 def has_meaningful_project_evidence(repo, readme, analysis, file_analysis):
@@ -880,9 +1169,10 @@ def rank_repositories(
     """
     ranked = []
 
-    # Search results are already ordered by popularity. Inspect only the
-    # strongest candidates instead of every returned repository.
-    candidates = repositories[:5]
+    # Discovery returns best-match candidates. Inspect enough candidates
+    # to survive the hard relevance gate, then stop once we have five valid
+    # resources. This avoids expensive README/tree calls for the whole search.
+    candidates = repositories[:20]
 
     for repo in candidates:
 
@@ -890,6 +1180,26 @@ def rank_repositories(
             continue
 
         readme = get_readme(repo)
+
+        # HARD RESOURCE-INTENT GATE
+
+        # Reject known non-resource repositories before scoring.
+
+        candidate_text = " ".join([
+
+            str(repo.get("name", "")),
+
+            str(repo.get("description", "")),
+
+            readme,
+
+        ]).lower()
+
+
+        if _contains_any(candidate_text, NON_RESOURCE_SIGNALS):
+
+            continue
+
         analysis = analyze_repository(
             repo,
             readme,
@@ -900,6 +1210,9 @@ def rank_repositories(
         file_analysis = analyze_project_files(files)
 
         if not has_skill_relevance(repo, readme, analysis, file_analysis, skill):
+            continue
+
+        if not has_resource_intent(repo, readme, analysis, file_analysis, skill):
             continue
 
         if not has_meaningful_project_evidence(
@@ -975,6 +1288,10 @@ def rank_repositories(
                 'deployment_files',
                 []
             ),
+            'aws_files': file_analysis.get(
+                'aws_files',
+                []
+            ),
             'context_fit': context_fit.get(
                 'score',
                 0
@@ -991,6 +1308,9 @@ def rank_repositories(
             'updated_at': repo.get('updated_at'),
             'url': repo.get('html_url')
         })
+
+        if len(ranked) >= 3:
+            break
 
     def ranking_key(item):
         matched_count = len(
@@ -1020,7 +1340,7 @@ def rank_repositories(
 
 def display_recommendations(ranked, discovered_count):
     print(f'\nFound {discovered_count} repositories')
-    print(f'Analyzed {len(ranked)} suitable projects')
+    print(f'Analyzed {len(ranked)} suitable resources')
     print('\n===== TOP GITHUB RESOURCES =====')
     if not ranked:
         print('No suitable GitHub projects found.')

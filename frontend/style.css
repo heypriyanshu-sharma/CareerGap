@@ -46,6 +46,8 @@
 
 
 
+
+
 /* =========================================================
 
    RESET
@@ -64,11 +66,15 @@
 
 
 
+
+
 html {
 
     scroll-behavior: smooth;
 
 }
+
+
 
 
 
@@ -100,6 +106,8 @@ body {
 
 
 
+
+
 button,
 
 textarea,
@@ -112,11 +120,15 @@ input {
 
 
 
+
+
 button {
 
     cursor: pointer;
 
 }
+
+
 
 
 
@@ -127,6 +139,8 @@ a {
     text-decoration: none;
 
 }
+
+
 
 
 
@@ -144,6 +158,8 @@ a {
 
 
 
+
+
 .eyebrow {
 
     font-size: 0.75rem;
@@ -155,6 +171,8 @@ a {
     color: var(--olive);
 
 }
+
+
 
 
 
@@ -186,6 +204,8 @@ a {
 
 
 
+
+
 .nav-inner {
 
     width: min(1180px, 90%);
@@ -201,6 +221,8 @@ a {
     justify-content: space-between;
 
 }
+
+
 
 
 
@@ -222,6 +244,8 @@ a {
 
 
 
+
+
 .brand-leaf {
 
     width: 27px;
@@ -240,11 +264,15 @@ a {
 
 
 
+
+
 .brand:hover .brand-leaf {
 
     transform: rotate(-8deg) translateY(-2px);
 
 }
+
+
 
 
 
@@ -262,6 +290,8 @@ a {
 
 
 
+
+
 .nav-links a {
 
     transition:
@@ -274,6 +304,8 @@ a {
 
 
 
+
+
 .nav-links a:hover {
 
     color: var(--olive);
@@ -281,6 +313,8 @@ a {
     transform: translateY(-1px);
 
 }
+
+
 
 
 
@@ -308,11 +342,15 @@ a {
 
 
 
+
+
 .hero-content {
 
     max-width: 720px;
 
 }
+
+
 
 
 
@@ -334,6 +372,8 @@ a {
 
 
 
+
+
 .hero-description {
 
     max-width: 580px;
@@ -345,6 +385,8 @@ a {
     color: var(--olive-soft);
 
 }
+
+
 
 
 
@@ -380,6 +422,8 @@ a {
 
 
 
+
+
 .hero-button:hover {
 
     transform: translateY(-3px);
@@ -392,11 +436,15 @@ a {
 
 
 
+
+
 .hero-button span {
 
     font-size: 1.25rem;
 
 }
+
+
 
 
 
@@ -424,6 +472,8 @@ a {
 
 
 
+
+
 /* =========================================================
 
    PILLARS
@@ -440,11 +490,15 @@ a {
 
 
 
+
+
 .section-heading {
 
     margin-bottom: 45px;
 
 }
+
+
 
 
 
@@ -462,6 +516,8 @@ a {
 
 
 
+
+
 .pillar-grid {
 
     display: grid;
@@ -473,6 +529,8 @@ a {
     gap: 20px;
 
 }
+
+
 
 
 
@@ -500,6 +558,8 @@ a {
 
 
 
+
+
 .pillar-card:hover {
 
     transform: translateY(-5px);
@@ -507,6 +567,8 @@ a {
     box-shadow: var(--shadow-pop);
 
 }
+
+
 
 
 
@@ -536,6 +598,8 @@ a {
 
 
 
+
+
 .pillar-card h3 {
 
     margin-top: 30px;
@@ -546,6 +610,8 @@ a {
 
 
 
+
+
 .pillar-card p {
 
     margin-top: 9px;
@@ -553,6 +619,8 @@ a {
     color: var(--olive-soft);
 
 }
+
+
 
 
 
@@ -582,6 +650,8 @@ a {
 
 
 
+
+
 .analysis-intro {
 
     position: sticky;
@@ -589,6 +659,8 @@ a {
     top: 110px;
 
 }
+
+
 
 
 
@@ -606,6 +678,8 @@ a {
 
 
 
+
+
 .analysis-intro p:last-child {
 
     margin-top: 22px;
@@ -613,6 +687,8 @@ a {
     color: var(--olive-soft);
 
 }
+
+
 
 
 
@@ -632,11 +708,15 @@ a {
 
 
 
+
+
 .input-group + .input-group {
 
     margin-top: 38px;
 
 }
+
+
 
 
 
@@ -651,6 +731,8 @@ a {
     margin-bottom: 15px;
 
 }
+
+
 
 
 
@@ -680,11 +762,15 @@ a {
 
 
 
+
+
 .input-heading h3 {
 
     font-size: 1.15rem;
 
 }
+
+
 
 
 
@@ -697,6 +783,8 @@ a {
     color: var(--olive-soft);
 
 }
+
+
 
 
 
@@ -726,12 +814,21 @@ textarea,
 
 
 
+
+
 textarea {
+
     min-height: 80px;
+
     padding: 18px;
+
     resize: none;
+
     overflow-y: hidden;
+
 }
+
+
 
 
 
@@ -740,6 +837,8 @@ textarea {
     padding: 15px 17px;
 
 }
+
+
 
 
 
@@ -757,6 +856,8 @@ textarea:focus,
 
 
 
+
+
 .project-description {
 
     margin-top: 10px;
@@ -764,6 +865,204 @@ textarea:focus,
 }
 
 
+
+
+
+/* =========================================================
+
+   FILE UPLOAD
+
+========================================================= */
+
+.upload-row {
+
+    display: flex;
+
+    align-items: center;
+
+    flex-wrap: wrap;
+
+    gap: 10px;
+
+    margin-top: 12px;
+
+}
+
+
+
+
+
+.file-input {
+
+    display: none;
+
+}
+
+
+
+
+
+.upload-button {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 8px;
+
+    padding: 9px 14px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 12px;
+
+    background: var(--pistachio-soft);
+
+    color: var(--olive);
+
+    font: inherit;
+
+    font-size: 0.78rem;
+
+    font-weight: 750;
+
+    transition:
+
+        background 0.2s ease,
+
+        border-color 0.2s ease,
+
+        color 0.2s ease,
+
+        transform 0.2s ease,
+
+        opacity 0.2s ease;
+
+}
+
+
+
+
+
+.upload-button:hover {
+
+    background: var(--pistachio-light);
+
+    border-color: var(--pistachio);
+
+    transform: translateY(-1px);
+
+}
+
+
+
+
+
+.upload-button:focus-visible {
+
+    outline: 3px solid rgba(198, 216, 167, 0.45);
+
+    outline-offset: 2px;
+
+}
+
+
+
+
+
+.upload-button span {
+
+    font-size: 1rem;
+
+    line-height: 1;
+
+}
+
+
+
+
+
+.upload-button:disabled {
+
+    cursor: wait;
+
+    opacity: 0.6;
+
+}
+
+
+
+
+
+.upload-button.uploading {
+
+    cursor: wait;
+
+}
+
+
+
+
+
+.upload-status {
+
+    min-height: 20px;
+
+    font-size: 0.74rem;
+
+    color: var(--olive-soft);
+
+}
+
+
+
+
+
+.upload-status.success {
+
+    color: var(--olive);
+
+    font-weight: 650;
+
+}
+
+
+
+
+
+.upload-status.error {
+
+    color: #A45747;
+
+    font-weight: 650;
+
+}
+
+
+
+
+
+.upload-hint {
+
+    margin-top: 6px;
+
+    font-size: 0.68rem;
+
+    color: var(--olive-soft);
+
+}
+
+
+
+
+
+/* =========================================================
+
+   PROJECT INPUTS
+
+========================================================= */
 
 .project-input {
 
@@ -782,6 +1081,9 @@ textarea:focus,
 }
 
 
+
+
+
 .project-input-header {
 
     display: flex;
@@ -797,6 +1099,9 @@ textarea:focus,
 }
 
 
+
+
+
 .project-input-label {
 
     color: var(--olive-dark);
@@ -808,6 +1113,9 @@ textarea:focus,
     letter-spacing: 0.02em;
 
 }
+
+
+
 
 
 .remove-project-button {
@@ -831,11 +1139,17 @@ textarea:focus,
     cursor: pointer;
 
     transition:
+
         background 0.2s ease,
+
         color 0.2s ease,
+
         transform 0.2s ease;
 
 }
+
+
+
 
 
 .remove-project-button:hover {
@@ -847,6 +1161,9 @@ textarea:focus,
     transform: translateY(-1px);
 
 }
+
+
+
 
 
 .add-project-button {
@@ -880,12 +1197,19 @@ textarea:focus,
     box-shadow: 0 4px 12px rgba(75, 96, 67, 0.06);
 
     transition:
+
         background 0.2s ease,
+
         border-color 0.2s ease,
+
         transform 0.2s ease,
+
         box-shadow 0.2s ease;
 
 }
+
+
+
 
 
 .add-project-button:hover {
@@ -901,7 +1225,11 @@ textarea:focus,
 }
 
 
+
+
+
 .add-project-button:focus-visible,
+
 .remove-project-button:focus-visible {
 
     outline: 3px solid rgba(198, 216, 167, 0.45);
@@ -910,6 +1238,15 @@ textarea:focus,
 
 }
 
+
+
+
+
+/* =========================================================
+
+   ANALYZE BUTTON
+
+========================================================= */
 
 .analyze-button {
 
@@ -943,6 +1280,8 @@ textarea:focus,
 
 
 
+
+
 .analyze-button span {
 
     margin-left: 15px;
@@ -950,6 +1289,8 @@ textarea:focus,
     font-size: 1.2rem;
 
 }
+
+
 
 
 
@@ -961,6 +1302,8 @@ textarea:focus,
 
 
 
+
+
 .analyze-button:disabled {
 
     cursor: wait;
@@ -968,6 +1311,8 @@ textarea:focus,
     opacity: 0.65;
 
 }
+
+
 
 
 
@@ -982,6 +1327,8 @@ textarea:focus,
     color: var(--olive-soft);
 
 }
+
+
 
 
 
@@ -1009,6 +1356,8 @@ textarea:focus,
 
 
 
+
+
 .loading-orbit {
 
     width: 46px;
@@ -1031,6 +1380,8 @@ textarea:focus,
 
 
 
+
+
 @keyframes spin {
 
     to {
@@ -1040,6 +1391,8 @@ textarea:focus,
     }
 
 }
+
+
 
 
 
@@ -1069,6 +1422,8 @@ textarea:focus,
 
 
 
+
+
 .results-container {
 
     width: min(1180px, 90%);
@@ -1076,6 +1431,8 @@ textarea:focus,
     margin: auto;
 
 }
+
+
 
 
 
@@ -1095,6 +1452,8 @@ textarea:focus,
 
 
 
+
+
 .results-header h2 {
 
     margin-top: 13px;
@@ -1109,6 +1468,8 @@ textarea:focus,
 
 
 
+
+
 .results-header > div:first-child > p:last-child {
 
     margin-top: 18px;
@@ -1116,6 +1477,8 @@ textarea:focus,
     color: var(--olive-soft);
 
 }
+
+
 
 
 
@@ -1133,6 +1496,8 @@ textarea:focus,
 
 
 
+
+
 .quote-mark {
 
     font-size: 3rem;
@@ -1142,6 +1507,8 @@ textarea:focus,
     color: var(--pistachio);
 
 }
+
+
 
 
 
@@ -1157,6 +1524,8 @@ textarea:focus,
 
 
 
+
+
 .results-quote small {
 
     display: block;
@@ -1166,6 +1535,8 @@ textarea:focus,
     color: var(--olive-soft);
 
 }
+
+
 
 
 
@@ -1182,6 +1553,8 @@ textarea:focus,
     color: var(--olive);
 
 }
+
+
 
 
 
@@ -1207,6 +1580,8 @@ textarea:focus,
 
 
 
+
+
 .dashboard-card {
 
     background: var(--cream);
@@ -1221,11 +1596,15 @@ textarea:focus,
 
 
 
+
+
 .dashboard-card:hover {
 
     box-shadow: var(--shadow-pop);
 
 }
+
+
 
 
 
@@ -1257,6 +1636,8 @@ textarea:focus,
 
 
 
+
+
 .score-ring {
 
     position: relative;
@@ -1268,6 +1649,8 @@ textarea:focus,
     flex-shrink: 0;
 
 }
+
+
 
 
 
@@ -1283,6 +1666,8 @@ textarea:focus,
 
 
 
+
+
 .score-ring-track {
 
     fill: none;
@@ -1292,6 +1677,8 @@ textarea:focus,
     stroke-width: 10;
 
 }
+
+
 
 
 
@@ -1313,6 +1700,8 @@ textarea:focus,
 
 
 
+
+
 .score-ring-content {
 
     position: absolute;
@@ -1331,6 +1720,8 @@ textarea:focus,
 
 
 
+
+
 .score-number {
 
     font-size: 2.35rem;
@@ -1338,6 +1729,8 @@ textarea:focus,
     font-weight: 800;
 
 }
+
+
 
 
 
@@ -1351,11 +1744,15 @@ textarea:focus,
 
 
 
+
+
 .score-copy h3 {
 
     font-size: 1.35rem;
 
 }
+
+
 
 
 
@@ -1369,11 +1766,15 @@ textarea:focus,
 
 
 
+
+
 .skill-card {
 
     padding: 30px;
 
 }
+
+
 
 
 
@@ -1390,6 +1791,8 @@ textarea:focus,
     font-weight: 800;
 
 }
+
+
 
 
 
@@ -1413,6 +1816,8 @@ textarea:focus,
 
 
 
+
+
 .skill-list {
 
     margin-top: 22px;
@@ -1424,6 +1829,8 @@ textarea:focus,
     gap: 10px;
 
 }
+
+
 
 
 
@@ -1441,6 +1848,8 @@ textarea:focus,
 
 
 
+
+
 .skill-row-left {
 
     display: flex;
@@ -1450,6 +1859,8 @@ textarea:focus,
     gap: 9px;
 
 }
+
+
 
 
 
@@ -1475,6 +1886,8 @@ textarea:focus,
 
 
 
+
+
 .skill-status.matched {
 
     background: #DCE9CC;
@@ -1485,6 +1898,8 @@ textarea:focus,
 
 
 
+
+
 .skill-status.missing {
 
     background: #F1D8D1;
@@ -1492,6 +1907,8 @@ textarea:focus,
     color: #A45747;
 
 }
+
+
 
 
 
@@ -1511,11 +1928,15 @@ textarea:focus,
 
 
 
+
+
 .role-card {
 
     padding: 30px;
 
 }
+
+
 
 
 
@@ -1531,11 +1952,15 @@ textarea:focus,
 
 
 
+
+
 .role-stat:last-child {
 
     border-bottom: none;
 
 }
+
+
 
 
 
@@ -1549,6 +1974,8 @@ textarea:focus,
 
 
 
+
+
 .role-stat-value {
 
     margin-top: 3px;
@@ -1556,6 +1983,8 @@ textarea:focus,
     font-weight: 800;
 
 }
+
+
 
 
 
@@ -1583,6 +2012,8 @@ textarea:focus,
 
 
 
+
+
 .dashboard-section-header {
 
     display: flex;
@@ -1599,11 +2030,15 @@ textarea:focus,
 
 
 
+
+
 .dashboard-section-header h3 {
 
     font-size: 1.25rem;
 
 }
+
+
 
 
 
@@ -1622,6 +2057,8 @@ textarea:focus,
     font-weight: 700;
 
 }
+
+
 
 
 
@@ -1645,6 +2082,8 @@ textarea:focus,
 
 
 
+
+
 .project-result-card {
 
     padding: 24px;
@@ -1659,11 +2098,15 @@ textarea:focus,
 
 
 
+
+
 .project-result-card h4 {
 
     font-size: 1.1rem;
 
 }
+
+
 
 
 
@@ -1678,6 +2121,8 @@ textarea:focus,
     margin-top: 15px;
 
 }
+
+
 
 
 
@@ -1699,6 +2144,8 @@ textarea:focus,
 
 
 
+
+
 .project-upgrades {
 
     margin-top: 20px;
@@ -1710,6 +2157,8 @@ textarea:focus,
     gap: 9px;
 
 }
+
+
 
 
 
@@ -1727,6 +2176,8 @@ textarea:focus,
 
 
 
+
+
 .upgrade-item-header {
 
     display: flex;
@@ -1738,6 +2189,8 @@ textarea:focus,
     gap: 10px;
 
 }
+
+
 
 
 
@@ -1757,6 +2210,8 @@ textarea:focus,
 
 
 
+
+
 .compatibility.high {
 
     background: #DCE9CC;
@@ -1764,6 +2219,8 @@ textarea:focus,
     color: var(--olive);
 
 }
+
+
 
 
 
@@ -1777,6 +2234,8 @@ textarea:focus,
 
 
 
+
+
 .compatibility.unknown {
 
     background: #ECE9DD;
@@ -1784,6 +2243,8 @@ textarea:focus,
     color: #756F61;
 
 }
+
+
 
 
 
@@ -1799,6 +2260,8 @@ textarea:focus,
 
 
 
+
+
 .upgrade-action {
 
     margin-top: 7px;
@@ -1810,6 +2273,8 @@ textarea:focus,
     color: var(--olive);
 
 }
+
+
 
 
 
@@ -1833,6 +2298,8 @@ textarea:focus,
 
 
 
+
+
 /* =========================================================
 
    RESOURCE CARDS
@@ -1850,6 +2317,8 @@ textarea:focus,
     gap: 13px;
 
 }
+
+
 
 
 
@@ -1873,6 +2342,8 @@ textarea:focus,
 
 
 
+
+
 .resource-skill {
 
     font-size: 0.72rem;
@@ -1885,6 +2356,8 @@ textarea:focus,
 
 
 
+
+
 .resource-card h4 {
 
     margin-top: 8px;
@@ -1894,6 +2367,8 @@ textarea:focus,
     line-height: 1.35;
 
 }
+
+
 
 
 
@@ -1911,6 +2386,8 @@ textarea:focus,
 
 
 
+
+
 .resource-meta {
 
     margin-top: 14px;
@@ -1924,6 +2401,8 @@ textarea:focus,
     color: var(--olive-soft);
 
 }
+
+
 
 
 
@@ -1953,6 +2432,8 @@ textarea:focus,
 
 
 
+
+
 /* =========================================================
 
    NEXT STEPS
@@ -1971,6 +2452,8 @@ textarea:focus,
 
 
 
+
+
 .next-step {
 
     display: grid;
@@ -1982,6 +2465,8 @@ textarea:focus,
     gap: 12px;
 
 }
+
+
 
 
 
@@ -2011,11 +2496,15 @@ textarea:focus,
 
 
 
+
+
 .next-step h4 {
 
     font-size: 0.85rem;
 
 }
+
+
 
 
 
@@ -2028,6 +2517,8 @@ textarea:focus,
     color: var(--olive-soft);
 
 }
+
+
 
 
 
@@ -2049,6 +2540,8 @@ textarea:focus,
 
 
 
+
+
 .result-error {
 
     padding: 30px;
@@ -2060,6 +2553,8 @@ textarea:focus,
     color: #7D4338;
 
 }
+
+
 
 
 
@@ -2091,11 +2586,15 @@ textarea:focus,
 
 
 
+
+
 .results-footer strong {
 
     color: var(--olive);
 
 }
+
+
 
 
 
@@ -2129,6 +2628,8 @@ textarea:focus,
 
 
 
+
+
 .site-footer div {
 
     display: flex;
@@ -2139,11 +2640,15 @@ textarea:focus,
 
 
 
+
+
 .site-footer strong {
 
     color: var(--olive-dark);
 
 }
+
+
 
 
 
@@ -2165,11 +2670,15 @@ textarea:focus,
 
 
 
+
+
     .analysis-intro {
 
         position: static;
 
     }
+
+
 
 
 
@@ -2181,11 +2690,15 @@ textarea:focus,
 
 
 
+
+
     .score-card {
 
         grid-column: 1 / -1;
 
     }
+
+
 
 
 
@@ -2199,6 +2712,8 @@ textarea:focus,
 
 
 
+
+
 @media (max-width: 700px) {
 
     .nav-links {
@@ -2206,6 +2721,8 @@ textarea:focus,
         display: none;
 
     }
+
+
 
 
 
@@ -2217,6 +2734,8 @@ textarea:focus,
 
 
 
+
+
     .hero h1 {
 
         font-size: 3.4rem;
@@ -2225,11 +2744,15 @@ textarea:focus,
 
 
 
+
+
     .pillar-grid {
 
         grid-template-columns: 1fr;
 
     }
+
+
 
 
 
@@ -2243,11 +2766,15 @@ textarea:focus,
 
 
 
+
+
     .analysis-card {
 
         padding: 23px;
 
     }
+
+
 
 
 
@@ -2261,6 +2788,8 @@ textarea:focus,
 
 
 
+
+
     .results-quote {
 
         display: none;
@@ -2269,11 +2798,15 @@ textarea:focus,
 
 
 
+
+
     .dashboard-top {
 
         grid-template-columns: 1fr;
 
     }
+
+
 
 
 
@@ -2289,6 +2822,8 @@ textarea:focus,
 
 
 
+
+
     .project-results-grid,
 
     .resource-grid {
@@ -2299,11 +2834,15 @@ textarea:focus,
 
 
 
+
+
     .dashboard-section {
 
         padding: 22px;
 
     }
+
+
 
 
 
@@ -2317,7 +2856,33 @@ textarea:focus,
 
     }
 
+
+
+
+
+    .upload-row {
+
+        align-items: flex-start;
+
+        flex-direction: column;
+
+    }
+
+
+
+
+
+    .upload-status {
+
+        min-height: 0;
+
+    }
+
 }
+
+
+
+
 
 /* =========================================================
 
@@ -2361,6 +2926,8 @@ textarea:focus,
 
 
 
+
+
 /* =========================================================
 
    SCORE METER
@@ -2378,6 +2945,8 @@ textarea:focus,
     stroke: #C6E8B5;
 
 }
+
+
 
 
 
@@ -2399,6 +2968,8 @@ textarea:focus,
 
 
 
+
+
 /* Heading */
 
 .project-analysis-section .card-title {
@@ -2406,6 +2977,8 @@ textarea:focus,
     color: white;
 
 }
+
+
 
 
 
@@ -2421,6 +2994,8 @@ textarea:focus,
 
 
 
+
+
 /* How to improve */
 
 .project-analysis-section .section-action {
@@ -2433,6 +3008,8 @@ textarea:focus,
 
 
 
+
+
 /* Keep INNER project cards unchanged */
 
 .project-analysis-section .project-result-card {
@@ -2442,6 +3019,8 @@ textarea:focus,
     border: 1px solid var(--border);
 
 }
+
+
 
 
 
@@ -2463,6 +3042,8 @@ textarea:focus,
 
 
 
+
+
 /* Heading */
 
 .resources-section .card-title {
@@ -2470,6 +3051,8 @@ textarea:focus,
     color: white;
 
 }
+
+
 
 
 
@@ -2485,6 +3068,8 @@ textarea:focus,
 
 
 
+
+
 /* GitHub button */
 
 .resources-section .section-action {
@@ -2494,6 +3079,8 @@ textarea:focus,
     color: var(--olive-dark);
 
 }
+
+
 
 
 
@@ -2515,6 +3102,8 @@ textarea:focus,
 
 
 
+
+
 /* Subtle hover */
 
 .resources-section .resource-card:hover {
@@ -2526,6 +3115,8 @@ textarea:focus,
         0 14px 28px rgba(35, 48, 31, 0.16);
 
 }
+
+
 
 
 
@@ -2549,6 +3140,8 @@ textarea:focus,
 
 
 
+
+
 /* Resource text */
 
 .resources-section .resource-card h4 {
@@ -2568,6 +3161,8 @@ textarea:focus,
     color: var(--olive-soft);
 
 }
+
+
 
 
 
@@ -2597,105 +3192,260 @@ textarea:focus,
 
 }
 
+
+
+
+
 /* =========================================================
+
    FINAL RESULTS CARD COLORS
+
 ========================================================= */
 
 /* Score card */
+
 .score-card {
+
     background: var(--olive) !important;
+
     border-color: var(--olive) !important;
+
     color: white;
+
 }
 
 .score-card .score-copy h3,
+
 .score-card .score-number {
+
     color: white;
+
 }
 
 .score-card .score-copy p,
+
 .score-card .score-label {
+
     color: rgba(255, 255, 255, 0.78);
+
 }
 
+
+
+
+
 /* Score meter */
+
 .score-ring-track {
+
     stroke: rgba(255, 255, 255, 0.18);
+
 }
 
 .score-ring-progress {
+
     stroke: #C6E8B5;
+
 }
 
+
+
+
+
 /* Your Projects Analysis — outer card only */
+
 .project-analysis-section {
+
     background: var(--olive) !important;
+
     border-color: var(--olive) !important;
+
     box-shadow: var(--shadow-pop);
+
 }
 
 .project-analysis-section .card-title {
+
     color: var(--white);
+
 }
 
 .project-analysis-section .card-icon {
+
     background: rgba(255, 248, 225, 0.14);
+
     color: var(--white);
+
 }
 
 .project-analysis-section .section-action {
+
     background: var(--cream);
+
     color: var(--olive-dark);
+
 }
+
+
+
+
 
 /* Inner project cards stay pistachio */
+
 .project-analysis-section .project-result-card {
+
     background: var(--pistachio-soft);
+
     border-color: var(--border);
+
 }
 
+
+
+
+
 /* Recommended Learning Resources — outer card only */
+
 .resources-section {
+
     background: var(--olive) !important;
+
     border-color: var(--olive) !important;
+
     box-shadow: var(--shadow-pop);
+
 }
 
 .resources-section .card-title {
+
     color: var(--white);
+
 }
 
 .resources-section .card-icon {
+
     background: rgba(255, 248, 225, 0.14);
+
     color: var(--white);
+
 }
 
 .resources-section .section-action {
+
     background: var(--cream);
+
     color: var(--olive-dark);
+
 }
 
+
+
+
+
 /* Inner resource cards stay pistachio */
+
 .resources-section .resource-card {
+
     background: var(--pistachio-soft);
+
     border-color: var(--border);
+
 }
 
 .resources-section .resource-skill {
+
     background: var(--pistachio);
+
     color: var(--olive-dark);
+
 }
 
 .resources-section .resource-card h4 {
+
     color: var(--olive-dark);
+
 }
 
 .resources-section .resource-description,
+
 .resources-section .resource-meta {
+
     color: var(--olive-soft);
+
 }
 
 .resources-section .resource-link {
+
     background: white;
+
     color: var(--olive);
+
+}
+
+/* =================================================
+
+   AI CAREER ADVICE
+
+   ================================================= */
+
+.ai-advice-section {
+
+    margin-top: 24px;
+
+}
+
+.ai-advice-content {
+
+    margin-top: 22px;
+
+    line-height: 1.7;
+
+}
+
+.ai-advice-content h4 {
+
+    margin: 24px 0 10px;
+
+    font-size: 18px;
+
+    font-weight: 600;
+
+}
+
+.ai-advice-content h4:first-child {
+
+    margin-top: 0;
+
+}
+
+.ai-advice-content p {
+
+    margin: 0 0 14px;
+
+}
+
+.ai-advice-content ul {
+
+    margin: 8px 0 18px 22px;
+
+    padding: 0;
+
+}
+
+.ai-advice-content li {
+
+    margin-bottom: 8px;
+
+}
+
+.advice-step {
+
+    margin: 8px 0;
+
+}
+
+.advice-spacer {
+
+    height: 6px;
+
 }

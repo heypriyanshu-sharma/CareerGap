@@ -31,6 +31,12 @@ def test_analyze_accepts_valid_request(monkeypatch):
         lambda resume, job_description, projects: expected_result,
     )
 
+    monkeypatch.setattr(
+        backend,
+        "generate_career_advice",
+        lambda career_gap_data: "Test AI career advice.",
+    )
+
     payload = {
         "resume": "I know Python.",
         "job_description": "Required: Python FastAPI.",
@@ -45,7 +51,11 @@ def test_analyze_accepts_valid_request(monkeypatch):
     response = client.post("/analyze", json=payload)
 
     assert response.status_code == 200
-    assert response.json() == expected_result
+
+    assert response.json() == {
+        **expected_result,
+        "ai_advice": "Test AI career advice.",
+    }
 
 
 def test_analyze_rejects_empty_resume():
@@ -129,7 +139,11 @@ def test_analyze_rejects_empty_project_description():
 
 
 def test_analyze_returns_400_for_careergap_value_error(monkeypatch):
-    def fake_run_careergap(resume, job_description, projects):
+    def fake_run_careergap(
+        resume,
+        job_description,
+        projects,
+    ):
         raise ValueError("Invalid CareerGap input.")
 
     monkeypatch.setattr(
@@ -156,7 +170,11 @@ def test_analyze_returns_400_for_careergap_value_error(monkeypatch):
 
 
 def test_analyze_returns_500_for_unexpected_error(monkeypatch):
-    def fake_run_careergap(resume, job_description, projects):
+    def fake_run_careergap(
+        resume,
+        job_description,
+        projects,
+    ):
         raise RuntimeError("Unexpected failure.")
 
     monkeypatch.setattr(
@@ -193,6 +211,12 @@ def test_analyze_rate_limit_blocks_excessive_requests(monkeypatch):
         backend,
         "run_careergap",
         lambda resume, job_description, projects: expected_result,
+    )
+
+    monkeypatch.setattr(
+        backend,
+        "generate_career_advice",
+        lambda career_gap_data: "Test AI career advice.",
     )
 
     # Reset the in-memory rate-limit storage so this test

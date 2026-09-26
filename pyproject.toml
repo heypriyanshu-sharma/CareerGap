@@ -21,3 +21,11 @@ build-backend = "uv_build"
 
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "reportlab>=5.0.1",
+]
