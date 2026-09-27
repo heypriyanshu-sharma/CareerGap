@@ -1,4 +1,5 @@
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -6,9 +7,13 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
-from auth import get_current_user
+from auth import get_current_user, security
 from career_gap import run_careergap
 from ai_advisor import generate_career_advice
+from database import (
+    get_analysis_history,
+    save_analysis,
+)
 from file_upload import (
     MAX_FILE_SIZE,
     process_uploaded_file,
@@ -140,12 +145,33 @@ def auth_me(
         "email": claims.get("email"),
     }
 
+@app.get("/analyses")
+def get_analyses(
+     claims: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(
+        security
+    ),
+):
+    try:
+        return get_analysis_history(
+            credentials.credentials
+        )
+
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to load analysis history.",
+        )
+
 @app.post("/analyze")
 @limiter.limit("10/minute")
 def analyze(
     request: Request,
     career_gap_request: CareerGapRequest,
     claims: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(
+        security
+    ),
 ):
     projects = [
         {
@@ -169,6 +195,15 @@ def analyze(
         except Exception as error:
             print("AI ADVISOR ERROR:", error)
             results["ai_advice"] = None
+
+        save_analysis(
+    access_token=credentials.credentials,
+    user_id=claims["sub"],
+    resume=career_gap_request.resume,
+    job_description=career_gap_request.job_description,
+    projects=projects,
+    analysis=results,
+)
 
         return results
 

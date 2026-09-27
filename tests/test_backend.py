@@ -1,13 +1,12 @@
 from fastapi.testclient import TestClient
-
+from fastapi.security import HTTPAuthorizationCredentials
 import backend
 import pytest
 
 
 client = TestClient(backend.app)
-
 @pytest.fixture(autouse=True)
-def authenticated_user():
+def authenticated_user(monkeypatch):
     backend.app.dependency_overrides[
         backend.get_current_user
     ] = lambda: {
@@ -15,10 +14,28 @@ def authenticated_user():
         "email": "test@example.com",
     }
 
+    backend.app.dependency_overrides[
+        backend.security
+    ] = lambda: HTTPAuthorizationCredentials(
+        scheme="Bearer",
+        credentials="test-access-token",
+    )
+
+    monkeypatch.setattr(
+        backend,
+        "save_analysis",
+        lambda **kwargs: None,
+    )
+
     yield
 
     backend.app.dependency_overrides.pop(
         backend.get_current_user,
+        None,
+    )
+
+    backend.app.dependency_overrides.pop(
+        backend.security,
         None,
     )
 

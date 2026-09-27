@@ -72,7 +72,11 @@ document.addEventListener(
 
             document.getElementById("loading");
 
+        const analysisHistoryList =
 
+            document.getElementById("analysis-history-list");
+
+        let analysisHistoryData = [];
         // =================================================
 
         // API CONFIGURATION
@@ -100,6 +104,164 @@ document.addEventListener(
             return data.session.access_token;
 
         }
+
+        async function loadAnalysisHistory() {
+
+    if (!analysisHistoryList) {
+        return;
+    }
+
+    const accessToken =
+        await getAccessToken();
+
+    if (!accessToken) {
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_BASE_URL}/analyses`,
+                {
+                    headers: {
+                        Authorization:
+                            `Bearer ${accessToken}`
+                    }
+                }
+            );
+
+        if (!response.ok) {
+            throw new Error(
+                "Unable to load analysis history."
+            );
+        }
+
+        const analyses =
+            await response.json();
+
+        if (!analyses.length) {
+
+            analysisHistoryList.innerHTML = `
+                <div class="empty-state">
+                    No previous analyses yet.
+                </div>
+            `;
+
+            return;
+        }
+        analysisHistoryData = analyses;
+
+        analysisHistoryList.innerHTML =
+            analyses.map(
+                function (item,index) {
+
+                    const analysis =
+                        item.analysis || {};
+
+                    const score =
+                        Number(
+                            analysis.score || 0
+                        );
+
+                    const createdDate =
+                        new Date(
+                            item.created_at
+                        ).toLocaleDateString(
+                            undefined,
+                            {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric"
+                            }
+                        );
+
+                    return `
+                        <article
+                            class="analysis-history-item"
+                        >
+
+                            <div>
+
+                                <h3>
+                                    Career Analysis
+                                </h3>
+
+                                <p>
+                                    ${escapeHTML(
+                                        item.job_description
+                                    )}
+                                </p>
+
+                                <span>
+                                    ${createdDate}
+                                </span>
+
+                            </div>
+
+                            <strong>
+                                ${score.toFixed(1)}%
+                            </strong>
+                            <button
+                               type="button"
+                               class="history-view-button"
+                               data-history-index="${index}"
+                            >
+                                View Analysis
+                            </button>
+
+                        <div>
+
+                        </article>
+                    `;
+
+                }
+            ).join("");
+            analysisHistoryList
+    .querySelectorAll(".history-view-button")
+    .forEach(
+        function (button) {
+
+            button.addEventListener(
+                "click",
+                function () {
+
+                    const index =
+                        Number(
+                            button.dataset.historyIndex
+                        );
+
+                    const savedAnalysis =
+                        analysisHistoryData[index];
+
+                    if (!savedAnalysis) {
+                        return;
+                    }
+
+                    displayResults(
+                        savedAnalysis.analysis
+                    );
+
+                }
+            );
+
+        }
+    );
+
+    } catch (error) {
+
+        console.error(
+            "Analysis history error:",
+            error
+        );
+
+        analysisHistoryList.innerHTML = `
+            <div class="empty-state">
+                Unable to load previous analyses.
+            </div>
+        `;
+    }
+}
 
         // =================================================
 
@@ -2783,6 +2945,8 @@ document.addEventListener(
             }
 
         );
+
+        loadAnalysisHistory();
 
             }
 

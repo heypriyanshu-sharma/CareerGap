@@ -2772,6 +2772,15 @@ textarea:focus,
 
 @media (max-width: 700px) {
 
+    .analysis-history-item {
+    align-items: flex-start;
+    flex-direction: column;
+}
+
+.analysis-history-item strong {
+    text-align: left;
+}
+
     .nav-links {
         display: none;
     }
@@ -3512,4 +3521,95 @@ textarea:focus,
 
     height: 6px;
 
+}
+
+/* =========================================================
+   ANALYSIS HISTORY
+========================================================= */
+
+.analysis-history {
+    padding: 95px 0 80px;
+    background:
+        linear-gradient(
+            180deg,
+            var(--butter) 0%,
+            var(--butter-deep) 100%
+        );
+}
+
+.analysis-history-list {
+    display: grid;
+    gap: 16px;
+}
+
+.analysis-history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 30px;
+    padding: 24px 26px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--cream);
+    box-shadow: var(--shadow-soft);
+}
+
+.analysis-history-item h3 {
+    color: var(--olive-dark);
+    font-size: 1.05rem;
+}
+
+.analysis-history-item p {
+    max-width: 760px;
+    margin-top: 5px;
+    color: var(--olive-soft);
+    font-size: 0.88rem;
+}
+
+.analysis-history-item span {
+    display: block;
+    margin-top: 7px;
+    color: var(--olive-soft);
+    font-size: 0.75rem;
+}
+
+.analysis-history-item strong {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--olive-dark);
+    font-size: 1.1rem;
+    text-align: right;
+}
+
+.history-view-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 15px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--olive);
+    color: white;
+    font: inherit;
+    font-size: 0.76rem;
+    font-weight: 750;
+    cursor: pointer;
+    box-shadow: 0 5px 14px rgba(75, 96, 67, 0.10);
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.history-view-button:hover {
+    background: var(--olive-dark);
+    border-color: var(--olive-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(75, 96, 67, 0.14);
+}
+
+.history-view-button:focus-visible {
+    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline-offset: 2px;
 }
