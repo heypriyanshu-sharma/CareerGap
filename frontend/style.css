@@ -2772,6 +2772,14 @@ textarea:focus,
 
 @media (max-width: 700px) {
 
+    .analysis-tabs {
+    flex-wrap: wrap;
+}
+
+.analysis-tab {
+    flex: 1 1 140px;
+}
+
     .result-view-bar {
     align-items: flex-start;
     flex-direction: column;
@@ -3683,4 +3691,63 @@ textarea:focus,
 .back-to-current-button:focus-visible {
     outline: 3px solid rgba(198, 216, 167, 0.45);
     outline-offset: 2px;
+}
+
+/* =========================================================
+   ANALYSIS TABS
+========================================================= */
+
+.analysis-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 0 auto;
+    padding: 16px 20px 0;
+}
+
+.analysis-tab {
+    padding: 10px 18px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--cream);
+    color: var(--olive-soft);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 750;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.analysis-tab:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: var(--olive);
+}
+
+.analysis-tab.active {
+    background: var(--olive);
+    border-color: var(--olive);
+    color: white;
+}
+
+.analysis-tab:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.saved-analysis-header {
+    margin-bottom: 24px;
+}
+
+.saved-analysis-header h2 {
+    margin-top: 4px;
+}
+
+.saved-analysis-header p {
+    margin-top: 6px;
+    color: var(--olive-soft);
+    font-size: 0.86rem;
 }

@@ -487,7 +487,36 @@
 <!-- =========================================================
      ANALYSIS HISTORY
      ========================================================= -->
+<nav
+    id="analysis-tabs"
+    class="analysis-tabs"
+    aria-label="Analysis views"
+>
+    <button
+        id="current-analysis-tab"
+        type="button"
+        class="analysis-tab"
+        disabled
+    >
+        Current Analysis
+    </button>
 
+    <button
+        id="history-tab"
+        type="button"
+        class="analysis-tab"
+    >
+        Previous Analyses
+    </button>
+
+    <button
+        id="saved-analysis-tab"
+        type="button"
+        class="analysis-tab hidden"
+    >
+        Saved Analysis
+    </button>
+</nav>
 <section
     id="analysis-history"
     class="analysis-history"
@@ -521,7 +550,16 @@
         ></div>
 
     </div>
-
+<section
+    id="saved-analysis"
+    class="saved-analysis hidden"
+>
+    <div class="results-container">
+        <div
+            id="saved-results-content"
+        ></div>
+    </div>
+</section>
 </section><section
     id="results"
     class="results hidden"

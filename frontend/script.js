@@ -64,6 +64,37 @@ document.addEventListener(
 
             document.getElementById("results");
 
+        const analysisTabs =
+    document.getElementById("analysis-tabs");
+
+const currentAnalysisTab =
+    document.getElementById(
+        "current-analysis-tab"
+    );
+
+const historyTab =
+    document.getElementById("history-tab");
+
+const savedAnalysisTab =
+    document.getElementById(
+        "saved-analysis-tab"
+    );
+
+const analysisHistorySection =
+    document.getElementById(
+        "analysis-history"
+    );
+
+const savedAnalysisSection =
+    document.getElementById(
+        "saved-analysis"
+    );
+
+const savedResultsContent =
+    document.getElementById(
+        "saved-results-content"
+    );
+
         const resultsContent =
 
             document.getElementById("results-content");
@@ -239,10 +270,13 @@ document.addEventListener(
                         return;
                     }
 
-                    displayResults(
-                        savedAnalysis.analysis,
-                        true
-                    );
+                    displaySavedAnalysis(
+    savedAnalysis.analysis
+);
+
+setAnalysisView(
+    "saved"
+);
 
                 }
             );
@@ -2611,176 +2645,169 @@ document.addEventListener(
         }
 
 
-        // =================================================
+ // =================================================
+// DISPLAY COMPLETE DASHBOARD
+// =================================================
+function setAnalysisView(
+    view
+) {
+    const sections = [
+        resultsSection,
+        analysisHistorySection,
+        savedAnalysisSection
+    ];
 
-        // DISPLAY COMPLETE DASHBOARD
-
-        // =================================================
-
-        function displayResults(
-
-            result, isHistorical = false
-
-        ) {
-
-            const top =
-
-                `
-
-                    <div
-
-                        class="dashboard-top"
-
-                    >
-
-                        ${createScoreCard(result)}
-
-                        ${createSkillBreakdown(result)}
-
-                        ${createRoleInsights(result)}
-
-                    </div>
-
-                `;
-
-
-            const projects =
-
-                createProjectAnalysis(
-
-                    result
-
+    sections.forEach(
+        function (section) {
+            if (section) {
+                section.classList.add(
+                    "hidden"
                 );
-
-
-            const resources =
-
-                createResources(
-
-                    result
-
-                );
-
-
-            const nextSteps =
-
-                createNextSteps(
-
-                    result
-
-                );
-
-
-            const aiAdvice =
-
-                createAICareerAdvice(
-
-                    result
-
-                );
-
-                const viewBar =
-    isHistorical && currentAnalysis
-        ? `
-            <div class="result-view-bar">
-                <div>
-                    <span class="result-view-label">
-                        Viewing saved analysis
-                    </span>
-
-                    <span class="result-view-description">
-                        You are viewing a previous CareerGap analysis.
-                    </span>
-                </div>
-
-                <button
-                    type="button"
-                    id="back-to-current-analysis"
-                    class="back-to-current-button"
-                >
-                    &larr; Back to Current Analysis
-                </button>
-            </div>
-        `
-        : "";
-
-
-            resultsContent.innerHTML =
-
-                viewBar +
-
-                top +
-
-                projects +
-
-                aiAdvice +
-
-                `
-
-                    <div
-
-                        class="dashboard-bottom"
-
-                    >
-
-                        <div>
-
-                            ${resources}
-
-                        </div>
-
-
-                        <div>
-
-                            ${nextSteps}
-
-                        </div>
-
-                    </div>
-
-                `;
-
-                const backToCurrentButton =
-    document.getElementById(
-        "back-to-current-analysis"
+            }
+        }
     );
 
-if (backToCurrentButton) {
-    backToCurrentButton.addEventListener(
-        "click",
-        function () {
-            displayResults(
-                currentAnalysis,
-                false
-            );
+    const tabs = [
+        currentAnalysisTab,
+        historyTab,
+        savedAnalysisTab
+    ];
+
+    tabs.forEach(
+        function (tab) {
+            if (tab) {
+                tab.classList.remove(
+                    "active"
+                );
+            }
         }
+    );
+
+    if (view === "current") {
+        resultsSection.classList.remove(
+            "hidden"
+        );
+
+        currentAnalysisTab.classList.add(
+            "active"
+        );
+    }
+
+    if (view === "history") {
+        analysisHistorySection.classList.remove(
+            "hidden"
+        );
+
+        historyTab.classList.add(
+            "active"
+        );
+    }
+
+    if (view === "saved") {
+        savedAnalysisSection.classList.remove(
+            "hidden"
+        );
+
+        savedAnalysisTab.classList.add(
+            "active"
+        );
+    }
+}
+function buildAnalysisMarkup(
+    result
+) {
+    const top = `
+        <div class="dashboard-top">
+            ${createScoreCard(result)}
+            ${createSkillBreakdown(result)}
+            ${createRoleInsights(result)}
+        </div>
+    `;
+
+    const projects =
+        createProjectAnalysis(
+            result
+        );
+
+    const resources =
+        createResources(
+            result
+        );
+
+    const nextSteps =
+        createNextSteps(
+            result
+        );
+
+    const aiAdvice =
+        createAICareerAdvice(
+            result
+        );
+
+    return (
+        top +
+        projects +
+        aiAdvice +
+        `
+            <div class="dashboard-bottom">
+                <div>
+                    ${resources}
+                </div>
+
+                <div>
+                    ${nextSteps}
+                </div>
+            </div>
+        `
     );
 }
 
 
-            resultsSection.classList.remove(
+function displayResults(
+    result
+) {
+    resultsContent.innerHTML =
+        buildAnalysisMarkup(
+            result
+        );
 
-                "hidden"
+    resultsSection.classList.remove(
+        "hidden"
+    );
 
-            );
-
-
-            loadingSection.classList.add(
-
-                "hidden"
-
-            );
+    loadingSection.classList.add(
+        "hidden"
+    );
+}
 
 
-            resultsSection.scrollIntoView({
+function displaySavedAnalysis(
+    result
+) {
+    savedResultsContent.innerHTML = `
+        <div class="saved-analysis-header">
+            <div>
+                <p class="eyebrow">
+                    SAVED ANALYSIS
+                </p>
 
-                behavior: "smooth",
+                <h2>
+                    Previous CareerGap Analysis
+                </h2>
 
-                block: "start"
+                <p>
+                    You are viewing a saved analysis.
+                </p>
+            </div>
+        </div>
 
-            });
+        ${buildAnalysisMarkup(result)}
+    `;
 
-        }
+    savedAnalysisTab.classList.remove(
+        "hidden"
+    );
+}
 
 
         // =================================================
@@ -2912,14 +2939,17 @@ if (backToCurrentButton) {
 
                 );
 
-                console.log(result);
-
-
                 currentAnalysis = result;
 
+currentAnalysisTab.disabled =
+    false;
+
 displayResults(
-    result,
-    false
+    result
+);
+
+setAnalysisView(
+    "current"
 );
 
 
@@ -2995,6 +3025,8 @@ displayResults(
 
         loadAnalysisHistory();
 
-            }
-
+setAnalysisView(
+    "history"
+);
+    }
 );
