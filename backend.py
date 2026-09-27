@@ -6,7 +6,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
-
+from fastapi.middleware.cors import CORSMiddleware
 from auth import get_current_user, security
 from career_gap import run_careergap
 from ai_advisor import generate_career_advice
@@ -42,6 +42,17 @@ app = FastAPI(
     title="CareerGap API",
     description="Evidence-Based Career Readiness Engine",
     version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.state.limiter = limiter
