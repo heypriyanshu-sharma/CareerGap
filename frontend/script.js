@@ -73,7 +73,6 @@ document.addEventListener(
             document.getElementById("loading");
 
 
-
         // =================================================
 
         // API CONFIGURATION
@@ -84,7 +83,23 @@ document.addEventListener(
 
             "http://127.0.0.1:8000";
 
+        async function getAccessToken() {
 
+            const { data, error } =
+
+                await careerGapSupabase.auth.getSession();
+
+            if (error || !data.session) {
+
+                window.location.replace("login.html");
+
+                return null;
+
+            }
+
+            return data.session.access_token;
+
+        }
 
         // =================================================
 
@@ -93,7 +108,6 @@ document.addEventListener(
         // =================================================
 
         const TEXTAREA_MAX_HEIGHT = 360;
-
 
 
         function autoGrowTextarea(textarea) {
@@ -131,7 +145,6 @@ document.addEventListener(
         }
 
 
-
         function setupAutoGrow(textarea) {
 
             if (!textarea) {
@@ -157,11 +170,9 @@ document.addEventListener(
         }
 
 
-
         setupAutoGrow(resumeInput);
 
         setupAutoGrow(jobDescriptionInput);
-
 
 
         projectsContainer
@@ -169,7 +180,6 @@ document.addEventListener(
             .querySelectorAll(".project-description")
 
             .forEach(setupAutoGrow);
-
 
 
         projectsContainer.addEventListener(
@@ -195,7 +205,6 @@ document.addEventListener(
             }
 
         );
-
 
 
         // =================================================
@@ -231,7 +240,6 @@ document.addEventListener(
         }
 
 
-
         function setUploadButtonState(
 
             button,
@@ -259,7 +267,6 @@ document.addEventListener(
         }
 
 
-
         async function uploadFile(
 
             file,
@@ -279,7 +286,6 @@ document.addEventListener(
             }
 
 
-
             setUploadButtonState(
 
                 uploadButton,
@@ -297,7 +303,6 @@ document.addEventListener(
             );
 
 
-
             const formData =
 
                 new FormData();
@@ -311,8 +316,17 @@ document.addEventListener(
             );
 
 
-
             try {
+
+                const accessToken =
+
+                    await getAccessToken();
+
+                if (!accessToken) {
+
+                    return;
+
+                }
 
                 const response =
 
@@ -324,12 +338,19 @@ document.addEventListener(
 
                             method: "POST",
 
+                            headers: {
+
+                                Authorization:
+
+                                    `Bearer ${accessToken}`
+
+                            },
+
                             body: formData
 
                         }
 
                     );
-
 
 
                 let responseData = null;
@@ -345,7 +366,6 @@ document.addEventListener(
                     responseData = null;
 
                 }
-
 
 
                 if (!response.ok) {
@@ -365,11 +385,9 @@ document.addEventListener(
                 }
 
 
-
                 const extractedText =
 
                     responseData?.text || "";
-
 
 
                 if (!extractedText.trim()) {
@@ -383,11 +401,9 @@ document.addEventListener(
                 }
 
 
-
                 textarea.value =
 
                     extractedText.trim();
-
 
 
                 autoGrowTextarea(
@@ -395,7 +411,6 @@ document.addEventListener(
                     textarea
 
                 );
-
 
 
                 setUploadStatus(
@@ -409,7 +424,6 @@ document.addEventListener(
                 );
 
 
-
             } catch (error) {
 
                 console.error(
@@ -419,7 +433,6 @@ document.addEventListener(
                     error
 
                 );
-
 
 
                 setUploadStatus(
@@ -435,7 +448,6 @@ document.addEventListener(
                 );
 
 
-
             } finally {
 
                 setUploadButtonState(
@@ -449,7 +461,6 @@ document.addEventListener(
             }
 
         }
-
 
 
         function setupFileUpload(
@@ -479,7 +490,6 @@ document.addEventListener(
             }
 
 
-
             uploadButton.addEventListener(
 
                 "click",
@@ -495,7 +505,6 @@ document.addEventListener(
                 }
 
             );
-
 
 
             fileInput.addEventListener(
@@ -515,7 +524,6 @@ document.addEventListener(
                     }
 
 
-
                     await uploadFile(
 
                         file,
@@ -527,7 +535,6 @@ document.addEventListener(
                         uploadButton
 
                     );
-
 
 
                     /*
@@ -547,7 +554,6 @@ document.addEventListener(
         }
 
 
-
         setupFileUpload(
 
             resumeFileInput,
@@ -561,7 +567,6 @@ document.addEventListener(
         );
 
 
-
         setupFileUpload(
 
             jobDescriptionFileInput,
@@ -573,7 +578,6 @@ document.addEventListener(
             jobDescriptionUploadStatus
 
         );
-
 
 
         // =================================================
@@ -616,7 +620,7 @@ document.addEventListener(
 
                         >
 
-                            Ã— Remove
+                            &times; Remove
 
                         </button>
 
@@ -643,7 +647,6 @@ document.addEventListener(
                 `;
 
 
-
                 project
 
                     .querySelector(".remove-project-button")
@@ -661,13 +664,11 @@ document.addEventListener(
                     );
 
 
-
                 projectsContainer.appendChild(
 
                     project
 
                 );
-
 
 
                 setupAutoGrow(
@@ -683,7 +684,6 @@ document.addEventListener(
             }
 
         );
-
 
 
         // =================================================
@@ -705,7 +705,6 @@ document.addEventListener(
             const projects = [];
 
 
-
             projectInputs.forEach(
 
                 function (project) {
@@ -725,7 +724,6 @@ document.addEventListener(
                             .trim();
 
 
-
                     const description =
 
                         project
@@ -741,7 +739,6 @@ document.addEventListener(
                             .trim();
 
 
-
                     projects.push({
 
                         name: name,
@@ -755,11 +752,9 @@ document.addEventListener(
             );
 
 
-
             return projects;
 
         }
-
 
 
         // =================================================
@@ -789,10 +784,9 @@ document.addEventListener(
         }
 
 
-
         // =================================================
 
-        // API â€” ANALYSIS
+        // API — ANALYSIS
 
         // =================================================
 
@@ -801,6 +795,16 @@ document.addEventListener(
             careerGapData
 
         ) {
+
+            const accessToken =
+
+                await getAccessToken();
+
+            if (!accessToken) {
+
+                return;
+
+            }
 
             const response =
 
@@ -816,7 +820,11 @@ document.addEventListener(
 
                             "Content-Type":
 
-                                "application/json"
+                                "application/json",
+
+                            Authorization:
+
+                                `Bearer ${accessToken}`
 
                         },
 
@@ -833,13 +841,11 @@ document.addEventListener(
                 );
 
 
-
             if (!response.ok) {
 
                 let errorMessage =
 
                     "CareerGap analysis failed.";
-
 
 
                 try {
@@ -857,7 +863,6 @@ document.addEventListener(
                 } catch (_) {}
 
 
-
                 throw new Error(
 
                     errorMessage
@@ -867,11 +872,9 @@ document.addEventListener(
             }
 
 
-
             return await response.json();
 
         }
-
 
 
         // =================================================
@@ -895,7 +898,6 @@ document.addEventListener(
             }
 
 
-
             return String(value)
 
                 .replaceAll("&", "&amp;")
@@ -909,7 +911,6 @@ document.addEventListener(
                 .replaceAll("'", "&#039;");
 
         }
-
 
 
         // =================================================
@@ -937,7 +938,6 @@ document.addEventListener(
             }
 
 
-
             if (score >= 60) {
 
                 return {
@@ -953,10 +953,7 @@ document.addEventListener(
                 };
 
             }
-
-
-
-            if (score >= 40) {
+                        if (score >= 40) {
 
                 return {
 
@@ -973,7 +970,6 @@ document.addEventListener(
             }
 
 
-
             return {
 
                 title:
@@ -987,7 +983,6 @@ document.addEventListener(
             };
 
         }
-
 
 
         // =================================================
@@ -1007,13 +1002,11 @@ document.addEventListener(
                 Number(result.score || 0);
 
 
-
             const radius = 76;
 
             const circumference =
 
                 2 * Math.PI * radius;
-
 
 
             const offset =
@@ -1025,11 +1018,9 @@ document.addEventListener(
                 circumference;
 
 
-
             const message =
 
                 getScoreMessage(score);
-
 
 
             return `
@@ -1075,7 +1066,6 @@ document.addEventListener(
                         </svg>
 
 
-
                         <div class="score-ring-content">
 
                             <span class="score-number">
@@ -1093,7 +1083,6 @@ document.addEventListener(
                         </div>
 
                     </div>
-
 
 
                     <div class="score-copy">
@@ -1117,7 +1106,6 @@ document.addEventListener(
             `;
 
         }
-
 
 
         // =================================================
@@ -1149,7 +1137,6 @@ document.addEventListener(
             ];
 
 
-
             if (skills.length === 0) {
 
                 return `
@@ -1158,7 +1145,7 @@ document.addEventListener(
 
                         <div class="card-title">
 
-                            <span class="card-icon">â—Ž</span>
+                            <span class="card-icon">&#9678;</span>
 
                             Skill Breakdown
 
@@ -1177,7 +1164,6 @@ document.addEventListener(
             }
 
 
-
             return `
 
                 <article
@@ -1190,14 +1176,13 @@ document.addEventListener(
 
                         <span class="card-icon">
 
-                            â—Ž
+                            &#9678;
 
                         </span>
 
                         Skill Breakdown
 
                     </div>
-
 
 
                     <div class="skill-list">
@@ -1209,7 +1194,6 @@ document.addEventListener(
                                 const isMatched =
 
                                     matched.includes(skill);
-
 
 
                                 return `
@@ -1240,9 +1224,9 @@ document.addEventListener(
 
                                                     isMatched
 
-                                                        ? "âœ“"
+                                                        ? "&#10003;"
 
-                                                        : "â€¢"
+                                                        : "&bull;"
 
                                                 }
 
@@ -1273,7 +1257,6 @@ document.addEventListener(
         }
 
 
-
         // =================================================
 
         // ROLE INSIGHTS
@@ -1299,7 +1282,6 @@ document.addEventListener(
                 result.missing_skills || [];
 
 
-
             return `
 
                 <article
@@ -1312,14 +1294,13 @@ document.addEventListener(
 
                         <span class="card-icon">
 
-                            â—Ž
+                            &#9678;
 
                         </span>
 
                         Role Insights
 
                     </div>
-
 
 
                     <div class="role-stat">
@@ -1347,7 +1328,6 @@ document.addEventListener(
                     </div>
 
 
-
                     <div class="role-stat">
 
                         <div class="role-stat-label">
@@ -1363,7 +1343,6 @@ document.addEventListener(
                         </div>
 
                     </div>
-
 
 
                     <div class="role-stat">
@@ -1389,7 +1368,6 @@ document.addEventListener(
         }
 
 
-
         // =================================================
 
         // INFER ROLE
@@ -1411,7 +1389,6 @@ document.addEventListener(
                 );
 
 
-
             if (
 
                 skills.includes("fastapi") ||
@@ -1425,7 +1402,6 @@ document.addEventListener(
                 return "Backend Developer";
 
             }
-
 
 
             if (
@@ -1443,7 +1419,6 @@ document.addEventListener(
             }
 
 
-
             if (
 
                 skills.includes("machine learning") ||
@@ -1459,11 +1434,9 @@ document.addEventListener(
             }
 
 
-
             return "Target Role";
 
         }
-
 
 
         // =================================================
@@ -1487,7 +1460,6 @@ document.addEventListener(
                 result.project_recommendations || [];
 
 
-
             if (analyses.length === 0) {
 
                 return `
@@ -1501,7 +1473,6 @@ document.addEventListener(
                 `;
 
             }
-
 
 
             return `
@@ -1524,7 +1495,7 @@ document.addEventListener(
 
                                 <span class="card-icon">
 
-                                    â—‡
+                                    &loz;
 
                                 </span>
 
@@ -1541,7 +1512,6 @@ document.addEventListener(
                         </span>
 
                     </div>
-
 
 
                     <div
@@ -1567,7 +1537,6 @@ document.addEventListener(
                                     );
 
 
-
                                 return `
 
                                     <article
@@ -1585,7 +1554,6 @@ document.addEventListener(
                                             )}
 
                                         </h4>
-
 
 
                                         <div
@@ -1625,7 +1593,6 @@ document.addEventListener(
                                             }
 
                                         </div>
-
 
 
                                         <div
@@ -1695,7 +1662,6 @@ document.addEventListener(
         }
 
 
-
         // =================================================
 
         // PROJECT RECOMMENDATION
@@ -1715,11 +1681,9 @@ document.addEventListener(
                 "UNKNOWN";
 
 
-
             let compatibilityClass =
 
                 "unknown";
-
 
 
             if (
@@ -1737,7 +1701,6 @@ document.addEventListener(
             }
 
 
-
             if (
 
                 compatibility ===
@@ -1753,11 +1716,9 @@ document.addEventListener(
             }
 
 
-
             const upgrade =
 
                 recommendation.upgrade;
-
 
 
             return `
@@ -1797,7 +1758,6 @@ document.addEventListener(
                     </div>
 
 
-
                     <p>
 
                         ${escapeHTML(
@@ -1809,7 +1769,6 @@ document.addEventListener(
                     </p>
 
 
-
                     ${
 
                         upgrade
@@ -1818,7 +1777,7 @@ document.addEventListener(
 
                                 <div class="upgrade-action">
 
-                                    â†’ ${escapeHTML(upgrade)}
+                                    &rarr; ${escapeHTML(upgrade)}
 
                                 </div>
 
@@ -1847,7 +1806,6 @@ document.addEventListener(
         }
 
 
-
         // =================================================
 
         // GITHUB RESOURCES
@@ -1863,7 +1821,6 @@ document.addEventListener(
             const resources =
 
                 result.github_recommendations || [];
-
 
 
             if (!resources.length) {
@@ -1895,8 +1852,8 @@ document.addEventListener(
             }
 
 
-
             return `
+
                             <section
 
                     class="dashboard-section resources-section"
@@ -1913,7 +1870,7 @@ document.addEventListener(
 
                             <span class="card-icon">
 
-                                â—«
+                                &#9691;
 
                             </span>
 
@@ -1928,7 +1885,6 @@ document.addEventListener(
                         </span>
 
                     </div>
-
 
 
                     <div class="resource-grid">
@@ -1953,9 +1909,7 @@ document.addEventListener(
 
                                     repo.full_name ||
 
-                                    "GitHub Repository";
-
-                                const description =
+                                    "GitHub Repository";                                const description =
 
                                     repo.description ||
 
@@ -1976,7 +1930,6 @@ document.addEventListener(
                                     repo.html_url ||
 
                                     "#";
-
 
 
                                 return `
@@ -2002,7 +1955,6 @@ document.addEventListener(
                                         </span>
 
 
-
                                         <h4>
 
                                             ${escapeHTML(
@@ -2012,7 +1964,6 @@ document.addEventListener(
                                             )}
 
                                         </h4>
-
 
 
                                         <p
@@ -2028,7 +1979,6 @@ document.addEventListener(
                                             )}
 
                                         </p>
-
 
 
                                         <div
@@ -2060,7 +2010,6 @@ document.addEventListener(
                                         </div>
 
 
-
                                         <a
 
                                             class="resource-link"
@@ -2073,7 +2022,7 @@ document.addEventListener(
 
                                         >
 
-                                            View on GitHub â†—
+                                            View on GitHub &#8599;
 
                                         </a>
 
@@ -2092,7 +2041,6 @@ document.addEventListener(
             `;
 
         }
-
 
 
         // =================================================
@@ -2124,11 +2072,9 @@ document.addEventListener(
             }
 
 
-
             return stars.toLocaleString();
 
         }
-
 
 
         // =================================================
@@ -2152,9 +2098,7 @@ document.addEventListener(
                 result.missing_skills || [];
 
 
-
             const steps = [];
-
 
 
             priorities.forEach(
@@ -2170,7 +2114,6 @@ document.addEventListener(
                         return;
 
                     }
-
 
 
                     steps.push({
@@ -2194,7 +2137,6 @@ document.addEventListener(
             );
 
 
-
             missing.forEach(
 
                 function (skill) {
@@ -2208,7 +2150,6 @@ document.addEventListener(
                         return;
 
                     }
-
 
 
                     const alreadyIncluded =
@@ -2228,7 +2169,6 @@ document.addEventListener(
                                     )
 
                         );
-
 
 
                     if (!alreadyIncluded) {
@@ -2252,7 +2192,6 @@ document.addEventListener(
             );
 
 
-
             if (!steps.length) {
 
                 steps.push({
@@ -2270,7 +2209,6 @@ document.addEventListener(
             }
 
 
-
             return `
 
                 <section
@@ -2283,14 +2221,13 @@ document.addEventListener(
 
                         <span class="card-icon">
 
-                            â†’
+                            &rarr;
 
                         </span>
 
                         Next Steps
 
                     </div>
-
 
 
                     <div
@@ -2322,7 +2259,6 @@ document.addEventListener(
                                             ${index + 1}
 
                                         </span>
-
 
 
                                         <div>
@@ -2366,7 +2302,6 @@ document.addEventListener(
         }
 
 
-
         // =================================================
 
         // AI CAREER ADVICE
@@ -2375,110 +2310,66 @@ document.addEventListener(
 
         function renderAdviceMarkdown(text) {
 
-            if (!text) {
+    if (!text) {
+        return "";
+    }
 
-                return "";
+    return escapeHTML(text)
+        .split("\n")
+        .map(function (line) {
 
-            }
-
-
-
-            return escapeHTML(text)
-
-                .split("\n")
-
-                .map(function (line) {
-
-                    if (line.startsWith("### ")) {
-
-                        return (
-
-                            "<h4>" +
-
-                            line.slice(4) +
-
-                            "</h4>"
-
-                        );
-
-                    }
-
-
-
-                    if (line.startsWith("## ")) {
-
-                        return (
-
-                            "<h4>" +
-
-                            line.slice(3) +
-
-                            "</h4>"
-
-                        );
-
-                    }
-
-
-
-                    if (
-
-                        line.startsWith("* ") ||
-
-                        line.startsWith("- ")
-
-                    ) {
-
-                        return (
-
-                            "<li>" +
-
-                            line.slice(2) +
-
-                            "</li>"
-
-                        );
-
-                    }
-
-
-
-                    if (/^\d+\. /.test(line)) {
-
-                        return (
-
-                            '<div class="advice-step">' +
-
-                            line +
-
-                            "</div>"
-
-                        );
-
-                    }
-
-
-
-                    return line
-
-                        ? "<p>" + line + "</p>"
-
-                        : '<div class="advice-spacer"></div>';
-
-                })
-
-                .join("")
-
-                .replace(
-
-                    /(<li>.*?<\/li>)+/g,
-
-                    "<ul>$&</ul>"
-
+            const formattedLine =
+                line.replace(
+                    /\*\*(.*?)\*\*/g,
+                    "<strong>$1</strong>"
                 );
 
-        }
+            if (line.startsWith("### ")) {
+                return (
+                    "<h4>" +
+                    formattedLine.slice(4) +
+                    "</h4>"
+                );
+            }
 
+            if (line.startsWith("## ")) {
+                return (
+                    "<h4>" +
+                    formattedLine.slice(3) +
+                    "</h4>"
+                );
+            }
+
+            if (
+                line.startsWith("* ") ||
+                line.startsWith("- ")
+            ) {
+                return (
+                    "<li>" +
+                    formattedLine.slice(2) +
+                    "</li>"
+                );
+            }
+
+            if (/^\d+\. /.test(line)) {
+                return (
+                    '<div class="advice-step">' +
+                    formattedLine +
+                    "</div>"
+                );
+            }
+
+            return formattedLine
+                ? "<p>" + formattedLine + "</p>"
+                : '<div class="advice-spacer"></div>';
+
+        })
+        .join("")
+        .replace(
+            /(<li>.*?<\/li>)+/g,
+            "<ul>$&</ul>"
+        );
+}
 
 
         function createAICareerAdvice(
@@ -2492,13 +2383,11 @@ document.addEventListener(
                 result.ai_advice;
 
 
-
             if (!advice) {
 
                 return "";
 
             }
-
 
 
             return `
@@ -2519,14 +2408,13 @@ document.addEventListener(
 
                             <span class="card-icon">
 
-                                âœ¦
+                                &#10022;
 
                             </span>
 
                             AI Career Advice
 
                         </div>
-
 
 
                         <span class="section-action">
@@ -2536,7 +2424,6 @@ document.addEventListener(
                         </span>
 
                     </div>
-
 
 
                     <div
@@ -2558,7 +2445,6 @@ document.addEventListener(
             `;
 
         }
-
 
 
         // =================================================
@@ -2594,7 +2480,6 @@ document.addEventListener(
                 `;
 
 
-
             const projects =
 
                 createProjectAnalysis(
@@ -2602,7 +2487,6 @@ document.addEventListener(
                     result
 
                 );
-
 
 
             const resources =
@@ -2614,7 +2498,6 @@ document.addEventListener(
                 );
 
 
-
             const nextSteps =
 
                 createNextSteps(
@@ -2624,7 +2507,6 @@ document.addEventListener(
                 );
 
 
-
             const aiAdvice =
 
                 createAICareerAdvice(
@@ -2632,7 +2514,6 @@ document.addEventListener(
                     result
 
                 );
-
 
 
             resultsContent.innerHTML =
@@ -2658,7 +2539,6 @@ document.addEventListener(
                         </div>
 
 
-
                         <div>
 
                             ${nextSteps}
@@ -2670,7 +2550,6 @@ document.addEventListener(
                 `;
 
 
-
             resultsSection.classList.remove(
 
                 "hidden"
@@ -2678,13 +2557,11 @@ document.addEventListener(
             );
 
 
-
             loadingSection.classList.add(
 
                 "hidden"
 
             );
-
 
 
             resultsSection.scrollIntoView({
@@ -2696,7 +2573,6 @@ document.addEventListener(
             });
 
         }
-
 
 
         // =================================================
@@ -2716,7 +2592,6 @@ document.addEventListener(
                     collectCareerGapData();
 
 
-
                 // Basic frontend validation
 
                 if (!data.resume) {
@@ -2732,7 +2607,6 @@ document.addEventListener(
                 }
 
 
-
                 if (!data.job_description) {
 
                     alert(
@@ -2744,7 +2618,6 @@ document.addEventListener(
                     return;
 
                 }
-
 
 
                 const invalidProject =
@@ -2760,7 +2633,6 @@ document.addEventListener(
                     );
 
 
-
                 if (invalidProject) {
 
                     alert(
@@ -2774,7 +2646,6 @@ document.addEventListener(
                 }
 
 
-
                 console.log(
 
                     "Sending data to CareerGap API:"
@@ -2782,7 +2653,6 @@ document.addEventListener(
                 );
 
                 console.log(data);
-
 
 
                 analyzeButton.disabled =
@@ -2794,13 +2664,11 @@ document.addEventListener(
                     "Analyzing...";
 
 
-
                 resultsSection.classList.add(
 
                     "hidden"
 
                 );
-
 
 
                 loadingSection.classList.remove(
@@ -2810,7 +2678,6 @@ document.addEventListener(
                 );
 
 
-
                 loadingSection.scrollIntoView({
 
                     behavior: "smooth",
@@ -2818,7 +2685,6 @@ document.addEventListener(
                     block: "center"
 
                 });
-
 
 
                 try {
@@ -2832,7 +2698,6 @@ document.addEventListener(
                         );
 
 
-
                 console.log(
 
                     "CareerGap API Response:"
@@ -2842,13 +2707,11 @@ document.addEventListener(
                 console.log(result);
 
 
-
                 displayResults(
 
                     result
 
                 );
-
 
 
             } catch (error) {
@@ -2862,7 +2725,6 @@ document.addEventListener(
                 );
 
 
-
                 loadingSection.classList.add(
 
                     "hidden"
@@ -2870,13 +2732,11 @@ document.addEventListener(
                 );
 
 
-
                 resultsSection.classList.remove(
 
                     "hidden"
 
                 );
-
 
 
                 resultsContent.innerHTML = `
@@ -2906,7 +2766,6 @@ document.addEventListener(
             }
 
 
-
             analyzeButton.disabled =
 
                 false;
@@ -2917,13 +2776,14 @@ document.addEventListener(
 
                     Analyze My Career Gap
 
-                    <span>â†’</span>
+                    <span>&rarr;</span>
 
                 `;
 
             }
 
         );
+
             }
 
 );

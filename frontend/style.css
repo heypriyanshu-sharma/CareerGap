@@ -315,7 +315,64 @@ a {
 }
 
 
+/* =========================================================
+   ACCOUNT AREA
+========================================================= */
 
+.account-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-email {
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    color: var(--olive-soft);
+    font-size: 0.8rem;
+    font-weight: 650;
+}
+
+.logout-button {
+    padding: 8px 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    background: var(--cream);
+    color: var(--olive-dark);
+
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 750;
+
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.logout-button:hover {
+    background: var(--pistachio-soft);
+    border-color: var(--pistachio);
+    color: var(--olive);
+    transform: translateY(-1px);
+}
+
+.logout-button:focus-visible {
+    outline: 3px solid
+        rgba(198, 216, 167, 0.45);
+    outline-offset: 2px;
+}
+
+.logout-button:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
 
 
 /* =========================================================
@@ -2713,14 +2770,21 @@ textarea:focus,
 
 
 
-
 @media (max-width: 700px) {
 
     .nav-links {
-
         display: none;
-
     }
+
+    .account-area {
+        gap: 8px;
+    }
+
+    .user-email {
+        display: none;
+    }
+
+}
 
 
 
@@ -2878,7 +2942,7 @@ textarea:focus,
 
     }
 
-}
+
 
 
 

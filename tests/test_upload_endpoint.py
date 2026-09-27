@@ -1,11 +1,26 @@
+import pytest
 from fastapi.testclient import TestClient
 
 import backend
 from file_upload import MAX_FILE_SIZE
 
-
 client = TestClient(backend.app)
 
+@pytest.fixture(autouse=True)
+def authenticated_user():
+    backend.app.dependency_overrides[
+        backend.get_current_user
+    ] = lambda: {
+        "sub": "test-user-id",
+        "email": "test@example.com",
+    }
+
+    yield
+
+    backend.app.dependency_overrides.pop(
+        backend.get_current_user,
+        None,
+    )
 
 def reset_rate_limit():
     backend.limiter._storage.reset()
@@ -117,3 +132,24 @@ def test_upload_rejects_fake_docx():
 
     assert response.status_code == 400
     assert "valid DOCX" in response.json()["detail"]
+
+def test_upload_requires_authentication():
+    backend.app.dependency_overrides.pop(
+        backend.get_current_user,
+        None,
+    )
+
+    reset_rate_limit()
+
+    response = client.post(
+        "/upload",
+        files={
+            "file": (
+                "resume.txt",
+                b"Python developer.",
+                "text/plain",
+            )
+        },
+    )
+
+    assert response.status_code == 401

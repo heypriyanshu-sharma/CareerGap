@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -6,6 +6,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
+from auth import get_current_user
 from career_gap import run_careergap
 from ai_advisor import generate_career_advice
 from file_upload import (
@@ -130,12 +131,21 @@ def home():
         "status": "ok",
     }
 
+@app.get("/auth/me")
+def auth_me(
+    claims: dict = Depends(get_current_user),
+):
+    return {
+        "user_id": claims["sub"],
+        "email": claims.get("email"),
+    }
 
 @app.post("/analyze")
 @limiter.limit("10/minute")
 def analyze(
     request: Request,
     career_gap_request: CareerGapRequest,
+    claims: dict = Depends(get_current_user),
 ):
     projects = [
         {
@@ -177,7 +187,10 @@ def analyze(
 
 @app.post("/upload")
 @limiter.limit("5/minute")
-async def upload_file(request: Request):
+async def upload_file(
+    request: Request,
+    claims: dict = Depends(get_current_user),
+):
     validate_upload_request_size(request)
 
     try:

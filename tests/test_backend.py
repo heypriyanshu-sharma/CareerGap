@@ -1,10 +1,26 @@
 from fastapi.testclient import TestClient
 
 import backend
+import pytest
 
 
 client = TestClient(backend.app)
 
+@pytest.fixture(autouse=True)
+def authenticated_user():
+    backend.app.dependency_overrides[
+        backend.get_current_user
+    ] = lambda: {
+        "sub": "test-user-id",
+        "email": "test@example.com",
+    }
+
+    yield
+
+    backend.app.dependency_overrides.pop(
+        backend.get_current_user,
+        None,
+    )
 
 def test_home_endpoint():
     response = client.get("/")
@@ -250,3 +266,27 @@ def test_analyze_rate_limit_blocks_excessive_requests(monkeypatch):
     )
 
     assert blocked_response.status_code == 429
+
+def test_analyze_requires_authentication():
+    backend.app.dependency_overrides.pop(
+        backend.get_current_user,
+        None,
+    )
+
+    payload = {
+        "resume": "Python developer.",
+        "job_description": "Required: Python.",
+        "projects": [
+            {
+                "name": "Test Project",
+                "description": "A Python project.",
+            }
+        ],
+    }
+
+    response = client.post(
+        "/analyze",
+        json=payload,
+    )
+
+    assert response.status_code == 401
