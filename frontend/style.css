@@ -2772,6 +2772,15 @@ textarea:focus,
 
 @media (max-width: 700px) {
 
+    .result-view-bar {
+    align-items: flex-start;
+    flex-direction: column;
+}
+
+.back-to-current-button {
+    width: 100%;
+}
+
     .analysis-history-item {
     align-items: flex-start;
     flex-direction: column;
@@ -3610,6 +3619,68 @@ textarea:focus,
 }
 
 .history-view-button:focus-visible {
+    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline-offset: 2px;
+}
+
+/* =========================================================
+   RESULT VIEW MODE
+========================================================= */
+
+.result-view-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 22px;
+    padding: 16px 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--cream);
+    box-shadow: var(--shadow-soft);
+}
+
+.result-view-label {
+    display: block;
+    color: var(--olive-dark);
+    font-size: 0.86rem;
+    font-weight: 800;
+}
+
+.result-view-description {
+    display: block;
+    margin-top: 4px;
+    color: var(--olive-soft);
+    font-size: 0.76rem;
+}
+
+.back-to-current-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 9px 15px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--olive);
+    color: white;
+    font: inherit;
+    font-size: 0.76rem;
+    font-weight: 750;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.back-to-current-button:hover {
+    background: var(--olive-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(75, 96, 67, 0.14);
+}
+
+.back-to-current-button:focus-visible {
     outline: 3px solid rgba(198, 216, 167, 0.45);
     outline-offset: 2px;
 }

@@ -77,6 +77,7 @@ document.addEventListener(
             document.getElementById("analysis-history-list");
 
         let analysisHistoryData = [];
+        let currentAnalysis = null;
         // =================================================
 
         // API CONFIGURATION
@@ -239,7 +240,8 @@ document.addEventListener(
                     }
 
                     displayResults(
-                        savedAnalysis.analysis
+                        savedAnalysis.analysis,
+                        true
                     );
 
                 }
@@ -2617,7 +2619,7 @@ document.addEventListener(
 
         function displayResults(
 
-            result
+            result, isHistorical = false
 
         ) {
 
@@ -2677,8 +2679,35 @@ document.addEventListener(
 
                 );
 
+                const viewBar =
+    isHistorical && currentAnalysis
+        ? `
+            <div class="result-view-bar">
+                <div>
+                    <span class="result-view-label">
+                        Viewing saved analysis
+                    </span>
+
+                    <span class="result-view-description">
+                        You are viewing a previous CareerGap analysis.
+                    </span>
+                </div>
+
+                <button
+                    type="button"
+                    id="back-to-current-analysis"
+                    class="back-to-current-button"
+                >
+                    &larr; Back to Current Analysis
+                </button>
+            </div>
+        `
+        : "";
+
 
             resultsContent.innerHTML =
+
+                viewBar +
 
                 top +
 
@@ -2710,6 +2739,23 @@ document.addEventListener(
                     </div>
 
                 `;
+
+                const backToCurrentButton =
+    document.getElementById(
+        "back-to-current-analysis"
+    );
+
+if (backToCurrentButton) {
+    backToCurrentButton.addEventListener(
+        "click",
+        function () {
+            displayResults(
+                currentAnalysis,
+                false
+            );
+        }
+    );
+}
 
 
             resultsSection.classList.remove(
@@ -2869,11 +2915,12 @@ document.addEventListener(
                 console.log(result);
 
 
-                displayResults(
+                currentAnalysis = result;
 
-                    result
-
-                );
+displayResults(
+    result,
+    false
+);
 
 
             } catch (error) {
