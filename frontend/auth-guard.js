@@ -17,33 +17,76 @@ document.documentElement.style.visibility = "hidden";
             data.session.user.email || "";
     }
 
-    const logoutButton =
-        document.getElementById("logout-button");
+    const authActionButton =
+    document.getElementById(
+        "auth-action-button"
+    );
 
-    if (logoutButton) {
-        logoutButton.addEventListener(
+if (authActionButton) {
+
+    const { data } =
+        await careerGapSupabase.auth.getSession();
+
+    if (!data.session) {
+
+        authActionButton.textContent =
+            "Login";
+
+        authActionButton.disabled =
+            false;
+
+        authActionButton.addEventListener(
+            "click",
+            function () {
+                window.location.replace(
+                    "login.html"
+                );
+            }
+        );
+
+    } else {
+
+        authActionButton.textContent =
+            "Log out";
+
+        authActionButton.disabled =
+            false;
+
+        authActionButton.addEventListener(
             "click",
             async function () {
-                logoutButton.disabled = true;
-                logoutButton.textContent = "Logging out...";
+
+                authActionButton.disabled =
+                    true;
+
+                authActionButton.textContent =
+                    "Logging out...";
 
                 const { error } =
                     await careerGapSupabase.auth.signOut();
 
                 if (error) {
+
                     alert(
                         "Unable to log out. Please try again."
                     );
 
-                    logoutButton.disabled = false;
-                    logoutButton.textContent = "Log out";
+                    authActionButton.disabled =
+                        false;
+
+                    authActionButton.textContent =
+                        "Log out";
+
                     return;
                 }
 
-                window.location.replace("login.html");
+                window.location.replace(
+                    "login.html"
+                );
             }
         );
     }
+}
 
     document.documentElement.style.visibility = "visible";
 })();
