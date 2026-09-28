@@ -119,23 +119,25 @@ const savedResultsContent =
 
               "https://careergap.onrender.com";
 
-        async function getAccessToken() {
+        async function getAccessToken(
+    redirectIfMissing = true
+) {
+    const { data, error } =
+        await careerGapSupabase.auth.getSession();
 
-            const { data, error } =
+    if (error || !data.session) {
 
-                await careerGapSupabase.auth.getSession();
-
-            if (error || !data.session) {
-
-                window.location.replace("login.html");
-
-                return null;
-
-            }
-
-            return data.session.access_token;
-
+        if (redirectIfMissing) {
+            window.location.replace(
+                "login.html"
+            );
         }
+
+        return null;
+    }
+
+    return data.session.access_token;
+}
 
         async function loadAnalysisHistory() {
 
@@ -144,7 +146,7 @@ const savedResultsContent =
     }
 
     const accessToken =
-        await getAccessToken();
+    await getAccessToken(false);
 
     if (!accessToken) {
         return;
