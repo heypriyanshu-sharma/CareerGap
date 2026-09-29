@@ -13,6 +13,7 @@ from ai_advisor import generate_career_advice
 from database import (
     get_analysis_history,
     save_analysis,
+    delete_analysis,
 )
 from file_upload import (
     MAX_FILE_SIZE,
@@ -231,7 +232,28 @@ def analyze(
             status_code=500,
             detail="CareerGap analysis failed unexpectedly.",
         )
+@app.delete(
+    "/analyses/{analysis_id}",
+    status_code=204
+)
+def delete_analysis_route(
+    analysis_id: str,
+    claims: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(
+        security
+    ),
+):
+    try:
+        delete_analysis(
+            access_token=credentials.credentials,
+            analysis_id=analysis_id,
+        )
 
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to delete analysis.",
+        )
 
 @app.post("/upload")
 @limiter.limit("5/minute")

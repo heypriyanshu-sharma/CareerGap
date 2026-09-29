@@ -71,6 +71,21 @@ def get_analysis_history(access_token):
 
     return response.json()
 
-    
+def delete_analysis(
+    access_token,
+    analysis_id
+):
+    response = requests.delete(
+        f"{SUPABASE_URL}/rest/v1/career_analyses",
+        headers={
+            "apikey": SUPABASE_PUBLISHABLE_KEY,
+            "Authorization": f"Bearer {access_token}",
+        },
+        params={
+            "id": f"eq.{analysis_id}"
+        },
+        timeout=10,
+    )
 
+    response.raise_for_status()
 

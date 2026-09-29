@@ -3631,6 +3631,45 @@ textarea:focus,
     outline-offset: 2px;
 }
 
+.history-delete-button {
+    width: 30px;
+    height: 30px;
+
+    padding: 0;
+
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    background: transparent;
+    color: var(--olive-soft);
+
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+
+    line-height: 1;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.history-delete-button:hover {
+    background: rgba(164, 87, 71, 0.08);
+    border-color: rgba(164, 87, 71, 0.25);
+    color: #A45747;
+
+    transform: translateY(-1px);
+}
+
+.history-delete-button:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
 /* =========================================================
    RESULT VIEW MODE
 ========================================================= */

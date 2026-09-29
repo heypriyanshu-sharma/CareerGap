@@ -314,13 +314,14 @@ setupAuthAction();
                                 ${score.toFixed(1)}%
                             </strong>
                             <button
-                               type="button"
-                               class="history-view-button"
-                               data-history-index="${index}"
-                            >
-                                View Analysis
-                            </button>
-
+    type="button"
+    class="history-delete-button"
+    data-analysis-id="${escapeHTML(String(item.id))}"
+    aria-label="Delete analysis"
+    title="Delete analysis"
+>
+    ×
+</button>
                         <div>
 
                         </article>
@@ -353,6 +354,108 @@ setupAuthAction();
     savedAnalysis.analysis
 );
 
+analysisHistoryList
+    .querySelectorAll(
+        ".history-delete-button"
+    )
+    .forEach(
+        function (button) {
+
+            button.addEventListener(
+                "click",
+                async function () {
+
+                    const analysisId =
+                        button.dataset.analysisId;
+
+                    if (!analysisId) {
+                        return;
+                    }
+
+                    const confirmed =
+                        window.confirm(
+                            "Delete this analysis? This cannot be undone."
+                        );
+
+                    if (!confirmed) {
+                        return;
+                    }
+
+                    button.disabled = true;
+
+                    try {
+
+                        const accessToken =
+                            await getAccessToken();
+
+                        if (!accessToken) {
+                            return;
+                        }
+
+                        const response =
+                            await fetch(
+                                `${API_BASE_URL}/analyses/${encodeURIComponent(
+                                    analysisId
+                                )}`,
+                                {
+                                    method: "DELETE",
+                                    headers: {
+                                        Authorization:
+                                            `Bearer ${accessToken}`,
+                                    },
+                                }
+                            );
+
+                        if (!response.ok) {
+
+                            let message =
+                                "Unable to delete this analysis.";
+
+                            try {
+                                const error =
+                                    await response.json();
+
+                                message =
+                                    error.detail ||
+                                    message;
+
+                            } catch (_) {
+                                // Keep default message.
+                            }
+
+                            throw new Error(message);
+                        }
+
+                        analysisHistoryData =
+                            analysisHistoryData.filter(
+                                function (item) {
+                                    return (
+                                        String(item.id) !==
+                                        String(analysisId)
+                                    );
+                                }
+                            );
+
+                        await loadAnalysisHistory();
+
+                    } catch (error) {
+
+                        console.error(
+                            "Delete analysis error:",
+                            error
+                        );
+
+                        alert(
+                            error.message ||
+                            "Unable to delete this analysis."
+                        );
+
+                        button.disabled = false;
+                    }
+                }
+            );
+        }
+);
 setAnalysisView(
     "saved"
 );
@@ -2863,27 +2966,84 @@ function displayResults(
 function displaySavedAnalysis(
     result
 ) {
-    savedResultsContent.innerHTML = `
-        <div class="saved-analysis-header">
-            <div>
-                <p class="eyebrow">
-                    SAVED ANALYSIS
-                </p>
 
-                <h2>
-                    Previous CareerGap Analysis
-                </h2>
+    const top =
+        `
+            <div
+                class="dashboard-top"
+            >
 
-                <p>
-                    You are viewing a saved analysis.
-                </p>
+                ${createScoreCard(result)}
+
+                ${createSkillBreakdown(result)}
+
+                ${createRoleInsights(result)}
+
             </div>
-        </div>
+        `;
 
-        ${buildAnalysisMarkup(result)}
-    `;
+    const projects =
+        createProjectAnalysis(
+            result
+        );
 
-    savedAnalysisTab.classList.remove(
+    const resources =
+        createResources(
+            result
+        );
+
+    const nextSteps =
+        createNextSteps(
+            result
+        );
+
+    const aiAdvice =
+        createAICareerAdvice(
+            result
+        );
+
+    savedResultsContent.innerHTML =
+        `
+            <div class="saved-analysis-header">
+
+                <div>
+
+                    <p class="eyebrow">
+                        SAVED ANALYSIS
+                    </p>
+
+                    <h2>
+                        Previous CareerGap Analysis
+                    </h2>
+
+                    <p>
+                        You are viewing a saved analysis.
+                    </p>
+
+                </div>
+
+            </div>
+
+            ${top}
+
+            ${projects}
+
+            ${aiAdvice}
+
+            <div class="dashboard-bottom">
+
+                <div>
+                    ${resources}
+                </div>
+
+                <div>
+                    ${nextSteps}
+                </div>
+
+            </div>
+        `;
+
+    savedAnalysisSection.classList.remove(
         "hidden"
     );
 }

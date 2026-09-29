@@ -307,3 +307,24 @@ def test_analyze_requires_authentication():
     )
 
     assert response.status_code == 401
+
+def test_delete_analysis(monkeypatch):
+    called = {}
+
+    monkeypatch.setattr(
+        backend,
+        "delete_analysis",
+        lambda **kwargs: called.update(kwargs),
+    )
+
+    response = client.delete(
+        "/analyses/test-analysis-id"
+    )
+
+    assert response.status_code == 204
+    assert called["access_token"] == (
+        "test-access-token"
+    )
+    assert called["analysis_id"] == (
+        "test-analysis-id"
+    )
