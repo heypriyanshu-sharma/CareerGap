@@ -3670,6 +3670,40 @@ textarea:focus,
     opacity: 0.5;
     cursor: wait;
 }
+
+.analysis-history-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 20px;
+}
+
+.history-view-button {
+    padding: 9px 14px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--cream);
+    color: var(--olive);
+
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 750;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.history-view-button:hover {
+    background: var(--pistachio-soft);
+    border-color: var(--pistachio);
+    transform: translateY(-1px);
+}
 /* =========================================================
    RESULT VIEW MODE
 ========================================================= */

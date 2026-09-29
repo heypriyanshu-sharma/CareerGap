@@ -310,18 +310,29 @@ setupAuthAction();
 
                             </div>
 
-                            <strong>
-                                ${score.toFixed(1)}%
-                            </strong>
-                            <button
-    type="button"
-    class="history-delete-button"
-    data-analysis-id="${escapeHTML(String(item.id))}"
-    aria-label="Delete analysis"
-    title="Delete analysis"
->
-    ×
-</button>
+                            <div class="analysis-history-actions">
+
+    <button
+        type="button"
+        class="history-view-button"
+        data-history-index="${index}"
+    >
+        View Analysis
+    </button>
+
+    <button
+        type="button"
+        class="history-delete-button"
+        data-analysis-id="${escapeHTML(
+            String(item.id)
+        )}"
+        aria-label="Delete analysis"
+        title="Delete analysis"
+    >
+        ×
+    </button>
+
+</div>
                         <div>
 
                         </article>
