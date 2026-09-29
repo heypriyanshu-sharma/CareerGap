@@ -249,7 +249,27 @@ def delete_analysis_route(
             analysis_id=analysis_id,
         )
 
-    except Exception:
+    except Exception as error:
+        print(
+            "DELETE ANALYSIS ERROR:",
+            type(error).__name__,
+            str(error),
+        )
+
+        if (
+            hasattr(error, "response")
+            and error.response is not None
+        ):
+            print(
+                "SUPABASE STATUS:",
+                error.response.status_code,
+            )
+
+            print(
+                "SUPABASE BODY:",
+                error.response.text,
+            )
+
         raise HTTPException(
             status_code=500,
             detail="Unable to delete analysis.",
