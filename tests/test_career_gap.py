@@ -204,6 +204,10 @@ def test_run_careergap_produces_core_result(monkeypatch):
     assert "FastAPI" in result["missing_skills"]
     assert "Docker" in result["missing_skills"]
     assert result["github_recommendations"] == []
+    assert "curated_resources" in result
+    curated_skills = {item["skill"] for item in result["curated_resources"]}
+    assert "FastAPI" in curated_skills
+    assert "Docker" in curated_skills
 
 
 def test_validate_projects_rejects_empty_list():
@@ -324,3 +328,63 @@ def test_load_input_rejects_invalid_projects_json(
 
     with pytest.raises(ValueError):
         career_gap.load_careergap_input()
+
+
+def test_get_curated_resources_known_skills_returns_valid_entries():
+    resources = career_gap.get_curated_resources(["FastAPI", "Docker"])
+    assert len(resources) == 6  # 3 per skill: Documentation, Practice, YouTube
+
+    skills = {item["skill"] for item in resources}
+    assert skills == {"FastAPI", "Docker"}
+
+    types = {item["type"] for item in resources}
+    assert types == {"Documentation", "Practice", "YouTube Tutorial Search"}
+
+    for item in resources:
+        assert isinstance(item["title"], str) and item["title"].strip()
+        assert isinstance(item["url"], str) and (
+            item["url"].startswith("https://") or item["url"].startswith("http://")
+        )
+        assert isinstance(item["description"], str)
+
+
+def test_get_curated_resources_youtube_search_links():
+    resources = career_gap.get_curated_resources(["Docker"])
+    yt_items = [
+        item for item in resources
+        if item["type"] == "YouTube Tutorial Search"
+    ]
+    assert len(yt_items) == 1
+    yt = yt_items[0]
+    assert yt["title"] == "Docker Tutorial Search"
+    assert "https://www.youtube.com/results?search_query=" in yt["url"]
+    assert "Docker+tutorial" in yt["url"] or "Docker%20tutorial" in yt["url"]
+    assert "YouTube" in yt["description"]
+
+
+def test_get_curated_resources_handles_unknown_skill():
+    # Unknown skill alone returns empty list without raising
+    assert career_gap.get_curated_resources(["UnknownSkill123"]) == []
+
+    # Mixed known and unknown skills safely filters out unknown
+    mixed = career_gap.get_curated_resources(["FastAPI", "UnknownSkill123"])
+    assert len(mixed) == 3
+    assert all(item["skill"] == "FastAPI" for item in mixed)
+
+
+def test_get_curated_resources_empty_input():
+    assert career_gap.get_curated_resources([]) == []
+    assert career_gap.get_curated_resources(None) == []
+
+
+def test_get_curated_resources_deduplicates_skills():
+    # Passing duplicate representations of the same skill
+    resources = career_gap.get_curated_resources(["Docker", "docker", "Docker"])
+    assert len(resources) == 3
+
+
+def test_get_curated_resources_resolves_aliases():
+    # 'sklearn' is an alias for 'Scikit-learn'
+    resources = career_gap.get_curated_resources(["sklearn"])
+    assert len(resources) == 3
+    assert all(item["skill"] == "Scikit-learn" for item in resources)

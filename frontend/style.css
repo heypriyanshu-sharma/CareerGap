@@ -3212,6 +3212,20 @@ textarea:focus,
 
 /* Resource badges */
 
+.resources-section .resource-card-header {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 8px;
+
+    margin-bottom: 2px;
+
+}
+
 .resources-section .resource-skill {
 
     display: inline-flex;
@@ -3225,6 +3239,28 @@ textarea:focus,
     background: var(--pistachio);
 
     color: var(--olive-dark);
+
+}
+
+.resources-section .resource-type-badge {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    padding: 4px 8px;
+
+    border-radius: 999px;
+
+    font-size: 0.68rem;
+
+    font-weight: 700;
+
+    background: rgba(46, 64, 46, 0.08);
+
+    color: var(--olive-dark);
+
+    letter-spacing: 0.02em;
 
 }
 

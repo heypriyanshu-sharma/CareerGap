@@ -328,3 +328,69 @@ def test_delete_analysis(monkeypatch):
     assert called["analysis_id"] == (
         "test-analysis-id"
     )
+
+
+def test_analyze_preserves_curated_resources(monkeypatch):
+    curated_data = [
+        {
+            "skill": "FastAPI",
+            "type": "Documentation",
+            "title": "FastAPI Official Documentation",
+            "url": "https://fastapi.tiangolo.com/",
+            "description": "Official guide and interactive tutorial.",
+        },
+        {
+            "skill": "FastAPI",
+            "type": "Practice",
+            "title": "FastAPI User Guide Tutorial",
+            "url": "https://fastapi.tiangolo.com/tutorial/",
+            "description": "Hands-on guide building endpoints.",
+        },
+        {
+            "skill": "FastAPI",
+            "type": "YouTube Tutorial Search",
+            "title": "FastAPI Tutorial Search",
+            "url": "https://www.youtube.com/results?search_query=FastAPI+tutorial",
+            "description": "Search results for FastAPI tutorials on YouTube.",
+        },
+    ]
+
+    expected_result = {
+        "resume_skills": ["Python"],
+        "job_skills": ["Python", "FastAPI"],
+        "matched_skills": ["Python"],
+        "missing_skills": ["FastAPI"],
+        "score": 50.0,
+        "curated_resources": curated_data,
+        "github_recommendations": [],
+    }
+
+    monkeypatch.setattr(
+        backend,
+        "run_careergap",
+        lambda resume, job_description, projects: expected_result,
+    )
+    monkeypatch.setattr(
+        backend,
+        "generate_career_advice",
+        lambda career_gap_data: None,
+    )
+
+    backend.limiter._storage.reset()
+
+    payload = {
+        "resume": "I know Python.",
+        "job_description": "Required: Python FastAPI.",
+        "projects": [
+            {
+                "name": "Test API",
+                "description": "A Python API project.",
+            }
+        ],
+    }
+
+    response = client.post("/analyze", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "curated_resources" in data
+    assert data["curated_resources"] == curated_data

@@ -892,6 +892,23 @@ document.addEventListener(
                 );
         }
 
+        function safeUrl(rawUrl) {
+            if (!rawUrl || typeof rawUrl !== "string") {
+                return "#";
+            }
+            const trimmed = rawUrl.trim();
+            try {
+                const parsed = new URL(trimmed);
+                if (
+                    parsed.protocol === "http:" ||
+                    parsed.protocol === "https:"
+                ) {
+                    return parsed.href;
+                }
+            } catch (_) {}
+            return "#";
+        }
+
         // =================================================
         // SCORE MESSAGE
         // =================================================
@@ -1514,18 +1531,30 @@ document.addEventListener(
         }
 
         // =================================================
-        // GITHUB RESOURCES
+        // LEARNING & GITHUB RESOURCES
         // =================================================
 
         function createResources(
             result
         ) {
 
-            const resources =
-                result.github_recommendations ||
-                [];
+            const curated =
+                Array.isArray(
+                    result &&
+                    result.curated_resources
+                )
+                    ? result.curated_resources
+                    : [];
 
-            if (!resources.length) {
+            const github =
+                Array.isArray(
+                    result &&
+                    result.github_recommendations
+                )
+                    ? result.github_recommendations
+                    : [];
+
+            if (!curated.length && !github.length) {
 
                 return `
                     <section
@@ -1543,6 +1572,238 @@ document.addEventListener(
                     </section>
                 `;
             }
+
+            const curatedCards = curated.map(
+                function (resource) {
+
+                    const skill =
+                        resource.skill ||
+                        "Resource";
+
+                    const type =
+                        resource.type ||
+                        "Learning Resource";
+
+                    const title =
+                        resource.title ||
+                        `${skill} Resource`;
+
+                    const description =
+                        resource.description ||
+                        "A recommended learning resource.";
+
+                    const url =
+                        safeUrl(
+                            resource.url
+                        );
+
+                    let metaText =
+                        "Free Resource";
+
+                    let actionText =
+                        "Open Resource";
+
+                    if (type === "Documentation") {
+                        metaText =
+                            "Official Documentation";
+                        actionText =
+                            "View Documentation";
+                    } else if (type === "Practice") {
+                        metaText =
+                            "Hands-on Practice";
+                        actionText =
+                            "Start Practice";
+                    } else if (
+                        type ===
+                        "YouTube Tutorial Search"
+                    ) {
+                        metaText =
+                            "YouTube Search";
+                        actionText =
+                            "Search YouTube";
+                    }
+
+                    return `
+                        <article
+                            class="resource-card"
+                        >
+
+                            <div
+                                class="resource-card-header"
+                            >
+
+                                <span
+                                    class="resource-skill"
+                                >
+                                    ${escapeHTML(
+                                        skill
+                                    )}
+                                </span>
+
+                                <span
+                                    class="resource-type-badge"
+                                >
+                                    ${escapeHTML(
+                                        type
+                                    )}
+                                </span>
+
+                            </div>
+
+                            <h4>
+                                ${escapeHTML(
+                                    title
+                                )}
+                            </h4>
+
+                            <p
+                                class="resource-description"
+                            >
+                                ${escapeHTML(
+                                    description
+                                )}
+                            </p>
+
+                            <div
+                                class="resource-meta"
+                            >
+
+                                <span>
+                                    ${escapeHTML(
+                                        metaText
+                                    )}
+                                </span>
+
+                                <span>
+                                    Free
+                                </span>
+
+                            </div>
+
+                            <a
+                                class="resource-link"
+                                href="${escapeHTML(
+                                    url
+                                )}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                ${escapeHTML(
+                                    actionText
+                                )}
+                                &#8599;
+                            </a>
+
+                        </article>
+                    `;
+                }
+            );
+
+            const githubCards = github.map(
+                function (resource) {
+
+                    const repo =
+                        resource.repo || {};
+
+                    const skill =
+                        resource.skill ||
+                        "Resource";
+
+                    const name =
+                        repo.full_name ||
+                        "GitHub Repository";
+
+                    const description =
+                        repo.description ||
+                        "A relevant learning resource.";
+
+                    const stars =
+                        Number(
+                            repo.stargazers_count ||
+                            0
+                        );
+
+                    const url =
+                        safeUrl(
+                            repo.html_url
+                        );
+
+                    return `
+                        <article
+                            class="resource-card"
+                        >
+
+                            <div
+                                class="resource-card-header"
+                            >
+
+                                <span
+                                    class="resource-skill"
+                                >
+                                    ${escapeHTML(
+                                        skill
+                                    )}
+                                </span>
+
+                                <span
+                                    class="resource-type-badge"
+                                >
+                                    GitHub
+                                </span>
+
+                            </div>
+
+                            <h4>
+                                ${escapeHTML(
+                                    name
+                                )}
+                            </h4>
+
+                            <p
+                                class="resource-description"
+                            >
+                                ${escapeHTML(
+                                    description
+                                )}
+                            </p>
+
+                            <div
+                                class="resource-meta"
+                            >
+
+                                <span>
+                                    &#9733;
+                                    ${formatStars(
+                                        stars
+                                    )}
+                                </span>
+
+                                <span>
+                                    Relevance
+                                    ${Number(
+                                        resource.score ||
+                                        0
+                                    )}
+                                </span>
+
+                            </div>
+
+                            <a
+                                class="resource-link"
+                                href="${escapeHTML(
+                                    url
+                                )}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                View on GitHub
+                                &#8599;
+                            </a>
+
+                        </article>
+                    `;
+                }
+            );
 
             return `
                 <section
@@ -1564,102 +1825,15 @@ document.addEventListener(
                         </div>
 
                         <span class="section-action">
-                            GitHub
+                            Curated &amp; GitHub
                         </span>
 
                     </div>
 
                     <div class="resource-grid">
 
-                        ${resources.map(
-                            function (resource) {
-
-                                const repo =
-                                    resource.repo || {};
-
-                                const skill =
-                                    resource.skill ||
-                                    "Resource";
-
-                                const name =
-                                    repo.full_name ||
-                                    "GitHub Repository";
-
-                                const description =
-                                    repo.description ||
-                                    "A relevant learning resource.";
-
-                                const stars =
-                                    Number(
-                                        repo.stargazers_count ||
-                                        0
-                                    );
-
-                                const url =
-                                    repo.html_url ||
-                                    "#";
-
-                                return `
-                                    <article
-                                        class="resource-card"
-                                    >
-
-                                        <span
-                                            class="resource-skill"
-                                        >
-                                            ${escapeHTML(
-                                                skill
-                                            )}
-                                        </span>
-
-                                        <h4>
-                                            ${escapeHTML(
-                                                name
-                                            )}
-                                        </h4>
-
-                                        <p
-                                            class="resource-description"
-                                        >
-                                            ${escapeHTML(
-                                                description
-                                            )}
-                                        </p>
-
-                                        <div
-                                            class="resource-meta"
-                                        >
-
-                                            <span>
-                                                &#9733;
-                                                ${formatStars(
-                                                    stars
-                                                )}
-                                            </span>
-
-                                            <span>
-                                                Relevance
-                                                ${resource.score || 0}
-                                            </span>
-
-                                        </div>
-
-                                        <a
-                                            class="resource-link"
-                                            href="${escapeHTML(
-                                                url
-                                            )}"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            View on GitHub
-                                            &#8599;
-                                        </a>
-
-                                    </article>
-                                `;
-                            }
-                        ).join("")}
+                        ${curatedCards.join("")}
+                        ${githubCards.join("")}
 
                     </div>
 

@@ -2,6 +2,7 @@ import csv
 import json
 import re
 from pathlib import Path
+from urllib.parse import quote_plus
 
 from github_search import search_github, rank_repositories
 from ai_advisor import generate_career_advice
@@ -962,6 +963,300 @@ def generate_project_upgrade_recommendations(
 
 
 # ============================================================
+# CURATED LEARNING RESOURCES
+# ============================================================
+
+CANONICAL_SKILL_RESOURCES = {
+    # Programming languages
+    "Python": (
+        "Python Official Documentation", "https://docs.python.org/3/", "Official language tutorial, standard library documentation, and language reference.",
+        "Exercism Python Track", "https://exercism.org/tracks/python", "Free hands-on coding exercises with test suites and guided concept progression."
+    ),
+    "C": (
+        "cppreference C Documentation", "https://en.cppreference.com/w/c", "Comprehensive reference for the C standard library and language specification.",
+        "Exercism C Track", "https://exercism.org/tracks/c", "Test-driven programming exercises focusing on pointers, memory, and C idioms."
+    ),
+    "C++": (
+        "cppreference C++ Documentation", "https://en.cppreference.com/w/cpp", "Standard library reference and language specifications for modern C++.",
+        "Exercism C++ Track", "https://exercism.org/tracks/cpp", "Hands-on coding challenges covering modern C++, classes, and templates."
+    ),
+    "Java": (
+        "Oracle Java Documentation", "https://docs.oracle.com/en/java/", "Official Java SE documentation, API specification, and developer guides.",
+        "Exercism Java Track", "https://exercism.org/tracks/java", "Interactive coding exercises covering Java OOP, data structures, and APIs."
+    ),
+    "JavaScript": (
+        "MDN Web Docs — JavaScript", "https://developer.mozilla.org/en-US/docs/Web/JavaScript", "Authoritative guide and reference for modern JavaScript from Mozilla.",
+        "Exercism JavaScript Track", "https://exercism.org/tracks/javascript", "Practice JavaScript fundamentals, array methods, async/await, and DOM logic."
+    ),
+    "TypeScript": (
+        "TypeScript Handbook & Documentation", "https://www.typescriptlang.org/docs/", "Official TypeScript language handbook, type system guide, and compiler reference.",
+        "TypeScript Playground", "https://www.typescriptlang.org/play", "Official interactive in-browser playground for testing types, generics, and compiler options."
+    ),
+    "Go": (
+        "Go Documentation & Standard Library", "https://go.dev/doc/", "Official documentation, effective Go guide, and standard library reference.",
+        "A Tour of Go", "https://go.dev/tour/", "Interactive guided tour with executable in-browser exercises covering Go fundamentals."
+    ),
+    "Rust": (
+        "The Rust Programming Language Book", "https://doc.rust-lang.org/book/", "The official book on Rust covering ownership, borrowing, lifetimes, and concurrency.",
+        "Rustlings Practice Exercises", "https://github.com/rust-lang/rustlings", "Small guided exercises to get familiar with reading and writing Rust code."
+    ),
+    "R": (
+        "The R Project Official Documentation", "https://www.r-project.org/other-docs.html", "Official manuals and reference documentation for the R statistical computing environment.",
+        "W3Schools R Tutorial & Exercises", "https://www.w3schools.com/r/", "Hands-on exercises and examples for statistical programming and data analysis in R."
+    ),
+
+    # Data / ML
+    "SQL": (
+        "PostgreSQL SQL Commands Reference", "https://www.postgresql.org/docs/current/sql-commands.html", "Standard SQL command guide, syntax diagrams, and query structure reference.",
+        "SQLZoo Interactive Tutorials", "https://sqlzoo.net/", "Interactive live SQL practice with instant query execution and feedback."
+    ),
+    "Pandas": (
+        "Pandas User Guide & API Reference", "https://pandas.pydata.org/docs/", "Official user guide and API reference for data manipulation and DataFrame operations.",
+        "Pandas Getting Started Tutorials", "https://pandas.pydata.org/docs/getting_started/intro_tutorials/", "Hands-on walkthroughs for data reshaping, filtering, grouping, and statistical summaries."
+    ),
+    "NumPy": (
+        "NumPy User Guide & API Reference", "https://numpy.org/doc/stable/", "Official documentation for N-dimensional arrays, vectorization, and mathematical functions.",
+        "NumPy Tutorials Gallery", "https://numpy.org/numpy-tutorials/", "Practical numerical computing exercises and guided notebooks."
+    ),
+    "Scikit-learn": (
+        "Scikit-learn User Guide", "https://scikit-learn.org/stable/user_guide.html", "Official guide for supervised and unsupervised algorithms, pipelines, and model evaluation.",
+        "Scikit-learn Examples Gallery", "https://scikit-learn.org/stable/auto_examples/", "Code walkthroughs showing end-to-end classification, regression, and clustering workflows."
+    ),
+    "Machine Learning": (
+        "Google Machine Learning Crash Course", "https://developers.google.com/machine-learning/crash-course", "Google's fast-paced, practical introduction to foundational machine learning concepts.",
+        "Kaggle Learn — Intro to Machine Learning", "https://www.kaggle.com/learn/intro-to-machine-learning", "Hands-on micro-course building decision trees, random forests, and validating models."
+    ),
+    "Deep Learning": (
+        "Dive into Deep Learning (D2L.ai)", "https://d2l.ai/", "Open-source interactive deep learning textbook with complete runnable code implementations.",
+        "Kaggle Learn — Intro to Deep Learning", "https://www.kaggle.com/learn/intro-to-deep-learning", "Interactive notebooks building and training neural networks with Keras and TensorFlow."
+    ),
+    "TensorFlow": (
+        "TensorFlow Core Documentation", "https://www.tensorflow.org/api_docs", "Official API documentation and guides for training and deploying machine learning models.",
+        "TensorFlow Tutorials", "https://www.tensorflow.org/tutorials", "Hands-on beginner and intermediate machine learning projects with step-by-step code."
+    ),
+    "PyTorch": (
+        "PyTorch Official Documentation", "https://pytorch.org/docs/stable/", "Official API documentation, autograd engine, and neural network building blocks.",
+        "PyTorch Interactive Tutorials", "https://pytorch.org/tutorials/", "Step-by-step guides for computer vision, NLP, and model training in PyTorch."
+    ),
+    "Keras": (
+        "Keras Developer Guides & API", "https://keras.io/api/", "Official API reference and developer guides for the high-level neural network framework.",
+        "Keras Code Examples", "https://keras.io/examples/", "Curated collection of runnable deep learning examples for vision, text, and structured data."
+    ),
+    "Matplotlib": (
+        "Matplotlib Documentation", "https://matplotlib.org/stable/contents.html", "Official guide and API reference for Python data visualization and plotting.",
+        "Matplotlib Examples & Tutorials", "https://matplotlib.org/stable/tutorials/index.html", "Interactive plotting walkthroughs from basic figures to advanced custom charts."
+    ),
+    "Seaborn": (
+        "Seaborn Documentation & User Guide", "https://seaborn.pydata.org/", "Official guide and API reference for statistical data visualization in Python.",
+        "Seaborn Tutorial Gallery", "https://seaborn.pydata.org/tutorial.html", "Practical guides for categorical plots, distribution analysis, and regression plots."
+    ),
+    "Power BI": (
+        "Microsoft Power BI Documentation", "https://learn.microsoft.com/en-us/power-bi/", "Official documentation for creating reports, DAX calculations, and interactive dashboards.",
+        "Microsoft Learn — Power BI Modules", "https://learn.microsoft.com/en-us/training/powerplatform/power-bi", "Free interactive learning paths and guided exercises for building Power BI reports."
+    ),
+    "Tableau": (
+        "Tableau Help & Documentation", "https://help.tableau.com/current/pro/desktop/en-us/default.htm", "Official user guide for Tableau Desktop, calculations, and data visualization.",
+        "Tableau Free Training Resources", "https://www.tableau.com/learn/training/20204", "Guided tutorials, sample workbooks, and exercises for dashboard development."
+    ),
+    "Excel": (
+        "Microsoft Excel Help & Function Reference", "https://support.microsoft.com/en-us/excel", "Official reference guide for Excel formulas, functions, and data analysis tools.",
+        "Excel Easy Interactive Tutorials", "https://www.excel-easy.com/", "Step-by-step practical exercises for formulas, PivotTables, and data visualization."
+    ),
+
+    # Backend / APIs
+    "FastAPI": (
+        "FastAPI Official Documentation", "https://fastapi.tiangolo.com/", "Official guide and interactive tutorial for building modern Python web APIs.",
+        "FastAPI User Guide Tutorial", "https://fastapi.tiangolo.com/tutorial/", "Step-by-step hands-on guide building endpoints, validation, and database connections."
+    ),
+    "Flask": (
+        "Flask Documentation & User Guide", "https://flask.palletsprojects.com/", "Official user guide and API reference for the Flask lightweight web framework.",
+        "Flask Tutorial (Flaskr)", "https://flask.palletsprojects.com/tutorial/", "Official tutorial building a working database-backed blogging application."
+    ),
+    "Django": (
+        "Django Documentation", "https://docs.djangoproject.com/", "Official documentation for the batteries-included Python web framework and ORM.",
+        "Writing Your First Django App", "https://docs.djangoproject.com/en/stable/intro/tutorial01/", "Official hands-on walkthrough building a complete poll web application."
+    ),
+    "REST API": (
+        "MDN Web Docs — REST Architectural Style", "https://developer.mozilla.org/en-US/docs/Glossary/REST", "Foundational architectural concepts, stateless communication, and HTTP methods in REST.",
+        "Postman API Learning Center", "https://www.postman.com/api-platform/api-learning/", "Interactive hands-on guides for sending requests, inspecting responses, and testing APIs."
+    ),
+    "GraphQL": (
+        "GraphQL Official Documentation", "https://graphql.org/learn/", "Official introduction to the GraphQL query language, schemas, resolvers, and types.",
+        "How to GraphQL Free Fullstack Tutorial", "https://www.howtographql.com/", "Free fullstack tutorial teaching GraphQL fundamentals with hands-on examples."
+    ),
+
+    # Databases
+    "PostgreSQL": (
+        "PostgreSQL Official Documentation", "https://www.postgresql.org/docs/", "Authoritative manual for the world's most advanced open source relational database.",
+        "PGExercises Interactive Queries", "https://pgexercises.com/", "Targeted SQL exercises with live evaluation against real PostgreSQL schemas."
+    ),
+    "MySQL": (
+        "MySQL Reference Manual", "https://dev.mysql.com/doc/refman/en/", "Official reference manual for MySQL database administration, SQL syntax, and indexing.",
+        "W3Schools MySQL Exercises", "https://www.w3schools.com/mysql/mysql_exercises.asp", "Interactive query challenges and syntax exercises for MySQL databases."
+    ),
+    "MongoDB": (
+        "MongoDB Official Documentation", "https://www.mongodb.com/docs/", "Official guides for document data modeling, CRUD operations, and aggregation pipelines.",
+        "MongoDB University Free Courses", "https://learn.mongodb.com/", "Free interactive training courses and hands-on lab environments from MongoDB."
+    ),
+    "SQLite": (
+        "SQLite Documentation & SQL Reference", "https://www.sqlite.org/docs.html", "Official documentation, C/C++ interface, and SQL syntax reference for SQLite.",
+        "SQL Practice with SQLite", "https://www.sql-practice.com/", "In-browser live query challenges designed around SQLite databases."
+    ),
+    "Redis": (
+        "Redis Official Documentation", "https://redis.io/docs/latest/", "Official guides, architecture overviews, and command references for in-memory data storage.",
+        "Redis University", "https://university.redis.com/", "Free interactive courses and hands-on labs covering Redis data structures and caching."
+    ),
+
+    # Cloud / DevOps
+    "Docker": (
+        "Docker Official Documentation", "https://docs.docker.com/", "Official user guides, Dockerfile reference, and container orchestration concepts.",
+        "Docker Get Started Guide", "https://docs.docker.com/get-started/", "Hands-on walkthrough containerizing sample applications and writing Dockerfiles."
+    ),
+    "Kubernetes": (
+        "Kubernetes Official Documentation", "https://kubernetes.io/docs/", "Official architecture guides, API reference, and kubectl command manual.",
+        "Kubernetes Interactive Tutorials", "https://kubernetes.io/docs/tutorials/kubernetes-basics/", "Browser-based interactive terminal tutorials deploying and scaling container pods."
+    ),
+    "AWS": (
+        "AWS Official Documentation", "https://docs.aws.amazon.com/", "Official developer guides and API references for Amazon Web Services cloud products.",
+        "AWS Skill Builder Free Tier", "https://explore.skillbuilder.aws/", "Free digital training courses and hands-on learning plans from Amazon."
+    ),
+    "Azure": (
+        "Microsoft Azure Documentation", "https://learn.microsoft.com/en-us/azure/", "Official cloud architecture guides, service documentation, and CLI references.",
+        "Microsoft Learn Azure Modules", "https://learn.microsoft.com/en-us/training/azure/", "Free hands-on sandbox labs and structured learning paths for Azure services."
+    ),
+    "Google Cloud": (
+        "Google Cloud Documentation", "https://cloud.google.com/docs", "Official documentation, architecture frameworks, and quickstarts for Google Cloud.",
+        "Google Cloud Skills Boost", "https://www.cloudskillsboost.google/", "Interactive learning paths and foundational cloud computing labs."
+    ),
+    "Git": (
+        "Pro Git Book & Official Reference", "https://git-scm.com/doc", "Official reference documentation and the complete free Pro Git book by Scott Chacon.",
+        "Learn Git Branching", "https://learngitbranching.js.org/", "Interactive visual and command-line sandbox for mastering Git workflows and branches."
+    ),
+    "GitHub": (
+        "GitHub Docs", "https://docs.github.com/", "Official documentation for repository management, pull requests, and collaboration.",
+        "GitHub Skills Interactive Courses", "https://skills.github.com/", "Interactive courses that teach Git and GitHub directly inside live repositories."
+    ),
+    "Linux": (
+        "The Linux Documentation Project", "https://tldp.org/", "Comprehensive documentation, HOWTOs, and system administration guides for Linux.",
+        "Linux Journey", "https://linuxjourney.com/", "Free interactive, structured learning for mastering the Linux command line and system."
+    ),
+
+    # Web / frontend
+    "HTML": (
+        "MDN Web Docs — HTML", "https://developer.mozilla.org/en-US/docs/Web/HTML", "Authoritative standard reference and guides for HTML5 semantic elements and accessibility.",
+        "freeCodeCamp Responsive Web Design", "https://www.freecodecamp.org/learn/2022/responsive-web-design/", "Interactive step-by-step challenges building accessible web pages from scratch."
+    ),
+    "CSS": (
+        "MDN Web Docs — CSS", "https://developer.mozilla.org/en-US/docs/Web/CSS", "Official guides and property reference for Cascading Style Sheets.",
+        "Flexbox Froggy & Grid Garden", "https://flexboxfroggy.com/", "Hands-on browser games for mastering modern CSS Flexbox and Grid layouts."
+    ),
+    "React": (
+        "React Official Documentation", "https://react.dev/", "Modern React guides, component lifecycle, state management, and hooks reference.",
+        "React Interactive Tutorial", "https://react.dev/learn", "Hands-on coding challenges in browser sandboxes teaching thinking in React."
+    ),
+    "Node.js": (
+        "Node.js Official Documentation", "https://nodejs.org/en/docs", "Official runtime documentation, standard libraries, and server-side JavaScript APIs.",
+        "NodeSchool Open Source Workshops", "https://nodeschool.io/", "Terminal-based interactive workshops covering Node.js core modules and streams."
+    ),
+
+    # Core CS / engineering
+    "Data Structures": (
+        "Open Data Structures", "https://opendatastructures.org/", "Free, peer-reviewed textbook covering arrays, linked lists, trees, and hash tables.",
+        "NeetCode Practice Roadmap", "https://neetcode.io/practice", "Interactive problem roadmap covering foundational data structures."
+    ),
+    "Algorithms": (
+        "GeeksforGeeks Algorithms Guide", "https://www.geeksforgeeks.org/fundamentals-of-algorithms/", "Explanations and complexity analysis of sorting, searching, DP, and graph algorithms.",
+        "LeetCode Explore — Algorithms", "https://leetcode.com/explore/", "Free interactive study modules and coding challenges for standard algorithms."
+    ),
+    "Object-Oriented Programming": (
+        "MDN Object-Oriented Programming Guide", "https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Advanced_JavaScript_objects/Object-oriented_programming", "Core concepts of encapsulation, inheritance, classes, and polymorphism.",
+        "Exercism Object-Oriented Exercises", "https://exercism.org/tracks/java/concepts/classes", "Hands-on exercises for modeling domains and class hierarchies."
+    ),
+    "OOP": (
+        "MDN Object-Oriented Programming Guide", "https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Advanced_JavaScript_objects/Object-oriented_programming", "Core concepts of encapsulation, inheritance, classes, and polymorphism.",
+        "Exercism Object-Oriented Exercises", "https://exercism.org/tracks/java/concepts/classes", "Hands-on exercises for modeling domains and class hierarchies."
+    ),
+    "GitHub Actions": (
+        "GitHub Actions Documentation", "https://docs.github.com/en/actions", "Official guides, workflow syntax, and trigger events for CI/CD automation.",
+        "GitHub Actions Quickstart Tutorial", "https://docs.github.com/en/actions/quickstart", "Hands-on walkthrough creating and running your first automated GitHub workflow."
+    )
+}
+
+
+def _resolve_canonical_skill(skill):
+    """Safely match a skill string against known canonical skills or aliases."""
+    if not isinstance(skill, str):
+        return None
+    trimmed = skill.strip()
+    if not trimmed:
+        return None
+    if trimmed in CANONICAL_SKILL_RESOURCES:
+        return trimmed
+    trimmed_lower = trimmed.lower()
+    for key in CANONICAL_SKILL_RESOURCES:
+        if key.lower() == trimmed_lower:
+            return key
+    alias_target = skill_aliases.get(trimmed_lower)
+    if alias_target and alias_target in CANONICAL_SKILL_RESOURCES:
+        return alias_target
+    return None
+
+
+def get_curated_resources(missing_skills):
+    """
+    Return curated learning resources (Documentation, Practice, YouTube Search)
+    for missing skills. Safe against unknown skills, empty input, and duplicates.
+    """
+    if not missing_skills or not isinstance(missing_skills, list):
+        return []
+
+    resources = []
+    seen_skills = set()
+
+    for raw_skill in missing_skills:
+        canonical = _resolve_canonical_skill(raw_skill)
+        if not canonical or canonical in seen_skills:
+            continue
+        seen_skills.add(canonical)
+
+        data = CANONICAL_SKILL_RESOURCES.get(canonical)
+        if not data:
+            continue
+
+        doc_title, doc_url, doc_desc, practice_title, practice_url, practice_desc = data
+
+        # 1. Official Documentation
+        resources.append({
+            "skill": canonical,
+            "type": "Documentation",
+            "title": doc_title,
+            "url": doc_url,
+            "description": doc_desc
+        })
+
+        # 2. Hands-on Practice
+        resources.append({
+            "skill": canonical,
+            "type": "Practice",
+            "title": practice_title,
+            "url": practice_url,
+            "description": practice_desc
+        })
+
+        # 3. YouTube Tutorial Search (explicitly labelled as a search query)
+        query = quote_plus(f"{canonical} tutorial")
+        resources.append({
+            "skill": canonical,
+            "type": "YouTube Tutorial Search",
+            "title": f"{canonical} Tutorial Search",
+            "url": f"https://www.youtube.com/results?search_query={query}",
+            "description": f"Search results for {canonical} tutorials and video walk-throughs on YouTube."
+        })
+
+    return resources
+
+
+# ============================================================
 # GITHUB RESOURCE INTELLIGENCE
 # ============================================================
 
@@ -1346,6 +1641,8 @@ def run_careergap(resume_text, job_text, projects):
         project_context=github_project_context
     )
 
+    curated_resources = get_curated_resources(missing_skills)
+
     return {
         "resume_skills": resume_skills,
         "job_skills": job_skills,
@@ -1355,7 +1652,8 @@ def run_careergap(resume_text, job_text, projects):
         "skill_priorities": priorities,
         "project_analysis": project_analysis,
         "project_recommendations": project_recommendations,
-        "github_recommendations": github_recommendations
+        "github_recommendations": github_recommendations,
+        "curated_resources": curated_resources
     }
 
 
