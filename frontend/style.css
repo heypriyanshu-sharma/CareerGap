@@ -2353,6 +2353,15 @@ textarea:focus,
 
 }
 
+/* Allow grid items to shrink so inner carousels scroll
+   instead of stretching the page */
+
+.dashboard-bottom > * {
+
+    min-width: 0;
+
+}
+
 
 
 
@@ -2363,15 +2372,245 @@ textarea:focus,
 
 ========================================================= */
 
-.resource-grid {
+.resource-groups {
 
-    display: grid;
+    display: flex;
 
-    grid-template-columns:
+    flex-direction: column;
 
-        repeat(2, 1fr);
+    gap: 24px;
+
+    min-width: 0;
+
+}
+
+.resource-group {
+
+    min-width: 0;
+
+}
+
+.resource-group-header {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 14px;
+
+    margin-bottom: 12px;
+
+}
+
+.resource-group-heading {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    min-width: 0;
+
+    flex: 1 1 auto;
+
+}
+.resource-group-heading > div {
+
+    min-width: 0;
+
+}
+
+.resource-group-icon {
+
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    width: 32px;
+
+    height: 32px;
+
+    flex: 0 0 auto;
+
+    border-radius: 11px;
+
+    background: var(--pistachio);
+
+}
+
+.resource-group-title {
+
+    font-size: 0.95rem;
+
+    font-weight: 800;
+
+    color: var(--olive-dark);
+
+}
+
+.resource-group-subtitle {
+
+    font-size: 0.7rem;
+
+    color: var(--olive-soft);
+
+}
+
+.resource-group-controls {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    flex: 0 0 auto;
+
+}
+
+.resource-carousel-button {
+
+    width: 34px;
+
+    height: 34px;
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 0;
+
+    border: 1px solid var(--border);
+
+    border-radius: 50%;
+
+    background: var(--cream);
+
+    color: var(--olive-dark);
+
+    font-size: 0.8rem;
+
+    line-height: 1;
+
+    cursor: pointer;
+
+    transition:
+
+        background 0.2s ease,
+
+        opacity 0.2s ease;
+
+}
+
+.resource-carousel-button:hover:not(:disabled) {
+
+    background: var(--white);
+
+}
+
+.resource-carousel-button:disabled {
+
+    opacity: 0.35;
+
+    cursor: default;
+
+}
+
+.resource-carousel-button:focus-visible {
+
+    outline: 2px solid var(--olive);
+
+    outline-offset: 2px;
+
+}
+
+.resource-group.has-no-overflow .resource-group-controls {
+
+    visibility: hidden;
+
+}
+
+.resource-carousel {
+
+    display: flex;
 
     gap: 13px;
+
+    overflow-x: auto;
+
+    overflow-y: hidden;
+
+    scroll-snap-type: x proximity;
+
+    scroll-behavior: smooth;
+
+    -webkit-overflow-scrolling: touch;
+
+    overscroll-behavior-x: contain;
+
+    /* Never wider than the section that contains it */
+
+    max-width: 100%;
+
+    min-width: 0;
+
+    /* Room for the card hover lift and its shadow */
+
+    padding-top: 6px;
+
+    padding-bottom: 10px;
+
+    scrollbar-width: thin;
+
+    scrollbar-color:
+        var(--pistachio)
+        transparent;
+
+}
+
+.resource-carousel::-webkit-scrollbar {
+
+    height: 8px;
+
+}
+
+.resource-carousel::-webkit-scrollbar-track {
+
+    background: transparent;
+
+}
+
+.resource-carousel::-webkit-scrollbar-thumb {
+
+    background: var(--pistachio);
+
+    border-radius: 999px;
+
+}
+
+.resource-carousel:focus-visible {
+
+    outline: 2px solid var(--olive);
+
+    outline-offset: 4px;
+
+    border-radius: 18px;
+
+}
+
+.resource-carousel > .resource-card {
+
+    flex: 0 0 286px;
+
+    scroll-snap-align: start;
 
 }
 
@@ -2914,11 +3153,21 @@ textarea:focus,
 
 
 
-    .project-results-grid,
-
-    .resource-grid {
+    .project-results-grid {
 
         grid-template-columns: 1fr;
+
+    }
+
+    .resource-carousel > .resource-card {
+
+        flex-basis: 236px;
+
+    }
+
+    .resource-group-header {
+
+        gap: 10px;
 
     }
 
@@ -3173,6 +3422,42 @@ textarea:focus,
 
 
 
+
+/* Resource group headers on the dark section */
+
+.resources-section .resource-group-title {
+
+    color: white;
+
+}
+
+.resources-section .resource-group-subtitle {
+
+    color: rgba(255, 248, 225, 0.7);
+
+}
+
+.resources-section .resource-group-icon {
+
+    background: rgba(255, 248, 225, 0.14);
+
+    color: white;
+
+}
+
+.resources-section .resource-carousel-button {
+
+    background: var(--cream);
+
+    color: var(--olive-dark);
+
+}
+
+.resources-section .resource-carousel-button:hover:not(:disabled) {
+
+    background: white;
+
+}
 
 /* Keep INNER resource cards unchanged */
 

@@ -1534,6 +1534,356 @@ document.addEventListener(
         // LEARNING & GITHUB RESOURCES
         // =================================================
 
+        function createCuratedCard(
+            resource
+        ) {
+
+            const skill =
+                resource.skill ||
+                "Resource";
+
+            const type =
+                resource.type ||
+                "Learning Resource";
+
+            const title =
+                resource.title ||
+                `${skill} Resource`;
+
+            const description =
+                resource.description ||
+                "A recommended learning resource.";
+
+            const url =
+                safeUrl(
+                    resource.url
+                );
+
+            let metaText =
+                "Free Resource";
+
+            let actionText =
+                "Open Resource";
+
+            if (type === "Documentation") {
+                metaText =
+                    "Official Documentation";
+                actionText =
+                    "View Documentation";
+            } else if (type === "Practice") {
+                metaText =
+                    "Hands-on Practice";
+                actionText =
+                    "Start Practice";
+            } else if (
+                type ===
+                "YouTube Tutorial Search"
+            ) {
+                metaText =
+                    "YouTube Search";
+                actionText =
+                    "Search YouTube";
+            }
+
+            return `
+                <article
+                    class="resource-card"
+                >
+
+                    <div
+                        class="resource-card-header"
+                    >
+
+                        <span
+                            class="resource-skill"
+                        >
+                            ${escapeHTML(
+                                skill
+                            )}
+                        </span>
+
+                        <span
+                            class="resource-type-badge"
+                        >
+                            ${escapeHTML(
+                                type
+                            )}
+                        </span>
+
+                    </div>
+
+                    <h4>
+                        ${escapeHTML(
+                            title
+                        )}
+                    </h4>
+
+                    <p
+                        class="resource-description"
+                    >
+                        ${escapeHTML(
+                            description
+                        )}
+                    </p>
+
+                    <div
+                        class="resource-meta"
+                    >
+
+                        <span>
+                            ${escapeHTML(
+                                metaText
+                            )}
+                        </span>
+
+                        <span>
+                            Free
+                        </span>
+
+                    </div>
+
+                    <a
+                        class="resource-link"
+                        href="${escapeHTML(
+                            url
+                        )}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        ${escapeHTML(
+                            actionText
+                        )}
+                        &#8599;
+                    </a>
+
+                </article>
+            `;
+        }
+
+        function createGitHubCard(
+            resource
+        ) {
+
+            const repo =
+                resource.repo || {};
+
+            const skill =
+                resource.skill ||
+                "Resource";
+
+            const name =
+                repo.full_name ||
+                "GitHub Repository";
+
+            const description =
+                repo.description ||
+                "A relevant learning resource.";
+
+            const stars =
+                Number(
+                    repo.stargazers_count ||
+                    0
+                );
+
+            const url =
+                safeUrl(
+                    repo.html_url
+                );
+
+            return `
+                <article
+                    class="resource-card"
+                >
+
+                    <div
+                        class="resource-card-header"
+                    >
+
+                        <span
+                            class="resource-skill"
+                        >
+                            ${escapeHTML(
+                                skill
+                            )}
+                        </span>
+
+                        <span
+                            class="resource-type-badge"
+                        >
+                            GitHub
+                        </span>
+
+                    </div>
+
+                    <h4>
+                        ${escapeHTML(
+                            name
+                        )}
+                    </h4>
+
+                    <p
+                        class="resource-description"
+                    >
+                        ${escapeHTML(
+                            description
+                        )}
+                    </p>
+
+                    <div
+                        class="resource-meta"
+                    >
+
+                        <span>
+                            &#9733;
+                            ${formatStars(
+                                stars
+                            )}
+                        </span>
+
+                        <span>
+                            Relevance
+                            ${Number(
+                                resource.score ||
+                                0
+                            )}
+                        </span>
+
+                    </div>
+
+                    <a
+                        class="resource-link"
+                        href="${escapeHTML(
+                            url
+                        )}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        View on GitHub
+                        &#8599;
+                    </a>
+
+                </article>
+            `;
+        }
+
+        function createResourceCarousel(
+            options
+        ) {
+
+            const title =
+                options.title ||
+                "Resources";
+
+            const icon =
+                options.icon ||
+                "&#9679;";
+
+            const cards =
+                Array.isArray(
+                    options.cards
+                )
+                    ? options.cards
+                    : [];
+
+            if (!cards.length) {
+                return "";
+            }
+
+            const subtitle =
+                `${cards.length} ` +
+                (
+                    cards.length === 1
+                        ? "resource"
+                        : "resources"
+                );
+
+            return `
+                <div class="resource-group">
+
+                    <div
+                        class="resource-group-header"
+                    >
+
+                        <div
+                            class="resource-group-heading"
+                        >
+
+                            <span
+                                class="resource-group-icon"
+                            >
+                                ${icon}
+                            </span>
+
+                            <div>
+
+                                <div
+                                    class="resource-group-title"
+                                >
+                                    ${escapeHTML(
+                                        title
+                                    )}
+                                </div>
+
+                                <div
+                                    class="resource-group-subtitle"
+                                >
+                                    ${escapeHTML(
+                                        subtitle
+                                    )}
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div
+                            class="resource-group-controls"
+                        >
+
+                            <button
+                                type="button"
+                                class="resource-carousel-button"
+                                data-carousel-prev
+                                aria-label="Scroll ${escapeHTML(
+                                    title
+                                )} left"
+                            >
+                                &#10094;
+                            </button>
+
+                            <button
+                                type="button"
+                                class="resource-carousel-button"
+                                data-carousel-next
+                                aria-label="Scroll ${escapeHTML(
+                                    title
+                                )} right"
+                            >
+                                &#10095;
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <div
+                        class="resource-carousel"
+                        data-carousel
+                        tabindex="0"
+                        role="group"
+                        aria-label="${escapeHTML(
+                            title
+                        )}"
+                    >
+
+                        ${cards.join("")}
+
+                    </div>
+
+                </div>
+            `;
+        }
+
         function createResources(
             result
         ) {
@@ -1573,237 +1923,75 @@ document.addEventListener(
                 `;
             }
 
-            const curatedCards = curated.map(
-                function (resource) {
+            const documentationCards =
+                curated
+                    .filter(
+                        function (resource) {
+                            return (
+                                resource &&
+                                resource.type ===
+                                    "Documentation"
+                            );
+                        }
+                    )
+                    .map(
+                        createCuratedCard
+                    );
 
-                    const skill =
-                        resource.skill ||
-                        "Resource";
+            const videoCards =
+                curated
+                    .filter(
+                        function (resource) {
+                            return (
+                                resource &&
+                                resource.type !==
+                                    "Documentation"
+                            );
+                        }
+                    )
+                    .map(
+                        createCuratedCard
+                    );
 
-                    const type =
-                        resource.type ||
-                        "Learning Resource";
+            const githubCards =
+                github.map(
+                    createGitHubCard
+                );
 
-                    const title =
-                        resource.title ||
-                        `${skill} Resource`;
+            const groups = [
+                createResourceCarousel({
+                    title:
+                        "GitHub Projects",
 
-                    const description =
-                        resource.description ||
-                        "A recommended learning resource.";
+                    icon:
+                        "&#9733;",
 
-                    const url =
-                        safeUrl(
-                            resource.url
-                        );
+                    cards:
+                        githubCards
+                }),
 
-                    let metaText =
-                        "Free Resource";
+                createResourceCarousel({
+                    title:
+                        "Video Tutorials & Courses",
 
-                    let actionText =
-                        "Open Resource";
+                    icon:
+                        "&#9654;",
 
-                    if (type === "Documentation") {
-                        metaText =
-                            "Official Documentation";
-                        actionText =
-                            "View Documentation";
-                    } else if (type === "Practice") {
-                        metaText =
-                            "Hands-on Practice";
-                        actionText =
-                            "Start Practice";
-                    } else if (
-                        type ===
-                        "YouTube Tutorial Search"
-                    ) {
-                        metaText =
-                            "YouTube Search";
-                        actionText =
-                            "Search YouTube";
-                    }
+                    cards:
+                        videoCards
+                }),
 
-                    return `
-                        <article
-                            class="resource-card"
-                        >
+                createResourceCarousel({
+                    title:
+                        "Official Documentation",
 
-                            <div
-                                class="resource-card-header"
-                            >
+                    icon:
+                        "&#128218;",
 
-                                <span
-                                    class="resource-skill"
-                                >
-                                    ${escapeHTML(
-                                        skill
-                                    )}
-                                </span>
-
-                                <span
-                                    class="resource-type-badge"
-                                >
-                                    ${escapeHTML(
-                                        type
-                                    )}
-                                </span>
-
-                            </div>
-
-                            <h4>
-                                ${escapeHTML(
-                                    title
-                                )}
-                            </h4>
-
-                            <p
-                                class="resource-description"
-                            >
-                                ${escapeHTML(
-                                    description
-                                )}
-                            </p>
-
-                            <div
-                                class="resource-meta"
-                            >
-
-                                <span>
-                                    ${escapeHTML(
-                                        metaText
-                                    )}
-                                </span>
-
-                                <span>
-                                    Free
-                                </span>
-
-                            </div>
-
-                            <a
-                                class="resource-link"
-                                href="${escapeHTML(
-                                    url
-                                )}"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                ${escapeHTML(
-                                    actionText
-                                )}
-                                &#8599;
-                            </a>
-
-                        </article>
-                    `;
-                }
-            );
-
-            const githubCards = github.map(
-                function (resource) {
-
-                    const repo =
-                        resource.repo || {};
-
-                    const skill =
-                        resource.skill ||
-                        "Resource";
-
-                    const name =
-                        repo.full_name ||
-                        "GitHub Repository";
-
-                    const description =
-                        repo.description ||
-                        "A relevant learning resource.";
-
-                    const stars =
-                        Number(
-                            repo.stargazers_count ||
-                            0
-                        );
-
-                    const url =
-                        safeUrl(
-                            repo.html_url
-                        );
-
-                    return `
-                        <article
-                            class="resource-card"
-                        >
-
-                            <div
-                                class="resource-card-header"
-                            >
-
-                                <span
-                                    class="resource-skill"
-                                >
-                                    ${escapeHTML(
-                                        skill
-                                    )}
-                                </span>
-
-                                <span
-                                    class="resource-type-badge"
-                                >
-                                    GitHub
-                                </span>
-
-                            </div>
-
-                            <h4>
-                                ${escapeHTML(
-                                    name
-                                )}
-                            </h4>
-
-                            <p
-                                class="resource-description"
-                            >
-                                ${escapeHTML(
-                                    description
-                                )}
-                            </p>
-
-                            <div
-                                class="resource-meta"
-                            >
-
-                                <span>
-                                    &#9733;
-                                    ${formatStars(
-                                        stars
-                                    )}
-                                </span>
-
-                                <span>
-                                    Relevance
-                                    ${Number(
-                                        resource.score ||
-                                        0
-                                    )}
-                                </span>
-
-                            </div>
-
-                            <a
-                                class="resource-link"
-                                href="${escapeHTML(
-                                    url
-                                )}"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                View on GitHub
-                                &#8599;
-                            </a>
-
-                        </article>
-                    `;
-                }
-            );
+                    cards:
+                        documentationCards
+                })
+            ].join("");
 
             return `
                 <section
@@ -1830,15 +2018,241 @@ document.addEventListener(
 
                     </div>
 
-                    <div class="resource-grid">
+                    <div class="resource-groups">
 
-                        ${curatedCards.join("")}
-                        ${githubCards.join("")}
+                        ${groups}
 
                     </div>
 
                 </section>
             `;
+        }
+
+        // =================================================
+        // RESOURCE CAROUSEL CONTROLS
+        // =================================================
+
+        function syncCarouselButtons(
+            carousel
+        ) {
+
+            if (
+                !carousel ||
+                !carousel.classList
+            ) {
+                return;
+            }
+
+            const group =
+                carousel.closest(
+                    ".resource-group"
+                );
+
+            if (!group) {
+                return;
+            }
+
+            const previousButton =
+                group.querySelector(
+                    "[data-carousel-prev]"
+                );
+
+            const nextButton =
+                group.querySelector(
+                    "[data-carousel-next]"
+                );
+
+            if (
+                !previousButton ||
+                !nextButton
+            ) {
+                return;
+            }
+
+            const maxScroll =
+                carousel.scrollWidth -
+                carousel.clientWidth;
+
+            const position =
+                Math.max(
+                    0,
+                    carousel.scrollLeft
+                );
+
+            const threshold = 2;
+
+            const hasOverflow =
+                maxScroll > threshold;
+
+            const atStart =
+                position <= threshold;
+
+            const atEnd =
+                position >=
+                    maxScroll - threshold;
+
+            previousButton.disabled =
+                !hasOverflow || atStart;
+
+            nextButton.disabled =
+                !hasOverflow || atEnd;
+
+            group.classList.toggle(
+                "has-no-overflow",
+                !hasOverflow
+            );
+        }
+
+        function syncAllCarousels(
+            root
+        ) {
+
+            const scope =
+                root || document;
+
+            scope
+                .querySelectorAll(
+                    "[data-carousel]"
+                )
+                .forEach(
+                    syncCarouselButtons
+                );
+        }
+
+        function scrollCarousel(
+            carousel,
+            direction
+        ) {
+
+            if (!carousel) {
+                return;
+            }
+
+            const step =
+                Math.max(
+                    200,
+                    Math.round(
+                        carousel.clientWidth * 0.8
+                    )
+                );
+
+            const target =
+                carousel.scrollLeft +
+                step * direction;
+
+            if (
+                typeof carousel.scrollTo ===
+                    "function"
+            ) {
+
+                carousel.scrollTo({
+                    left: target,
+                    behavior: "smooth"
+                });
+
+            } else {
+                carousel.scrollLeft =
+                    target;
+            }
+
+            window.setTimeout(
+                function () {
+                    syncCarouselButtons(
+                        carousel
+                    );
+                },
+                400
+            );
+        }
+
+        function initCarouselControls() {
+
+            document.addEventListener(
+                "click",
+                function (event) {
+
+                    const button =
+                        event.target instanceof
+                            Element
+                            ? event.target.closest(
+                                "[data-carousel-prev], [data-carousel-next]"
+                            )
+                            : null;
+
+                    if (
+                        !button ||
+                        button.disabled
+                    ) {
+                        return;
+                    }
+
+                    const group =
+                        button.closest(
+                            ".resource-group"
+                        );
+
+                    if (!group) {
+                        return;
+                    }
+
+                    const carousel =
+                        group.querySelector(
+                            "[data-carousel]"
+                        );
+
+                    if (!carousel) {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    scrollCarousel(
+                        carousel,
+                        button.hasAttribute(
+                            "data-carousel-next"
+                        )
+                            ? 1
+                            : -1
+                    );
+                }
+            );
+
+            document.addEventListener(
+                "scroll",
+                function (event) {
+
+                    const target =
+                        event.target;
+
+                    if (
+                        !(target instanceof Element) ||
+                        !target.hasAttribute(
+                            "data-carousel"
+                        )
+                    ) {
+                        return;
+                    }
+
+                    syncCarouselButtons(
+                        target
+                    );
+                },
+                true
+            );
+
+            window.addEventListener(
+                "resize",
+                function () {
+                    syncAllCarousels();
+                }
+            );
+
+            window.addEventListener(
+                "load",
+                function () {
+                    syncAllCarousels();
+                }
+            );
         }
 
         // =================================================
@@ -2294,6 +2708,12 @@ document.addEventListener(
                     result
                 );
 
+            window.requestAnimationFrame(
+                function () {
+                    syncAllCarousels();
+                }
+            );
+
             resultsSection.classList.remove(
                 "hidden"
             );
@@ -2408,6 +2828,12 @@ document.addEventListener(
 
         ${buildAnalysisMarkup(result)}
     `;
+
+    window.requestAnimationFrame(
+        function () {
+            syncAllCarousels();
+        }
+    );
 
     savedResultsContent.classList.remove(
         "hidden"
@@ -2845,6 +3271,8 @@ document.addEventListener(
         if (currentAnalysisTab) {
             currentAnalysisTab.disabled = true;
         }
+
+        initCarouselControls();
 
         loadAnalysisHistory();
 
