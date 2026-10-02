@@ -234,6 +234,8 @@ a {
 
     gap: 10px;
 
+    flex-shrink: 0;
+
     font-size: 1.55rem;
 
     font-weight: 800;
@@ -323,10 +325,14 @@ a {
     display: flex;
     align-items: center;
     gap: 12px;
+
+    min-width: 0;
 }
 
 .user-email {
     max-width: 240px;
+    min-width: 0;
+
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -334,6 +340,10 @@ a {
     color: var(--olive-soft);
     font-size: 0.8rem;
     font-weight: 650;
+}
+
+.user-email.is-empty {
+    display: none;
 }
 
 .logout-button {
@@ -3046,7 +3056,8 @@ textarea:focus,
     }
 
     .user-email {
-        display: none;
+        max-width: 128px;
+        font-size: 0.74rem;
     }
 
 }

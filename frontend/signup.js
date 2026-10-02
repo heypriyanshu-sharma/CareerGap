@@ -6,6 +6,62 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("confirm-password");
     const signupButton = document.querySelector(".login-button");
 
+    // =================================================
+    // SHOW / HIDE PASSWORD
+    // Matches the existing login page pattern.
+    // Toggling only swaps the input type, so the
+    // entered value is never read or modified.
+    // =================================================
+
+    function setupPasswordToggle(input, toggle, label) {
+        if (!input || !toggle) {
+            return;
+        }
+
+        const openEye =
+            toggle.querySelector(".password-eye-open");
+
+        const closedEye =
+            toggle.querySelector(".password-eye-closed");
+
+        toggle.addEventListener("click", function () {
+            const isPassword = input.type === "password";
+
+            input.type = isPassword ? "text" : "password";
+
+            if (openEye) {
+                openEye.classList.toggle("hidden", isPassword);
+            }
+
+            if (closedEye) {
+                closedEye.classList.toggle("hidden", !isPassword);
+            }
+
+            toggle.setAttribute(
+                "aria-label",
+                isPassword
+                    ? `Hide ${label}`
+                    : `Show ${label}`
+            );
+
+            toggle.setAttribute("aria-pressed", String(isPassword));
+
+            input.focus();
+        });
+    }
+
+    setupPasswordToggle(
+        passwordInput,
+        document.getElementById("password-toggle"),
+        "password"
+    );
+
+    setupPasswordToggle(
+        confirmPasswordInput,
+        document.getElementById("confirm-password-toggle"),
+        "password confirmation"
+    );
+
     signupForm.addEventListener("submit", async function (event) {
         event.preventDefault();
 

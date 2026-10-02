@@ -98,12 +98,79 @@ document.addEventListener(
                 "auth-action-button"
             );
 
+        const userIdentityLabel =
+            document.getElementById(
+                "user-email"
+            );
+
         let analysisHistoryData = [];
         let currentAnalysis = null;
 
         // =================================================
         // AUTH ACTION
         // =================================================
+
+        function resolveUserIdentity(
+            user
+        ) {
+
+            if (!user) {
+                return "";
+            }
+
+            const metadata =
+                user.user_metadata &&
+                typeof user.user_metadata ===
+                    "object"
+                    ? user.user_metadata
+                    : {};
+
+            const fullName =
+                metadata.full_name ||
+                metadata.name ||
+                metadata.user_name;
+
+            if (
+                typeof fullName === "string" &&
+                fullName.trim()
+            ) {
+                return fullName.trim();
+            }
+
+            if (
+                typeof user.email === "string" &&
+                user.email.trim()
+            ) {
+                return user.email.trim();
+            }
+
+            return "";
+        }
+
+        function displayUserIdentity(
+            user
+        ) {
+
+            if (!userIdentityLabel) {
+                return;
+            }
+
+            const identity =
+                resolveUserIdentity(
+                    user
+                );
+
+            userIdentityLabel.textContent =
+                identity;
+
+            userIdentityLabel.title =
+                identity;
+
+            userIdentityLabel.classList.toggle(
+                "is-empty",
+                !identity
+            );
+        }
 
         async function setupAuthAction() {
 
@@ -115,6 +182,10 @@ document.addEventListener(
                 await careerGapSupabase.auth.getSession();
 
             if (error || !data.session) {
+
+                displayUserIdentity(
+                    null
+                );
 
                 authActionButton.textContent =
                     "Login";
@@ -136,6 +207,10 @@ document.addEventListener(
                 return;
             }
 
+            displayUserIdentity(
+                data.session.user
+            );
+
             authActionButton.textContent =
                 "Log out";
 
@@ -152,6 +227,10 @@ document.addEventListener(
                     authActionButton.textContent =
                         "Logging out...";
 
+                    displayUserIdentity(
+                        null
+                    );
+
                     const { error } =
                         await careerGapSupabase.auth.signOut();
 
@@ -166,6 +245,10 @@ document.addEventListener(
 
                         authActionButton.textContent =
                             "Log out";
+
+                        displayUserIdentity(
+                            data.session.user
+                        );
 
                         return;
                     }
