@@ -4156,3 +4156,127 @@ textarea:focus,
     color: var(--olive-soft);
     font-size: 0.86rem;
 }
+
+/* =========================================================
+
+   ATS JOB DESCRIPTION KEYWORDS
+
+========================================================= */
+
+.ats-card {
+
+    padding: 30px;
+
+}
+
+.ats-note {
+
+    margin: 0 0 18px;
+
+    color: var(--olive-soft);
+
+    font-size: 0.9rem;
+
+    line-height: 1.5;
+
+}
+
+.ats-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+
+    margin: 0;
+
+    padding: 0;
+
+    list-style: none;
+
+}
+
+.ats-keyword {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    padding: 10px 14px;
+
+    background: var(--pistachio-soft);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius-sm);
+
+}
+
+.ats-term {
+
+    flex: 1;
+
+    font-weight: 600;
+
+    color: var(--olive-dark);
+
+    overflow-wrap: anywhere;
+
+}
+
+.ats-badge {
+
+    flex-shrink: 0;
+
+    padding: 3px 10px;
+
+    border-radius: 999px;
+
+    background: var(--butter-deep);
+
+    color: var(--olive-dark);
+
+    font-size: 0.75rem;
+
+    font-weight: 700;
+
+    letter-spacing: 0.04em;
+
+    text-transform: uppercase;
+
+}
+
+.ats-badge--required {
+
+    background: var(--olive);
+
+    color: var(--cream);
+
+}
+
+.ats-badge--preferred {
+
+    background: var(--pistachio);
+
+    color: var(--olive-dark);
+
+}
+
+.ats-frequency {
+
+    flex-shrink: 0;
+
+    min-width: 2.5em;
+
+    color: var(--olive-soft);
+
+    font-size: 0.8rem;
+
+    font-variant-numeric: tabular-nums;
+
+    text-align: right;
+
+}

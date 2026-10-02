@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from auth import get_current_user, security
 from career_gap import run_careergap
 from ai_advisor import generate_career_advice
+from ats_match import extract_job_keywords
 from database import (
     get_analysis_history,
     save_analysis,
@@ -232,6 +233,25 @@ def analyze(
             status_code=500,
             detail="CareerGap analysis failed unexpectedly.",
         )
+
+@app.post("/ats/keywords")
+def ats_keywords(
+    career_gap_request: CareerGapRequest,
+    claims: dict = Depends(get_current_user),
+):
+    """Return ranked keywords extracted from the job description.
+
+    This describes the job description only. It does not score the
+    candidate, and it makes no claim about which keywords the resume
+    satisfies. It reads nothing from the database and writes nothing.
+    """
+
+    return {
+        "keywords": extract_job_keywords(
+            career_gap_request.job_description
+        )
+    }
+
 @app.delete(
     "/analyses/{analysis_id}",
     status_code=204

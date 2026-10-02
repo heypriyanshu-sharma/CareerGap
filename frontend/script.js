@@ -936,7 +936,78 @@ document.addEventListener(
                 );
             }
 
-            return await response.json();
+            const result =
+                await response.json();
+
+            const keywords =
+                await fetchAtsKeywords(
+                    careerGapData
+                );
+
+            if (keywords) {
+                result.ats_keywords =
+                    keywords;
+            }
+
+            return result;
+        }
+
+        // =================================================
+        // API — ATS KEYWORDS
+        // =================================================
+
+        async function fetchAtsKeywords(
+            careerGapData
+        ) {
+
+            const accessToken =
+                await getAccessToken(
+                    false
+                );
+
+            if (!accessToken) {
+                return null;
+            }
+
+            try {
+
+                const response =
+                    await fetch(
+                        `${API_BASE_URL}/ats/keywords`,
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+
+                                Authorization:
+                                    `Bearer ${accessToken}`
+                            },
+
+                            body:
+                                JSON.stringify(
+                                    careerGapData
+                                )
+                        }
+                    );
+
+                if (!response.ok) {
+                    return null;
+                }
+
+                const data =
+                    await response.json();
+
+                return Array.isArray(
+                    data.keywords
+                )
+                    ? data.keywords
+                    : null;
+
+            } catch (_) {
+                return null;
+            }
         }
 
         // =================================================
@@ -1129,6 +1200,106 @@ document.addEventListener(
         // =================================================
         // SKILL BREAKDOWN
         // =================================================
+
+        // =================================================
+        // ATS — JOB DESCRIPTION KEYWORDS
+        // =================================================
+
+        function createAtsKeywords(
+            result
+        ) {
+
+            const keywords =
+                Array.isArray(
+                    result.ats_keywords
+                )
+                    ? result.ats_keywords
+                    : [];
+
+            if (keywords.length === 0) {
+                return "";
+            }
+
+            const items =
+                keywords
+                    .map(
+                        function (keyword) {
+
+                            const importance =
+                                String(
+                                    keyword.importance ||
+                                    "Mentioned"
+                                );
+
+                            const frequency =
+                                Number(
+                                    keyword.frequency
+                                ) || 0;
+
+                            const label =
+                                importance
+                                    .toLowerCase()
+                                    .replace(
+                                        /[^a-z]+/g,
+                                        "-"
+                                    );
+
+                            return `
+                                <li class="ats-keyword">
+
+                                    <span class="ats-term">
+                                        ${escapeHTML(
+                                            keyword.term
+                                        )}
+                                    </span>
+
+                                    <span class="ats-badge ats-badge--${label}">
+                                        ${escapeHTML(
+                                            importance
+                                        )}
+                                    </span>
+
+                                    <span class="ats-frequency">
+                                        ${escapeHTML(
+                                            frequency
+                                        )}x
+                                    </span>
+
+                                </li>
+                            `;
+                        }
+                    )
+                    .join("");
+
+            return `
+                <article
+                    class="dashboard-card ats-card"
+                >
+
+                    <div class="card-title">
+
+                        <span class="card-icon">
+                            &#9678;
+                        </span>
+
+                        Job Description Keywords
+
+                    </div>
+
+                    <p class="ats-note">
+                        Keywords extracted from this job
+                        description. This is not a score and
+                        is not a comparison with your
+                        resume.
+                    </p>
+
+                    <ul class="ats-list">
+                        ${items}
+                    </ul>
+
+                </article>
+            `;
+        }
 
         function createSkillBreakdown(
             result
@@ -2756,9 +2927,15 @@ document.addEventListener(
                     result
                 );
 
+            const atsKeywords =
+                createAtsKeywords(
+                    result
+                );
+
             return (
                 top +
                 projects +
+                atsKeywords +
                 aiAdvice +
                 `
                     <div
