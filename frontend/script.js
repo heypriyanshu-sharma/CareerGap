@@ -103,8 +103,277 @@ document.addEventListener(
                 "user-email"
             );
 
+        // =================================================
+        // DASHBOARD NAVIGATION
+        // =================================================
+
+        const primaryNavButtons =
+            Array.from(
+                document.querySelectorAll(
+                    ".primary-nav-btn"
+                )
+            );
+
+        const subnav =
+            document.getElementById(
+                "analysis-subnav"
+            );
+
+        const subnavTabs =
+            Array.from(
+                document.querySelectorAll(
+                    ".analysis-subnav-tab"
+                )
+            );
+
+        const analyzeSection =
+            document.getElementById(
+                "analyze"
+            );
+
+        const resumeBuilderSection =
+            document.getElementById(
+                "resume-builder"
+            );
+
+        const brandLink =
+            document.querySelector(
+                ".brand"
+            );
+
+        let activeWorkspace = "analyze";
+
         let analysisHistoryData = [];
         let currentAnalysis = null;
+
+        function setActiveWorkspace(view) {
+
+            activeWorkspace = view;
+
+            primaryNavButtons.forEach(
+                function (button) {
+
+                    const isActive =
+                        button.dataset.view === view;
+
+                    button.classList.toggle(
+                        "active",
+                        isActive
+                    );
+
+                    button.setAttribute(
+                        "aria-current",
+                        isActive
+                            ? "page"
+                            : "false"
+                    );
+                }
+            );
+
+            const onAnalyze =
+                view === "analyze";
+
+            if (analyzeSection) {
+                analyzeSection.classList.toggle(
+                    "hidden",
+                    !onAnalyze
+                );
+            }
+
+            if (resumeBuilderSection) {
+                resumeBuilderSection.classList.toggle(
+                    "hidden",
+                    view !== "resume-builder"
+                );
+            }
+
+            if (subnav) {
+                subnav.classList.toggle(
+                    "hidden",
+                    !onAnalyze
+                );
+            }
+
+            if (onAnalyze) {
+                setAnalysisView("current");
+                return;
+            }
+
+            setAnalysisView("history");
+
+            if (view === "saved-analyses") {
+                loadAnalysisHistory();
+            }
+        }
+
+        function syncStickyOffsets() {
+
+            const navInner =
+                document.querySelector(
+                    ".nav-inner"
+                );
+
+            if (navInner) {
+
+                const height =
+                    navInner.getBoundingClientRect()
+                        .height;
+
+                if (height > 0) {
+
+                    document.documentElement.style
+                        .setProperty(
+                            "--navbar-offset",
+                            Math.round(height) + "px"
+                        );
+                }
+            }
+
+            if (subnav) {
+
+                const height =
+                    subnav.getBoundingClientRect()
+                        .height;
+
+                if (height > 0) {
+
+                    document.documentElement.style
+                        .setProperty(
+                            "--subnav-offset",
+                            Math.round(height) + "px"
+                        );
+                }
+            }
+        }
+
+        window.addEventListener(
+            "resize",
+            function () {
+
+                window.clearTimeout(
+                    syncStickyOffsets.timer
+                );
+
+                syncStickyOffsets.timer =
+                    window.setTimeout(
+                        syncStickyOffsets,
+                        120
+                    );
+            }
+        );
+
+        function enableSubnav(enabled) {
+            subnavTabs.forEach(                function (tab) {
+
+                    if (enabled) {
+                        tab.removeAttribute(
+                            "disabled"
+                        );
+                    } else {
+                        tab.setAttribute(
+                            "disabled",
+                            "disabled"
+                        );
+                    }
+                }
+            );
+        }
+
+        function activateSubnavTab(tab) {
+
+            if (
+                !tab ||
+                tab.hasAttribute("disabled")
+            ) {
+                return;
+            }
+
+            subnavTabs.forEach(
+                function (other) {
+
+                    const isActive =
+                        other === tab;
+
+                    other.classList.toggle(
+                        "active",
+                        isActive
+                    );
+
+                    other.setAttribute(
+                        "aria-selected",
+                        isActive
+                            ? "true"
+                            : "false"
+                    );
+                }
+            );
+
+            const target =
+                document.querySelector(
+                    tab.dataset.target
+                );
+
+            if (!target) {
+                return;
+            }
+
+            const reduced =
+                window.matchMedia(
+                    "(prefers-reduced-motion: reduce)"
+                ).matches;
+
+            target.scrollIntoView({
+                behavior: reduced
+                    ? "auto"
+                    : "smooth",
+                block: "start",
+            });
+        }
+
+        primaryNavButtons.forEach(
+            function (button) {
+
+                button.addEventListener(
+                    "click",
+                    function () {
+
+                        setActiveWorkspace(
+                            button.dataset.view
+                        );
+                    }
+                );
+            }
+        );
+
+        subnavTabs.forEach(
+            function (tab) {
+
+                tab.addEventListener(
+                    "click",
+                    function () {
+
+                        activateSubnavTab(tab);
+                    }
+                );
+            }
+        );
+
+        if (brandLink) {
+
+            brandLink.addEventListener(
+                "click",
+                function () {
+
+                    setActiveWorkspace(
+                        "analyze"
+                    );
+                }
+            );
+        }
+
+        enableSubnav(false);
+
+        syncStickyOffsets();
 
         // =================================================
         // AUTH ACTION
@@ -1273,6 +1542,7 @@ document.addEventListener(
 
             return `
                 <article
+                    id="keywords-section"
                     class="dashboard-card ats-card"
                 >
 
@@ -1320,6 +1590,7 @@ document.addEventListener(
 
                 return `
                     <article
+                        id="skills-section"
                         class="dashboard-card skill-card"
                     >
 
@@ -1343,6 +1614,7 @@ document.addEventListener(
 
             return `
                 <article
+                    id="skills-section"
                     class="dashboard-card skill-card"
                 >
 
@@ -1569,6 +1841,7 @@ document.addEventListener(
 
             return `
                 <section
+                    id="projects-section"
                     class="dashboard-section project-analysis-section"
                 >
 
@@ -2249,6 +2522,7 @@ document.addEventListener(
 
             return `
                 <section
+                    id="resources-section"
                     class="dashboard-section resources-section"
                 >
 
@@ -2791,6 +3065,7 @@ document.addEventListener(
 
             return `
                 <section
+                    id="ai-advice-section"
                     class="dashboard-section ai-advice-section"
                 >
 
@@ -2889,6 +3164,7 @@ document.addEventListener(
 
             const top = `
                 <div
+                    id="overview-section"
                     class="dashboard-top"
                 >
 
@@ -2967,6 +3243,12 @@ document.addEventListener(
                 buildAnalysisMarkup(
                     result
                 );
+
+            enableSubnav(true);
+
+            setActiveWorkspace(
+                activeWorkspace
+            );
 
             window.requestAnimationFrame(
                 function () {
@@ -3536,8 +3818,8 @@ document.addEventListener(
 
         loadAnalysisHistory();
 
-        setAnalysisView(
-            "history"
+        setActiveWorkspace(
+            "analyze"
         );
     }
 );

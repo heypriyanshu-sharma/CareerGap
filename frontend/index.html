@@ -53,19 +53,44 @@
         </a>
 
 
-        <nav class="nav-links">
+        <nav class="primary-nav" aria-label="Primary navigation">
 
-            <a href="#analyze">
+            <button
+                type="button"
+                id="nav-analyze"
+                class="primary-nav-btn active"
+                data-view="analyze"
+            >
                 Analyze
-            </a>
+            </button>
 
-            <a href="#how-it-works">
-                How it works
-            </a>
+            <button
+                type="button"
+                id="nav-resume-builder"
+                class="primary-nav-btn"
+                data-view="resume-builder"
+            >
+                Resume Builder
+            </button>
+
+            <button
+                type="button"
+                id="nav-saved-analyses"
+                class="primary-nav-btn"
+                data-view="saved-analyses"
+            >
+                Saved Analyses
+            </button>
 
         </nav>
 
-                <div class="account-area">
+
+        <span class="dashboard-concept-badge">
+            Dashboard concept
+        </span>
+
+
+        <div class="account-area">
 
             <span
                 id="user-email"
@@ -81,6 +106,8 @@
             </button>
 
         </div>
+
+    </div>
 
 </header>
 
@@ -217,6 +244,118 @@
 </section>
 
 
+<!-- =========================================================
+     PAGE INTRO
+========================================================= -->
+
+<section class="page-intro" aria-labelledby="page-intro-heading">
+    <div class="page-intro-inner">
+        <div class="nav-divider"></div>
+
+        <h1 id="page-intro-heading" class="page-intro-heading">
+            Your career readiness
+        </h1>
+        <p class="page-intro-text">
+            Analyze a job description and discover your next steps.
+        </p>
+    </div>
+</section>
+
+
+<!-- =========================================================
+     ANALYSIS NAVIGATION (SECONDARY)
+========================================================= -->
+
+<nav
+    class="analysis-subnav"
+    id="analysis-subnav"
+    aria-label="Analysis navigation"
+>
+        <div class="analysis-subnav-inner">
+            <h2 class="analysis-subnav-heading">
+                Analysis navigation
+            </h2>
+
+            <div class="analysis-subnav-tabs" role="tablist">
+                <button
+                    type="button"
+                    role="tab"
+                    id="subnav-overview"
+                    class="analysis-subnav-tab active"
+                    disabled
+                    data-target="#overview-section"
+                    aria-selected="true"
+                >
+                    Overview
+                </button>
+
+                <button
+                    type="button"
+                    role="tab"
+                    id="subnav-skills"
+                    class="analysis-subnav-tab"
+                    disabled
+                    data-target="#skills-section"
+                    aria-selected="false"
+                >
+                    Skills
+                </button>
+
+                <button
+                    type="button"
+                    role="tab"
+                    id="subnav-projects"
+                    class="analysis-subnav-tab"
+                    disabled
+                    data-target="#projects-section"
+                    aria-selected="false"
+                >
+                    Projects
+                </button>
+
+                <button
+                    type="button"
+                    role="tab"
+                    id="subnav-keywords"
+                    class="analysis-subnav-tab"
+                    disabled
+                    data-target="#keywords-section"
+                    aria-selected="false"
+                >
+                    Keywords
+                </button>
+
+                <button
+                    type="button"
+                    role="tab"
+                    id="subnav-resources"
+                    class="analysis-subnav-tab"
+                    disabled
+                    data-target="#resources-section"
+                    aria-selected="false"
+                >
+                    Resources
+                </button>
+
+                <button
+                    type="button"
+                    role="tab"
+                    id="subnav-ai-advice"
+                    class="analysis-subnav-tab"
+                    disabled
+                    data-target="#ai-advice-section"
+                    aria-selected="false"
+                >
+                    AI Advice
+                </button>
+            </div>
+
+            <p class="analysis-subnav-hint">
+                Concept only. The analysis navigation stays visible while scrolling through results.
+            </p>
+        </div>
+</nav>
+
 
 <!-- =========================================================
      ANALYSIS INPUT
@@ -244,6 +383,8 @@
         </p>
 
     </div>
+
+
 
 
     <div class="analysis-card">
@@ -639,6 +780,33 @@
 
     </div>
 
+</section>
+
+<!-- =========================================================
+     RESUME BUILDER WORKSPACE
+========================================================= -->
+
+<section
+    id="resume-builder"
+    class="workspace-section hidden"
+    aria-labelledby="resume-builder-heading"
+>
+    <div class="workspace-panel">
+        <p class="eyebrow">
+            RESUME BUILDER
+        </p>
+
+        <h2 id="resume-builder-heading">
+            Resume Builder
+        </h2>
+
+        <p class="workspace-note">
+            The Resume Builder is a separate workspace and is
+            not built yet. Nothing here generates or edits a
+            resume, so it is intentionally left empty rather
+            than showing controls that would not work.
+        </p>
+    </div>
 </section>
 
 </main>

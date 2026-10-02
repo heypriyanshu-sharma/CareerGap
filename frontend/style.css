@@ -6,6 +6,21 @@
 
 :root {
 
+    /* Dashboard navigation reference palette.
+
+       Scoped to the navigation shell so existing tokens keep their
+       current values and unrelated components are not recoloured. */
+
+    --ref-page: #F8F4E2;
+
+    --ref-green-dark: #315D3B;
+
+    --ref-green-primary: #2E6038;
+
+    --ref-green-pale: #EDF0E5;
+
+    --ref-green-border: #D7DCCB;
+
     --butter: #FFF8E1;
 
     --butter-deep: #F8F0D4;
@@ -39,6 +54,14 @@
     --radius-lg: 28px;
 
     --radius-md: 20px;
+
+    /* Sticky offsets. Defaults match the desktop header; script.js
+       re-measures them on load and resize so wrapped rows on narrow
+       screens cannot cause overlap. */
+
+    --navbar-offset: 76px;
+
+    --subnav-offset: 156px;
 
     --radius-sm: 14px;
 
@@ -96,7 +119,7 @@ body {
 
         sans-serif;
 
-    background: var(--butter);
+    background: var(--ref-page);
 
     color: var(--olive-dark);
 
@@ -551,7 +574,7 @@ a {
 
     width: min(1180px, 90%);
 
-    margin: 50px auto 120px;
+    margin: 34px auto 56px;
 
 }
 
@@ -561,7 +584,7 @@ a {
 
 .section-heading {
 
-    margin-bottom: 45px;
+    margin-bottom: 26px;
 
 }
 
@@ -603,9 +626,7 @@ a {
 
 .pillar-card {
 
-    padding: 34px;
-
-    min-height: 230px;
+    padding: 24px 26px;
 
     border-radius: var(--radius-lg);
 
@@ -669,9 +690,9 @@ a {
 
 .pillar-card h3 {
 
-    margin-top: 30px;
+    margin-top: 16px;
 
-    font-size: 1.35rem;
+    font-size: 1.2rem;
 
 }
 
@@ -681,9 +702,13 @@ a {
 
 .pillar-card p {
 
-    margin-top: 9px;
+    margin-top: 7px;
 
     color: var(--olive-soft);
+
+    font-size: 0.92rem;
+
+    line-height: 1.55;
 
 }
 
@@ -4278,5 +4303,376 @@ textarea:focus,
     font-variant-numeric: tabular-nums;
 
     text-align: right;
+
+}
+
+
+/* =========================================================
+
+   DASHBOARD NAVIGATION SHELL
+
+========================================================= */
+
+.primary-nav {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+}
+
+.primary-nav-btn {
+
+    padding: 9px 16px;
+
+    border: 1px solid var(--ref-green-border);
+
+    border-radius: 12px;
+
+    background: var(--ref-page);
+
+    color: var(--ref-green-dark);
+
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 650;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease;
+
+    white-space: nowrap;
+
+}
+
+.primary-nav-btn:hover {
+
+    border-color: var(--ref-green-primary);
+
+}
+
+.primary-nav-btn.active {
+
+    background: var(--ref-green-primary);
+    border-color: var(--ref-green-primary);
+
+    color: var(--white);
+
+}
+
+.dashboard-concept-badge {
+
+    padding: 5px 11px;
+
+    border: 1px solid var(--ref-green-border);
+    border-radius: 999px;
+
+    background: var(--ref-green-pale);
+
+    color: var(--ref-green-dark);
+
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+
+    white-space: nowrap;
+
+}
+
+.nav-divider {
+
+    height: 1px;
+
+    background: var(--border);
+
+}
+
+.page-intro {
+
+    padding: 8px 0 4px;
+
+}
+
+.page-intro-inner {
+
+    width: min(1180px, 90%);
+
+    margin: auto;
+
+}
+
+.page-intro-heading {
+
+    margin: 0;
+
+    color: var(--ref-green-dark);
+
+    font-size: 1.6rem;
+    font-weight: 700;
+
+}
+
+.page-intro-text {
+
+    margin: 8px 0 0;
+
+    color: var(--olive-soft);
+
+    font-size: 0.92rem;
+
+}
+
+.analysis-subnav {
+
+    position: sticky;
+
+    top: var(--navbar-offset);
+
+    z-index: 50;
+
+    margin: 0 0 24px;
+
+}
+
+.analysis-subnav-inner {
+
+    width: min(1180px, 90%);
+
+    margin: auto;
+
+    padding: 20px 24px;
+
+    background: var(--white);
+
+    border: 1px solid var(--ref-green-border);
+    border-radius: var(--radius-lg);
+
+}
+
+.analysis-subnav-heading {
+
+    margin: 0 0 14px;
+
+    color: var(--ref-green-dark);
+
+    font-size: 1rem;
+    font-weight: 700;
+
+}
+
+.analysis-subnav-tabs {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 8px;
+
+}
+
+.analysis-subnav-tab {
+
+    padding: 8px 14px;
+
+    border: 1px solid var(--ref-green-border);
+    border-radius: 10px;
+
+    background: var(--ref-green-pale);
+
+    color: var(--ref-green-dark);
+
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 650;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease;
+
+}
+
+.analysis-subnav-tab:hover:not(:disabled) {
+
+    border-color: var(--ref-green-primary);
+
+}
+
+.analysis-subnav-tab.active {
+
+    background: var(--ref-green-primary);
+    border-color: var(--ref-green-primary);
+
+    color: var(--white);
+
+}
+
+.analysis-subnav-tab:disabled {
+
+    opacity: 0.5;
+
+    cursor: not-allowed;
+
+}
+
+.analysis-subnav-hint {
+
+    margin: 14px 0 0;
+
+    color: var(--olive-soft);
+
+    font-size: 0.8rem;
+
+}
+
+.workspace-section {
+
+    padding: 24px 0 8px;
+
+}
+
+.workspace-panel {
+
+    width: min(1180px, 90%);
+
+    margin: auto;
+
+    padding: 34px;
+
+    background: var(--white);
+
+    border: 1px solid var(--ref-green-border);
+    border-radius: var(--radius-lg);
+
+}
+
+.workspace-panel h2 {
+
+    margin: 4px 0 0;
+
+    color: var(--ref-green-dark);
+
+    font-size: 1.5rem;
+
+}
+
+.workspace-note {
+
+    margin: 12px 0 0;
+
+    color: var(--olive-soft);
+
+    font-size: 0.92rem;
+
+    line-height: 1.6;
+
+    max-width: 62ch;
+
+}
+
+/* Secondary-nav targets sit below the sticky stack (navbar 76px plus the
+   analysis subnav), otherwise scrollIntoView tucks them underneath it. */
+
+#overview-section,
+#skills-section,
+#projects-section,
+#keywords-section,
+#resources-section,
+#ai-advice-section {
+
+    scroll-margin-top: calc(
+        var(--navbar-offset) +
+        var(--subnav-offset) +
+        12px
+    );
+
+}
+
+/* Desktop-first reference layout. Below 700px the rows wrap and the
+   secondary nav scrolls horizontally instead of stacking tall. */
+
+@media (max-width: 900px) {
+
+    .nav-inner {
+
+        height: auto;
+
+        padding: 14px 0;
+
+        flex-wrap: wrap;
+
+        gap: 12px;
+
+    }
+
+}
+
+@media (max-width: 700px) {
+
+    .primary-nav {
+
+        width: 100%;
+
+        overflow-x: auto;
+
+        padding-bottom: 4px;
+
+    }
+
+.analysis-subnav {
+
+        z-index: 50;
+
+    }
+
+    .analysis-subnav-inner {
+
+        padding: 16px;
+
+    }
+
+    .analysis-subnav-tabs {
+
+        flex-wrap: nowrap;
+
+        overflow-x: auto;
+
+        -webkit-overflow-scrolling: touch;
+
+    }
+
+.analysis-subnav-tab {
+
+        flex-shrink: 0;
+
+    }
+
+    #overview-section,
+    #skills-section,
+    #projects-section,
+    #keywords-section,
+    #resources-section,
+    #ai-advice-section {
+
+        scroll-margin-top: calc(
+            var(--navbar-offset) +
+            var(--subnav-offset) +
+            8px
+        );
+
+    }
+
+    .page-intro-heading {
+
+        font-size: 1.35rem;
+
+    }
 
 }
