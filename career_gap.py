@@ -5,7 +5,7 @@ from pathlib import Path
 from urllib.parse import quote_plus
 
 from github_search import search_github, rank_repositories
-from ai_advisor import generate_career_advice
+from ai_advisor import generate_career_advice, safe_error_detail
 
 
 # ============================================================
@@ -2029,7 +2029,8 @@ def display_results(
     except Exception as error:
 
         print(
-            f"AI advisor unavailable: {error}"
+            f"AI advisor unavailable: "
+            f"{safe_error_detail(error)}"
         )
 
 

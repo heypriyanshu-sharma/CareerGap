@@ -1,17 +1,47 @@
-import os
 import json
+import os
 
 from dotenv import load_dotenv
 from google import genai
 
 load_dotenv()
 
-api_key = os.getenv("GEMINI_API_KEY")
+DEFAULT_MODEL = "gemini-3.6-flash"
 
-if not api_key:
-    raise RuntimeError("GEMINI_API_KEY was not found in .env")
 
-client = genai.Client(api_key=api_key)
+def build_client():
+    """Create the Gemini client.
+
+    The client is built on demand so that importing this module never
+    fails. AI advice is an optional layer, so a missing key is reported
+    when advice is requested instead of breaking the whole application.
+    """
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY is not configured."
+        )
+
+    return genai.Client(api_key=api_key)
+
+
+def safe_error_detail(error):
+    """Return an error message that cannot leak the API key.
+
+    SDK errors can embed the request URL, and that URL carries the key.
+    """
+    detail = str(error)
+
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    if api_key:
+        detail = detail.replace(
+            api_key,
+            "[redacted]",
+        )
+
+    return detail
 
 
 def build_advisor_prompt(career_gap_data):
@@ -64,9 +94,28 @@ Keep the response concise and actionable.
 
 def generate_career_advice(career_gap_data):
     """Generate career advice from structured CareerGap evidence."""
+    client = build_client()
+
     prompt = build_advisor_prompt(career_gap_data)
+
+    model = (
+        os.getenv("GEMINI_MODEL")
+        or DEFAULT_MODEL
+    )
+
     interaction = client.interactions.create(
-        model="gemini-3.6-flash",
+        model=model,
         input=prompt
     )
-    return interaction.output_text
+
+    advice = (
+        getattr(interaction, "output_text", None)
+        or ""
+    ).strip()
+
+    if not advice:
+        raise RuntimeError(
+            "Gemini returned no advice text."
+        )
+
+    return advice

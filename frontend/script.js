@@ -187,10 +187,10 @@ document.addEventListener(
                 );
             }
 
-            if (subnav) {
-                subnav.classList.toggle(
+            if (analysisTabs) {
+                analysisTabs.classList.toggle(
                     "hidden",
-                    !onAnalyze
+                    view === "resume-builder"
                 );
             }
 
@@ -199,24 +199,95 @@ document.addEventListener(
                 return;
             }
 
-            setAnalysisView("history");
-
             if (view === "saved-analyses") {
+                setAnalysisView("history");
                 loadAnalysisHistory();
+                return;
             }
+
+            if (resultsSection) {
+                resultsSection.classList.add(
+                    "hidden"
+                );
+            }
+
+            if (analysisHistorySection) {
+                analysisHistorySection.classList.add(
+                    "hidden"
+                );
+            }
+
+            if (savedAnalysisSection) {
+                savedAnalysisSection.classList.add(
+                    "hidden"
+                );
+            }
+
+            if (currentAnalysisTab) {
+                currentAnalysisTab.classList.remove(
+                    "active"
+                );
+            }
+
+            if (historyTab) {
+                historyTab.classList.remove(
+                    "active"
+                );
+            }
+
+            if (savedAnalysisTab) {
+                savedAnalysisTab.classList.remove(
+                    "active"
+                );
+            }
+
+            syncSubnavState();
+        }
+
+        function scrollToWorkspace(view) {
+
+            let target = null;
+
+            if (view === "analyze") {
+                target = analyzeSection;
+            } else if (
+                view === "resume-builder"
+            ) {
+                target = resumeBuilderSection;
+            } else if (
+                view === "saved-analyses"
+            ) {
+                target = analysisHistorySection;
+            }
+
+            if (!target) {
+                return;
+            }
+
+            const reduced =
+                window.matchMedia(
+                    "(prefers-reduced-motion: reduce)"
+                ).matches;
+
+            target.scrollIntoView({
+                behavior: reduced
+                    ? "auto"
+                    : "smooth",
+                block: "start",
+            });
         }
 
         function syncStickyOffsets() {
 
-            const navInner =
+            const navbar =
                 document.querySelector(
-                    ".nav-inner"
+                    ".navbar"
                 );
 
-            if (navInner) {
+            if (navbar) {
 
                 const height =
-                    navInner.getBoundingClientRect()
+                    navbar.getBoundingClientRect()
                         .height;
 
                 if (height > 0) {
@@ -262,21 +333,137 @@ document.addEventListener(
             }
         );
 
-        function enableSubnav(enabled) {
-            subnavTabs.forEach(                function (tab) {
+        window.addEventListener(
+            "scroll",
+            function () {
 
-                    if (enabled) {
-                        tab.removeAttribute(
-                            "disabled"
+                window.clearTimeout(
+                    syncStickyOffsets.scrollTimer
+                );
+
+                syncStickyOffsets.scrollTimer =
+                    window.setTimeout(
+                        syncStickyOffsets,
+                        80
+                    );
+            },
+            { passive: true }
+        );
+
+        function setSubnavTabEnabled(
+            tab,
+            enabled
+        ) {
+
+            if (enabled) {
+                tab.removeAttribute(
+                    "disabled"
+                );
+            } else {
+                tab.setAttribute(
+                    "disabled",
+                    "disabled"
+                );
+            }
+        }
+
+        function getVisibleAnalysisContainer() {
+
+            if (
+                savedAnalysisSection &&
+                savedResultsContent &&
+                !savedAnalysisSection.classList.contains(
+                    "hidden"
+                )
+            ) {
+                return savedResultsContent;
+            }
+
+            if (
+                resultsSection &&
+                resultsContent &&
+                !resultsSection.classList.contains(
+                    "hidden"
+                )
+            ) {
+                return resultsContent;
+            }
+
+            return null;
+        }
+
+        function findSubnavTarget(targetSelector) {
+
+            const container =
+                getVisibleAnalysisContainer();
+
+            if (!container) {
+                return null;
+            }
+
+            return container.querySelector(
+                targetSelector
+            );
+        }
+
+        function syncSubnavState() {
+
+            const container =
+                getVisibleAnalysisContainer();
+
+            // Sections such as AI advice, project analysis and
+            // resources are optional, so each tab is resolved and
+            // enabled on its own instead of gating the whole bar.
+
+            const resolvedTargets =
+                subnavTabs.map(
+                    function (tab) {
+
+                        return Boolean(
+                            findSubnavTarget(
+                                tab.dataset.target
+                            )
                         );
-                    } else {
-                        tab.setAttribute(
-                            "disabled",
-                            "disabled"
-                        );
+
                     }
+                );
+
+            subnavTabs.forEach(
+                function (tab, index) {
+
+                    setSubnavTabEnabled(
+                        tab,
+                        resolvedTargets[index]
+                    );
+
                 }
             );
+
+            const isAnalyzing =
+                loadingSection &&
+                !loadingSection.classList.contains(
+                    "hidden"
+                );
+
+            const hasNavigableSections =
+                !isAnalyzing &&
+                Boolean(
+                    container
+                ) &&
+                resolvedTargets.some(
+                    function (resolved) {
+
+                        return resolved;
+
+                    }
+                );
+
+            if (subnav) {
+                subnav.classList.toggle(
+                    "hidden",
+                    !hasNavigableSections
+                );
+            }
         }
 
         function activateSubnavTab(tab) {
@@ -309,7 +496,7 @@ document.addEventListener(
             );
 
             const target =
-                document.querySelector(
+                findSubnavTarget(
                     tab.dataset.target
                 );
 
@@ -338,6 +525,10 @@ document.addEventListener(
                     function () {
 
                         setActiveWorkspace(
+                            button.dataset.view
+                        );
+
+                        scrollToWorkspace(
                             button.dataset.view
                         );
                     }
@@ -371,7 +562,7 @@ document.addEventListener(
             );
         }
 
-        enableSubnav(false);
+        syncSubnavState();
 
         syncStickyOffsets();
 
@@ -3056,10 +3247,22 @@ document.addEventListener(
             result
         ) {
 
+// The advisor stores plain text. Blank or non-text values carry no
+            // advice. A recorded advisor failure is reported inside the
+            // section instead of making the section disappear silently.
             const advice =
-                result.ai_advice;
+                typeof result.ai_advice ===
+                    "string"
+                    ? result.ai_advice.trim()
+                    : "";
 
-            if (!advice) {
+            const unavailable =
+                typeof result.ai_advice_error ===
+                    "string"
+                    ? result.ai_advice_error.trim()
+                    : "";
+
+            if (!advice && !unavailable) {
                 return "";
             }
 
@@ -3092,9 +3295,19 @@ document.addEventListener(
                     <div
                         class="ai-advice-content"
                     >
-                        ${renderAdviceMarkdown(
+                        ${
                             advice
-                        )}
+                                ? renderAdviceMarkdown(
+                                    advice
+                                )
+                                : `
+                                    <div class="empty-state">
+                                        ${escapeHTML(
+                                            unavailable
+                                        )}
+                                    </div>
+                                `
+                        }
                     </div>
 
                 </section>
@@ -3111,10 +3324,18 @@ document.addEventListener(
         view === "history" ||
         view === "saved";
 
+    // The current results panel is only revealed once a report has
+    // actually been rendered into it. Showing it empty leaves a bare
+    // background band on the initial Analyze screen.
+    const hasCurrentReport =
+        view === "current" &&
+        resultsContent &&
+        resultsContent.children.length > 0;
+
     if (resultsSection) {
         resultsSection.classList.toggle(
             "hidden",
-            view !== "current"
+            !hasCurrentReport
         );
     }
 
@@ -3152,6 +3373,8 @@ document.addEventListener(
             view === "saved"
         );
     }
+
+    syncSubnavState();
 }
 
         // =================================================
@@ -3244,7 +3467,7 @@ document.addEventListener(
                     result
                 );
 
-            enableSubnav(true);
+            syncSubnavState();
 
             setActiveWorkspace(
                 activeWorkspace
@@ -3321,8 +3544,9 @@ document.addEventListener(
             return result;
         }
 
-        function displaySavedAnalysis(
-    savedAnalysis
+        async function displaySavedAnalysis(
+    savedAnalysis,
+    savedJobDescription
 ) {
 
     const result =
@@ -3349,6 +3573,51 @@ document.addEventListener(
         );
 
         return;
+    }
+
+    // ATS keywords are attached client-side after /analyze and are
+    // never written to the stored analysis, so every saved row is
+    // missing them. Recompute them from the saved job description
+    // with the same endpoint the live analysis uses. That endpoint
+    // validates the whole request body but reads only
+    // job_description, so the resume and project placeholders below
+    // never influence the extracted keywords.
+    if (
+        !Array.isArray(result.ats_keywords) ||
+        !result.ats_keywords.length
+    ) {
+
+        const jobDescription =
+            typeof savedJobDescription ===
+                "string"
+                ? savedJobDescription.trim()
+                : "";
+
+        if (jobDescription) {
+
+            const keywords =
+                await fetchAtsKeywords({
+                    resume:
+                        "Saved analysis",
+                    job_description:
+                        jobDescription,
+                    projects: [
+                        {
+                            name:
+                                "Saved analysis",
+                            description:
+                                "Saved analysis"
+                        }
+                    ]
+                });
+
+            if (keywords) {
+                result.ats_keywords =
+                    keywords;
+            }
+
+        }
+
     }
 
     savedResultsContent.innerHTML = `
@@ -3384,6 +3653,8 @@ document.addEventListener(
     savedAnalysisSection.classList.remove(
         "hidden"
     );
+
+    syncSubnavState();
 
     savedAnalysisSection.scrollIntoView({
         behavior: "smooth",
@@ -3438,8 +3709,9 @@ document.addEventListener(
                             savedAnalysis
                         );
 
-                        displaySavedAnalysis(
-                            savedAnalysis.analysis
+                        await displaySavedAnalysis(
+                            savedAnalysis.analysis,
+                            savedAnalysis.job_description
                         );
 
                         setAnalysisView(
@@ -3611,6 +3883,13 @@ document.addEventListener(
                 "click",
                 function () {
 
+                    if (
+                        activeWorkspace ===
+                        "resume-builder"
+                    ) {
+                        return;
+                    }
+
                     if (!currentAnalysis) {
                         return;
                     }
@@ -3628,6 +3907,13 @@ document.addEventListener(
                 "click",
                 function () {
 
+                    if (
+                        activeWorkspace ===
+                        "resume-builder"
+                    ) {
+                        return;
+                    }
+
                     setAnalysisView(
                         "history"
                     );
@@ -3643,6 +3929,13 @@ document.addEventListener(
             savedAnalysisTab.addEventListener(
                 "click",
                 function () {
+
+                    if (
+                        activeWorkspace ===
+                        "resume-builder"
+                    ) {
+                        return;
+                    }
 
                     if (
                         savedResultsContent &&
@@ -3727,6 +4020,8 @@ document.addEventListener(
                     block: "center"
                 });
 
+                syncSubnavState();
+
                 try {
 
                     const result =
@@ -3792,6 +4087,8 @@ document.addEventListener(
                         </div>
                     `;
 
+                    syncSubnavState();
+
                 } finally {
 
                     analyzeButton.disabled =
@@ -3820,6 +4117,11 @@ document.addEventListener(
 
         setActiveWorkspace(
             "analyze"
+        );
+
+        window.setTimeout(
+            syncStickyOffsets,
+            200
         );
     }
 );

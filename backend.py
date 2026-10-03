@@ -9,7 +9,7 @@ from slowapi.util import get_remote_address
 from fastapi.middleware.cors import CORSMiddleware
 from auth import get_current_user, security
 from career_gap import run_careergap
-from ai_advisor import generate_career_advice
+from ai_advisor import generate_career_advice, safe_error_detail
 from ats_match import extract_job_keywords
 from database import (
     get_analysis_history,
@@ -208,8 +208,19 @@ def analyze(
         try:
             results["ai_advice"] = generate_career_advice(results)
         except Exception as error:
-            print("AI ADVISOR ERROR:", error)
+            # Log the failure so an unavailable advisor is diagnosable.
+            # safe_error_detail redacts the API key, which SDK errors can
+            # embed in the request URL.
+            print(
+                "AI ADVISOR ERROR:",
+                type(error).__name__,
+                safe_error_detail(error),
+            )
             results["ai_advice"] = None
+            results["ai_advice_error"] = (
+                "AI career advice is unavailable right now. "
+                "Your CareerGap analysis is complete and unaffected."
+            )
 
         save_analysis(
     access_token=credentials.credentials,
