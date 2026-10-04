@@ -4119,9 +4119,1188 @@ document.addEventListener(
             "analyze"
         );
 
+
         window.setTimeout(
             syncStickyOffsets,
             200
         );
+        // =========================================================
+        // RESUME BUILDER
+        // =========================================================
+
+        let resumeBuilderState = {
+            resumes: [],
+            selectedResumeId: null,
+            selectedResume: null,
+            viewMode: "empty",
+        };
+
+        const resumeElements = {
+            list: document.getElementById("resume-list"),
+            empty: document.getElementById("resume-list-empty"),
+            loading: document.getElementById("resume-list-loading"),
+            error: document.getElementById("resume-list-error"),
+            createBtn: document.getElementById("create-resume-btn"),
+            createFirstBtn: document.getElementById("create-first-resume-btn"),
+            createFromEmptyBtn: document.getElementById("create-resume-from-empty-btn"),
+            view: document.getElementById("resume-view"),
+            viewTitle: document.getElementById("resume-view-title"),
+            preview: document.getElementById("resume-preview"),
+            setDefaultBtn: document.getElementById("resume-set-default-btn"),
+            editBtn: document.getElementById("resume-edit-btn"),
+            deleteBtn: document.getElementById("resume-delete-btn"),
+            editor: document.getElementById("resume-editor"),
+            editorEmpty: document.getElementById("resume-editor-empty"),
+            cancelBtn: document.getElementById("resume-cancel-btn"),
+            saveBtn: document.getElementById("resume-save-btn"),
+            form: document.getElementById("resume-form"),
+            formId: document.getElementById("resume-form-id"),
+            formIsDefault: document.getElementById("resume-form-is-default"),
+            editorError: document.getElementById("resume-editor-error"),
+            addSectionType: document.getElementById("add-section-type"),
+            addSectionBtn: document.getElementById("add-section-btn"),
+            sectionsContainer: document.getElementById("resume-sections-container"),
+            linksContainer: document.getElementById("contact-links-container"),
+            addLinkBtn: document.getElementById("add-link-btn"),
+            summaryTextarea: document.getElementById("resume-summary"),
+            summaryCount: document.getElementById("summary-count"),
+            titleInput: document.getElementById("resume-title"),
+            titleCount: document.getElementById("title-count"),
+        };
+
+        async function apiRequest(path, options = {}, redirectIfMissing = true) {
+            const accessToken = await getAccessToken(redirectIfMissing);
+
+            // A missing session must never look like a successful call. Returning
+            // null here would let delete and set-default drop the resume from
+            // local state while the server still had it.
+            if (!accessToken) {
+                throw new Error("You need to sign in to manage resumes.");
+            }
+
+            const response = await fetch(`${API_BASE_URL}${path}`, {
+                ...options,
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                    ...options.headers,
+                },
+            });
+
+            if (!response.ok) {
+                let message = "Request failed.";
+                try {
+                    const error = await response.json();
+                    message = error.detail || message;
+                } catch (_) {}
+                throw new Error(message);
+            }
+
+            // DELETE /resumes/{id} answers 204 with no body, so there is nothing
+            // to parse. Calling json() on it throws a misleading SyntaxError.
+            if (response.status === 204) {
+                return null;
+            }
+
+            return response.json();
+        }
+
+        async function loadResumes() {
+            resumeElements.loading.classList.remove("hidden");
+            resumeElements.list.classList.add("hidden");
+            resumeElements.empty.classList.add("hidden");
+            resumeElements.error.classList.add("hidden");
+
+            try {
+                // A list load must not force a login redirect, the same way
+                // loadAnalysisHistory reads the session without redirecting.
+                // Without a session the panel is left in its loading state
+                // rather than claiming the user has no resumes.
+                const data = await apiRequest("/resumes?limit=50", {}, false);
+
+                if (!data) {
+                    resumeElements.loading.classList.add("hidden");
+                    return;
+                }
+
+                resumeBuilderState.resumes = Array.isArray(data) ? data : [];
+                renderResumeList();
+            } catch (error) {
+                console.error("Load resumes error:", error);
+                resumeElements.loading.classList.add("hidden");
+                resumeElements.error.textContent = escapeHTML(error.message);
+                resumeElements.error.classList.remove("hidden");
+            }
+        }
+
+        function renderResumeList() {
+            resumeElements.loading.classList.add("hidden");
+
+            if (!resumeBuilderState.resumes.length) {
+                resumeElements.list.classList.add("hidden");
+                resumeElements.empty.classList.remove("hidden");
+                return;
+            }
+
+            resumeElements.empty.classList.add("hidden");
+            resumeElements.error.classList.add("hidden");
+            resumeElements.list.classList.remove("hidden");
+
+            resumeElements.list.innerHTML = resumeBuilderState.resumes
+                .map((resume) => {
+                    const isDefault = resume.is_default === true;
+                    const updatedDate = resume.updated_at
+                        ? new Date(resume.updated_at).toLocaleDateString(undefined, {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                          })
+                        : "";
+                    const isActive = resume.id === resumeBuilderState.selectedResumeId;
+
+                    return `
+                        <button
+                            type="button"
+                            class="resume-list-item${isActive ? " active" : ""}"
+                            data-resume-id="${escapeHTML(resume.id)}"
+                            aria-pressed="${isActive}"
+                        >
+                            <div class="resume-list-item-main">
+                                <span class="resume-list-item-title">${escapeHTML(resume.title)}</span>
+                                <div class="resume-list-item-meta">
+                                    ${isDefault ? '<span class="resume-list-item-badge default">Default</span>' : ""}
+                                    ${updatedDate ? `<span class="resume-list-item-badge updated">${escapeHTML(updatedDate)}</span>` : ""}
+                                </div>
+                            </div>
+                        </button>
+                    `;
+                })
+                .join("");
+
+            resumeElements.list.querySelectorAll(".resume-list-item").forEach((item) => {
+                item.addEventListener("click", () => {
+                    const resumeId = item.dataset.resumeId;
+                    selectResume(resumeId);
+                });
+            });
+        }
+
+        // GET /resumes returns summaries only (id, title, is_default, created_at,
+        // updated_at). The document itself has to be read from GET /resumes/{id}.
+        // Editing or previewing from a summary row would show an empty resume and
+        // saving that back would overwrite the stored document with nothing.
+        async function fetchResumeDetail(resumeId) {
+            return await apiRequest(
+                `/resumes/${encodeURIComponent(resumeId)}`
+            );
+        }
+
+        async function selectResume(resumeId) {
+            const summary = resumeBuilderState.resumes.find((r) => r.id === resumeId);
+            if (!summary) {
+                return;
+            }
+
+            resumeBuilderState.selectedResumeId = resumeId;
+            resumeBuilderState.viewMode = "view";
+            updateViewMode();
+
+            resumeElements.preview.innerHTML =
+                '<div class="resume-loading"><div class="loading-orbit-small"></div><p>Loading...</p></div>';
+
+            try {
+                const resume = await fetchResumeDetail(resumeId);
+
+                if (resumeBuilderState.selectedResumeId !== resumeId) {
+                    return;
+                }
+
+                resumeBuilderState.selectedResume = resume;
+                renderResumePreview(resume);
+                renderResumeList();
+            } catch (error) {
+                console.error("Load resume error:", error);
+                resumeElements.preview.innerHTML = `
+                    <div class="resume-editor-error">
+                        ${escapeHTML(error.message)}
+                    </div>
+                `;
+            }
+        }
+
+        function updateViewMode() {
+            const { view, editor, editorEmpty } = resumeElements;
+
+            const onView =
+                resumeBuilderState.viewMode === "view";
+
+            const onEditor =
+                resumeBuilderState.viewMode === "edit";
+
+            // The view panel starts hidden through the `hidden` attribute while
+            // the editor starts hidden through the `hidden` class. Both have to
+            // be cleared, otherwise the panel stays display:none either way.
+            view.classList.toggle("hidden", !onView);
+            view.hidden = !onView;
+
+            editor.classList.toggle("hidden", !onEditor);
+            editorEmpty.classList.toggle("hidden", onView || onEditor);
+        }
+
+        function renderResumePreview(resume) {
+            resumeElements.viewTitle.textContent = escapeHTML(resume.title);
+            resumeElements.setDefaultBtn.setAttribute(
+                "aria-pressed",
+                resume.is_default === true ? "true" : "false"
+            );
+
+            const content = resume.content || {};
+            const contact = content.contact || {};
+            const summary = content.summary || "";
+            const sections = content.sections || [];
+
+            let previewHtml = "";
+
+            if (Object.keys(contact).length) {
+                previewHtml += `
+                    <div class="resume-preview-section">
+                        <div class="resume-preview-section-title">Contact</div>
+                        <div class="resume-preview-contact">
+                            ${contact.full_name ? `<span class="resume-preview-contact-item"><span class="resume-preview-contact-label">Name</span>${escapeHTML(contact.full_name)}</span>` : ""}
+                            ${contact.email ? `<span class="resume-preview-contact-item"><span class="resume-preview-contact-label">Email</span>${escapeHTML(contact.email)}</span>` : ""}
+                            ${contact.phone ? `<span class="resume-preview-contact-item"><span class="resume-preview-contact-label">Phone</span>${escapeHTML(contact.phone)}</span>` : ""}
+                            ${contact.location ? `<span class="resume-preview-contact-item"><span class="resume-preview-contact-label">Location</span>${escapeHTML(contact.location)}</span>` : ""}
+                        </div>
+                        ${contact.links && contact.links.length ? `
+                            <div class="resume-preview-links">
+                                ${contact.links.map(link => `<a class="resume-preview-link" href="${safeUrl(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(link.label)}</a>`).join("")}
+                            </div>
+                        ` : ""}
+                    </div>
+                `;
+            }
+
+            if (summary) {
+                previewHtml += `
+                    <div class="resume-preview-section">
+                        <div class="resume-preview-section-title">Professional Summary</div>
+                        <div class="resume-preview-summary">${escapeHTML(summary)}</div>
+                    </div>
+                `;
+            }
+
+            if (sections.length) {
+                sections.forEach((section) => {
+                    previewHtml += renderPreviewSection(section);
+                });
+            }
+
+            if (!previewHtml) {
+                previewHtml = '<div class="empty-state">This resume is empty. Click Edit to add content.</div>';
+            }
+
+            resumeElements.preview.innerHTML = previewHtml;
+        }
+
+        function renderPreviewSection(section) {
+            // The heading is what the user typed and is what the API stores, so
+            // it wins over the built-in label for the section title.
+            const heading =
+                typeof section.heading === "string" && section.heading.trim()
+                    ? section.heading.trim()
+                    : RESUME_SECTION_HEADINGS[section.type] ||
+                      section.type;
+
+            const items = Array.isArray(section.items) ? section.items : [];
+
+            if (section.type === "skills") {
+                const skills = items
+                    .filter(
+                        (skill) =>
+                            typeof skill === "string" && skill.trim()
+                    )
+                    .map((skill) => skill.trim());
+
+                if (!skills.length) {
+                    return "";
+                }
+
+                return `
+                    <div class="resume-preview-section">
+                        <div class="resume-preview-section-title">${escapeHTML(heading)}</div>
+                        <div class="resume-preview-skills">
+                            ${skills
+                                .map(
+                                    (skill) =>
+                                        `<span class="resume-preview-skill">${escapeHTML(skill)}</span>`
+                                )
+                                .join("")}
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (!items.length && !section.text) {
+                return "";
+            }
+
+            const entries = items
+                .map((item) => {
+                    const data =
+                        item && typeof item === "object" ? item : {};
+
+                    const metaParts = [];
+
+                    if (data.location) {
+                        metaParts.push(data.location);
+                    }
+
+                    if (data.start) {
+                        metaParts.push(
+                            data.end
+                                ? `${data.start} - ${data.end}`
+                                : data.start
+                        );
+                    }
+
+                    const bullets = Array.isArray(data.bullets)
+                        ? data.bullets.filter(Boolean)
+                        : [];
+
+                    return `
+                        <div class="resume-preview-item">
+                            ${
+                                data.title || data.organization
+                                    ? `
+                                        <div class="resume-preview-item-header">
+                                            <div>
+                                                ${
+                                                    data.title
+                                                        ? `<div class="resume-preview-item-title">${escapeHTML(data.title)}</div>`
+                                                        : ""
+                                                }
+                                                ${
+                                                    data.organization
+                                                        ? `<div class="resume-preview-item-subtitle">${escapeHTML(data.organization)}</div>`
+                                                        : ""
+                                                }
+                                            </div>
+                                            ${
+                                                data.url
+                                                    ? `<a class="resume-preview-link" href="${escapeHTML(safeUrl(data.url))}" target="_blank" rel="noopener noreferrer">Link</a>`
+                                                    : ""
+                                            }
+                                        </div>
+                                    `
+                                    : ""
+                            }
+
+                            ${
+                                metaParts.length
+                                    ? `<div class="resume-preview-item-meta">${escapeHTML(metaParts.join(" · "))}</div>`
+                                    : ""
+                            }
+
+                            ${
+                                data.text
+                                    ? `<div class="resume-preview-summary">${escapeHTML(data.text)}</div>`
+                                    : ""
+                            }
+
+                            ${
+                                bullets.length
+                                    ? `
+                                        <ul class="resume-preview-item-bullets">
+                                            ${bullets
+                                                .map(
+                                                    (bullet) =>
+                                                        `<li>${escapeHTML(bullet)}</li>`
+                                                )
+                                                .join("")}
+                                        </ul>
+                                    `
+                                    : ""
+                            }
+                        </div>
+                    `;
+                })
+                .join("");
+
+            return `
+                <div class="resume-preview-section">
+                    <div class="resume-preview-section-title">${escapeHTML(heading)}</div>
+
+                    ${
+                        section.text
+                            ? `<div class="resume-preview-summary">${escapeHTML(section.text)}</div>`
+                            : ""
+                    }
+
+                    ${
+                        entries
+                            ? `<div class="resume-preview-section-content">${entries}</div>`
+                            : ""
+                    }
+                </div>
+            `;
+        }
+
+        function createResume() {
+            resumeBuilderState.selectedResumeId = null;
+            resumeBuilderState.selectedResume = null;
+            resumeBuilderState.viewMode = "edit";
+            updateViewMode();
+            resetEditorForm();
+            renderResumeList();
+        }
+
+        function resetEditorForm() {
+            resumeElements.form.reset();
+            resumeElements.formId.value = "";
+            resumeElements.formIsDefault.value = "false";
+            resumeElements.linksContainer.innerHTML = "";
+            resumeElements.sectionsContainer.innerHTML = "";
+            resumeElements.editorError.classList.add("hidden");
+            resumeElements.editorError.textContent = "";
+            updateSummaryCount();
+            updateTitleCount();
+            updateAddSectionButton();
+        }
+
+        function populateEditorForm(resume) {
+            const content = resume.content || {};
+            const contact = content.contact || {};
+            const summary = content.summary || "";
+            const sections = content.sections || [];
+
+            resumeElements.formId.value = resume.id;
+            resumeElements.formIsDefault.value = resume.is_default === true ? "true" : "false";
+
+            resumeElements.titleInput.value = resume.title || "";
+            updateTitleCount();
+
+            document.getElementById("contact-full_name").value = contact.full_name || "";
+            document.getElementById("contact-email").value = contact.email || "";
+            document.getElementById("contact-phone").value = contact.phone || "";
+            document.getElementById("contact-location").value = contact.location || "";
+
+            resumeElements.linksContainer.innerHTML = "";
+            (contact.links || []).forEach((link) => addLinkRow(link.label, link.url));
+
+            resumeElements.summaryTextarea.value = summary;
+            updateSummaryCount();
+
+            resumeElements.sectionsContainer.innerHTML = "";
+            sections.forEach((section) => addSectionItem(section));
+        }
+
+        async function editResume() {
+            if (!resumeBuilderState.selectedResumeId) {
+                return;
+            }
+
+            try {
+                const resume = await fetchResumeDetail(
+                    resumeBuilderState.selectedResumeId
+                );
+
+                if (resumeBuilderState.selectedResumeId !== resume.id) {
+                    return;
+                }
+
+                resumeBuilderState.selectedResume = resume;
+                resumeBuilderState.viewMode = "edit";
+                updateViewMode();
+                populateEditorForm(resume);
+            } catch (error) {
+                console.error("Open resume for editing error:", error);
+                resumeElements.editorError.textContent =
+                    escapeHTML(error.message);
+                resumeElements.editorError.classList.remove("hidden");
+            }
+        }
+
+        async function saveResume() {
+            const formData = new FormData(resumeElements.form);
+            const isDefault = formData.get("is_default") === "true";
+            const resumeId = formData.get("id");
+
+            const contact = {
+                full_name: formData.get("contact.full_name") || "",
+                email: formData.get("contact.email") || "",
+                phone: formData.get("contact.phone") || "",
+                location: formData.get("contact.location") || "",
+                links: [],
+            };
+
+            resumeElements.linksContainer.querySelectorAll(".resume-link-row").forEach((row) => {
+                const label = row.querySelector('[name="contact.links[].label"]').value.trim();
+                const url = row.querySelector('[name="contact.links[].url"]').value.trim();
+                if (label || url) {
+                    contact.links.push({ label, url });
+                }
+            });
+
+            const summary = formData.get("summary") || "";
+
+            const sections = [];
+
+            resumeElements.sectionsContainer
+                .querySelectorAll(".resume-section-item")
+                .forEach((item) => {
+                    const type = item.dataset.sectionType;
+
+                    const headingInput =
+                        item.querySelector('[name="heading"]');
+
+                    const sectionData = {
+                        type,
+                        heading: headingInput
+                            ? headingInput.value.trim()
+                            : "",
+                        text: "",
+                        items: [],
+                    };
+
+                    if (type === "skills") {
+                        // Skills are stored as plain strings.
+                        const skills = Array.from(
+                            item.querySelectorAll(
+                                'input[name="skill[]"]'
+                            )
+                        )
+                            .map((input) => input.value.trim())
+                            .filter(Boolean);
+
+                        sectionData.items = skills;
+
+                        if (
+                            sectionData.heading ||
+                            sectionData.items.length
+                        ) {
+                            sections.push(sectionData);
+                        }
+
+                        return;
+                    }
+
+                    item.querySelectorAll(
+                        ".resume-section-fields-item"
+                    ).forEach((entry) => {
+                        const entryData = {};
+
+                        entry
+                            .querySelectorAll(
+                                ".resume-field input, .resume-field textarea"
+                            )
+                            .forEach((input) => {
+                                const value = input.value.trim();
+
+                                if (value) {
+                                    entryData[input.name] = value;
+                                }
+                            });
+
+                        const bullets = Array.from(
+                            entry.querySelectorAll(
+                                '.resume-bullet-row input[name="bullets[]"]'
+                            )
+                        )
+                            .map((input) => input.value.trim())
+                            .filter(Boolean);
+
+                        if (bullets.length) {
+                            entryData.bullets = bullets;
+                        }
+
+                        if (Object.keys(entryData).length) {
+                            sectionData.items.push(entryData);
+                        }
+                    });
+
+                    if (
+                        sectionData.heading ||
+                        sectionData.items.length
+                    ) {
+                        sections.push(sectionData);
+                    }
+                });
+
+            const title = resumeElements.titleInput.value.trim();
+
+            const payload = {
+                title: title || "Untitled Resume",
+                content: { contact, summary, sections },
+                is_default: isDefault,
+            };
+
+            resumeElements.saveBtn.disabled = true;
+            resumeElements.saveBtn.textContent = "Saving...";
+            resumeElements.editorError.classList.add("hidden");
+
+            try {
+                let savedResume;
+                if (resumeId) {
+                    savedResume = await apiRequest(`/resumes/${encodeURIComponent(resumeId)}`, {
+                        method: "PUT",
+                        body: JSON.stringify(payload),
+                    });
+                } else {
+                    savedResume = await apiRequest("/resumes", {
+                        method: "POST",
+                        body: JSON.stringify(payload),
+                    });
+                }
+
+                await loadResumes();
+
+                // Re-read the stored resume so the preview reflects what
+                // the API normalized and saved, not what was typed.
+                await selectResume(savedResume.id);
+            } catch (error) {
+                console.error("Save resume error:", error);
+                resumeElements.editorError.textContent = escapeHTML(error.message);
+                resumeElements.editorError.classList.remove("hidden");
+            } finally {
+                resumeElements.saveBtn.disabled = false;
+                resumeElements.saveBtn.textContent = "Save";
+            }
+        }
+
+        function cancelEdit() {
+            const selected = resumeBuilderState.selectedResume;
+
+            // Re-render from the fetched detail, not the summary row, so the
+            // preview does not collapse to an empty resume on cancel.
+            if (resumeBuilderState.selectedResumeId && selected) {
+                resumeBuilderState.viewMode = "view";
+                renderResumePreview(selected);
+            } else {
+                resumeBuilderState.viewMode = "empty";
+            }
+
+            updateViewMode();
+            resetEditorForm();
+            renderResumeList();
+        }
+
+        async function deleteResume() {
+            if (!resumeBuilderState.selectedResumeId) {
+                return;
+            }
+
+            const confirmed = window.confirm("Delete this resume? This cannot be undone.");
+            if (!confirmed) {
+                return;
+            }
+
+            const resumeId = resumeBuilderState.selectedResumeId;
+            resumeElements.deleteBtn.disabled = true;
+            resumeElements.deleteBtn.textContent = "…";
+
+            try {
+                await apiRequest(`/resumes/${encodeURIComponent(resumeId)}`, {
+                    method: "DELETE",
+                });
+
+                resumeBuilderState.resumes = resumeBuilderState.resumes.filter((r) => r.id !== resumeId);
+                resumeBuilderState.selectedResumeId = null;
+                resumeBuilderState.selectedResume = null;
+                resumeBuilderState.viewMode = "empty";
+                updateViewMode();
+                await loadResumes();
+            } catch (error) {
+                console.error("Delete resume error:", error);
+                alert(error.message || "Unable to delete resume.");
+            } finally {
+                resumeElements.deleteBtn.disabled = false;
+                resumeElements.deleteBtn.textContent = "Delete";
+            }
+        }
+
+        async function setDefaultResume() {
+            if (!resumeBuilderState.selectedResumeId) {
+                return;
+            }
+
+            const resumeId = resumeBuilderState.selectedResumeId;
+
+            // PUT replaces the whole document, and the summary rows in the list
+            // carry no content. Sending one would be rejected as an empty write
+            // and would overwrite the stored resume, so the full record is read
+            // first and sent back unchanged apart from the default flag.
+            try {
+                const current = await fetchResumeDetail(resumeId);
+
+                const updated = await apiRequest(`/resumes/${encodeURIComponent(resumeId)}`, {
+                    method: "PUT",
+                    body: JSON.stringify({
+                        title: current.title,
+                        content: current.content || {},
+                        is_default: true,
+                    }),
+                });
+
+                resumeBuilderState.selectedResume = updated;
+                resumeBuilderState.resumes = resumeBuilderState.resumes.map((r) =>
+                    r.id === resumeId ? { ...r, is_default: true } : { ...r, is_default: false }
+                );
+                renderResumeList();
+                renderResumePreview(updated);
+            } catch (error) {
+                console.error("Set default error:", error);
+                alert(error.message || "Unable to set as default.");
+            }
+        }
+
+        function addLinkRow(label = "", url = "") {
+            const row = document.createElement("div");
+            row.className = "resume-link-row";
+            row.innerHTML = `
+                <div class="resume-field">
+                    <label>Label</label>
+                    <input type="text" name="contact.links[].label" maxlength="80" placeholder="GitHub" value="${escapeHTML(label)}">
+                </div>
+                <div class="resume-field">
+                    <label>URL</label>
+                    <input type="url" name="contact.links[].url" maxlength="500" placeholder="https://github.com/username" value="${escapeHTML(url)}">
+                </div>
+                <button type="button" class="resume-section-item-btn danger" aria-label="Remove link">&times;</button>
+            `;
+            row.querySelector(".resume-section-item-btn").addEventListener("click", () => row.remove());
+            resumeElements.linksContainer.appendChild(row);
+        }
+
+        function addSectionItem(sectionData = null) {
+            const section = sectionData || { type: "", items: [] };
+            const item = document.createElement("div");
+            item.className = `resume-section-item section-${section.type}`;
+            item.dataset.sectionType = section.type;
+
+            const typeLabel =
+                RESUME_SECTION_HEADINGS[section.type] || section.type;
+
+            const fieldsHtml = buildSectionFields(section);
+
+            item.innerHTML = `
+                <div class="resume-section-item-header">
+                    <span class="resume-section-item-type">${escapeHTML(typeLabel)}</span>
+                    <div class="resume-section-item-actions">
+                        <button type="button" class="resume-section-item-btn" data-move-up aria-label="Move section up" title="Move up">&#9650;</button>
+                        <button type="button" class="resume-section-item-btn" data-move-down aria-label="Move section down" title="Move down">&#9660;</button>
+                        <button type="button" class="resume-section-item-btn danger" data-remove-section aria-label="Remove section" title="Remove section">&times;</button>
+                    </div>
+                </div>
+                <div class="resume-section-fields">${fieldsHtml}</div>
+            `;
+
+            item.querySelector("[data-move-up]")
+                .addEventListener("click", () => moveSection(item, -1));
+
+            item.querySelector("[data-move-down]")
+                .addEventListener("click", () => moveSection(item, 1));
+
+            item.querySelector("[data-remove-section]")
+                .addEventListener("click", () => {
+                    item.remove();
+                    updateAddSectionButton();
+                });
+
+            resumeElements.sectionsContainer.appendChild(item);
+            updateAddSectionButton();
+        }
+
+        // The backend normalizes every non-skills section to the same item shape
+        // and keeps only title, organization, location, start, end, text, url and
+        // bullets. Any other key is dropped server-side, so the inputs are named
+        // from ITEM_TEXT_FIELDS rather than from local wording.
+        const RESUME_ITEM_FIELD_LIMITS = {
+            title: 200,
+            organization: 200,
+            location: 200,
+            start: 40,
+            end: 40,
+            text: 4000,
+            url: 500,
+        };
+
+        const RESUME_SECTION_HEADINGS = {
+            skills: "Skills",
+            education: "Education",
+            experience: "Experience",
+            projects: "Projects",
+            certifications: "Certifications",
+            custom: "",
+        };
+
+        const RESUME_ITEM_FIELDS = {
+            education: [
+                { name: "title", label: "Degree", placeholder: "B.S. Computer Science" },
+                { name: "organization", label: "Institution", placeholder: "University Name" },
+                { name: "location", label: "Location", placeholder: "City, State" },
+                { name: "start", label: "Start", placeholder: "2018" },
+                { name: "end", label: "End", placeholder: "2022" },
+                { name: "text", label: "Details", placeholder: "Honors, coursework, GPA", textarea: true },
+            ],
+            experience: [
+                { name: "title", label: "Role", placeholder: "Software Engineer" },
+                { name: "organization", label: "Company", placeholder: "Acme Corp" },
+                { name: "location", label: "Location", placeholder: "City, State / Remote" },
+                { name: "start", label: "Start", placeholder: "Jan 2022" },
+                { name: "end", label: "End", placeholder: "Present" },
+                { name: "text", label: "Summary", placeholder: "What you were responsible for", textarea: true },
+                { name: "url", label: "URL", placeholder: "https://..." },
+            ],
+            projects: [
+                { name: "title", label: "Project", placeholder: "Project Name" },
+                { name: "organization", label: "Context", placeholder: "Personal, internship, coursework" },
+                { name: "text", label: "Description", placeholder: "What you built and why", textarea: true },
+                { name: "url", label: "URL", placeholder: "https://github.com/..." },
+            ],
+            certifications: [
+                { name: "title", label: "Certification", placeholder: "AWS Solutions Architect" },
+                { name: "organization", label: "Issuer", placeholder: "Amazon Web Services" },
+                { name: "start", label: "Date Earned", placeholder: "2023" },
+                { name: "url", label: "URL", placeholder: "https://..." },
+            ],
+            custom: [
+                { name: "title", label: "Title", placeholder: "Item Title" },
+                { name: "text", label: "Description", placeholder: "Details", textarea: true },
+            ],
+        };
+
+        function buildResumeFieldHtml(field, value) {
+            const maxLength = RESUME_ITEM_FIELD_LIMITS[field.name] || 200;
+
+            return `
+                <div class="resume-field">
+                    <label>${escapeHTML(field.label)}</label>
+                    ${field.textarea
+                        ? `<textarea name="${field.name}" maxlength="${maxLength}" placeholder="${escapeHTML(field.placeholder)}">${escapeHTML(value)}</textarea>`
+                        : `<input type="text" name="${field.name}" maxlength="${maxLength}" placeholder="${escapeHTML(field.placeholder)}" value="${escapeHTML(value)}">`
+                    }
+                </div>
+            `;
+        }
+
+        function buildResumeBulletHtml(bullet) {
+            return `
+                <div class="resume-bullet-row">
+                    <input
+                        type="text"
+                        name="bullets[]"
+                        maxlength="1000"
+                        placeholder="Achievement or responsibility"
+                        value="${escapeHTML(bullet)}"
+                    >
+                    <button
+                        type="button"
+                        class="resume-section-item-btn danger"
+                        data-remove-bullet
+                        aria-label="Remove bullet"
+                        title="Remove bullet"
+                    >&times;</button>
+                </div>
+            `;
+        }
+
+        function buildResumeEntryHtml(type, itemData, index) {
+            const config = RESUME_ITEM_FIELDS[type] || RESUME_ITEM_FIELDS.custom;
+            const data = itemData && typeof itemData === "object" ? itemData : {};
+            const bullets = Array.isArray(data.bullets) ? data.bullets : [];
+
+            return `
+                <div class="resume-section-fields-item" data-item-index="${index}">
+
+                    ${config
+                        .map((field) =>
+                            buildResumeFieldHtml(
+                                field,
+                                data[field.name] || ""
+                            )
+                        )
+                        .join("")}
+
+                    <div class="resume-bullets">
+                        ${bullets.map(buildResumeBulletHtml).join("")}
+
+                        <button
+                            type="button"
+                            class="resume-bullet-add"
+                            data-add-bullet
+                        >
+                            <span aria-hidden="true">+</span> Add Bullet
+                        </button>
+                    </div>
+
+                    <button
+                        type="button"
+                        class="resume-section-item-btn danger"
+                        data-remove-entry
+                    >Remove Entry</button>
+
+                </div>
+            `;
+        }
+
+        function buildResumeSkillRowHtml(skill) {
+            // Reuses the existing bullet row layout: an input beside a remove
+            // button. No new CSS is introduced for this.
+            return `
+                <div class="resume-bullet-row">
+                    <input
+                        type="text"
+                        name="skill[]"
+                        maxlength="80"
+                        placeholder="JavaScript"
+                        value="${escapeHTML(skill)}"
+                    >
+                    <button
+                        type="button"
+                        class="resume-section-item-btn danger"
+                        data-remove-skill
+                        aria-label="Remove skill"
+                        title="Remove skill"
+                    >&times;</button>
+                </div>
+            `;
+        }
+
+        function buildSkillsFieldHtml(section) {
+            // A skills section stores plain strings, not objects. Sending an
+            // object here is rejected by the API as "Skill 1 must be text."
+            const skills = (Array.isArray(section.items) ? section.items : [])
+                .filter((skill) => typeof skill === "string" && skill.trim())
+                .map((skill) => skill.trim());
+
+            return `
+                <div class="resume-bullets">
+                    ${skills.map(buildResumeSkillRowHtml).join("")}
+                </div>
+
+                <button
+                    type="button"
+                    class="resume-bullet-add"
+                    data-add-skill
+                >
+                    <span aria-hidden="true">+</span> Add Skill
+                </button>
+            `;
+        }
+
+        function buildSectionFields(section) {
+            const type = section.type;
+            const items = Array.isArray(section.items) ? section.items : [];
+            const heading =
+                typeof section.heading === "string"
+                    ? section.heading
+                    : "";
+
+            // The section heading is the only supported place for a custom
+            // section title, so it is offered for every section type.
+            const headingField = `
+                <div class="resume-field full-width">
+                    <label>Section Heading</label>
+                    <input
+                        type="text"
+                        name="heading"
+                        maxlength="120"
+                        placeholder="${escapeHTML(
+                            RESUME_SECTION_HEADINGS[type] || "Section"
+                        )}"
+                        value="${escapeHTML(heading)}"
+                    >
+                </div>
+            `;
+
+            if (type === "skills") {
+                return headingField + buildSkillsFieldHtml(section);
+            }
+
+            const entries = items
+                .map(
+                    (itemData, index) =>
+                        buildResumeEntryHtml(type, itemData, index)
+                )
+                .join("");
+
+            return `
+                ${headingField}
+
+                <div class="resume-section-entries">
+                    ${entries}
+                </div>
+
+                <button
+                    type="button"
+                    class="resume-bullet-add"
+                    data-add-entry
+                >
+                    <span aria-hidden="true">+</span> Add Another Entry
+                </button>
+            `;
+        }
+
+        function moveSection(item, direction) {
+            const items = Array.from(resumeElements.sectionsContainer.querySelectorAll(".resume-section-item"));
+            const index = items.indexOf(item);
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= items.length) return;
+            if (direction === -1) {
+                item.parentNode.insertBefore(item, items[newIndex]);
+            } else {
+                item.parentNode.insertBefore(item, items[newIndex].nextSibling);
+            }
+        }
+
+        function updateAddSectionButton() {
+            resumeElements.addSectionBtn.disabled =
+                !resumeElements.addSectionType.value;
+        }
+
+        function updateSummaryCount() {
+            const count = resumeElements.summaryTextarea.value.length;
+            resumeElements.summaryCount.textContent = count;
+        }
+
+        function updateTitleCount() {
+            const count = resumeElements.titleInput.value.length;
+            resumeElements.titleCount.textContent = count;
+        }
+
+        function initResumeBuilder() {
+            resumeElements.createBtn.addEventListener("click", createResume);
+            resumeElements.createFirstBtn.addEventListener("click", createResume);
+            resumeElements.createFromEmptyBtn.addEventListener("click", createResume);
+            resumeElements.editBtn.addEventListener("click", editResume);
+            resumeElements.cancelBtn.addEventListener("click", cancelEdit);
+            resumeElements.saveBtn.addEventListener("click", saveResume);
+            resumeElements.deleteBtn.addEventListener("click", deleteResume);
+            resumeElements.setDefaultBtn.addEventListener("click", setDefaultResume);
+
+            resumeElements.addSectionType.addEventListener("change", () => {
+                updateAddSectionButton();
+            });
+            resumeElements.addSectionBtn.addEventListener("click", () => {
+                const type = resumeElements.addSectionType.value;
+                if (type) {
+                    addSectionItem({ type, items: [] });
+                    resumeElements.addSectionType.value = "";
+                    updateAddSectionButton();
+                }
+            });
+
+            resumeElements.addLinkBtn.addEventListener("click", () => addLinkRow());
+
+            resumeElements.summaryTextarea.addEventListener("input", updateSummaryCount);
+
+            resumeElements.titleInput.addEventListener("input", updateTitleCount);
+
+            resumeElements.sectionsContainer.addEventListener("click", (event) => {
+                const target =
+                    event.target instanceof Element
+                        ? event.target
+                        : null;
+
+                if (!target) {
+                    return;
+                }
+
+                // Adds an entry inside the section that was clicked. Creating a
+                // whole new section here duplicated the section instead.
+                if (target.closest("[data-add-entry]")) {
+                    const sectionItem = target.closest(
+                        ".resume-section-item"
+                    );
+
+                    if (!sectionItem) {
+                        return;
+                    }
+
+                    const entries = sectionItem.querySelector(
+                        ".resume-section-entries"
+                    );
+
+                    if (!entries) {
+                        return;
+                    }
+
+                    const index = entries.children.length;
+
+                    entries.insertAdjacentHTML(
+                        "beforeend",
+                        buildResumeEntryHtml(
+                            sectionItem.dataset.sectionType,
+                            null,
+                            index
+                        )
+                    );
+
+                    return;
+                }
+
+                if (target.closest("[data-add-bullet]")) {
+                    const bullets = target.closest(".resume-bullets");
+
+                    bullets.insertAdjacentHTML(
+                        "beforeend",
+                        buildResumeBulletHtml("")
+                    );
+
+                    return;
+                }
+
+                if (target.closest("[data-add-skill]")) {
+                    const skillsList = target.closest(
+                        ".resume-bullets"
+                    );
+
+                    if (!skillsList) {
+                        return;
+                    }
+
+                    skillsList.insertAdjacentHTML(
+                        "beforeend",
+                        buildResumeSkillRowHtml("")
+                    );
+
+                    return;
+                }
+
+                if (target.closest("[data-remove-entry]")) {
+                    const entry = target.closest(
+                        ".resume-section-fields-item"
+                    );
+
+                    if (entry) {
+                        entry.remove();
+                    }
+
+                    return;
+                }
+
+                if (target.closest("[data-remove-bullet]")) {
+                    const row = target.closest(".resume-bullet-row");
+
+                    if (row) {
+                        row.remove();
+                    }
+
+                    return;
+                }
+
+                if (target.closest("[data-remove-skill]")) {
+                    const row = target.closest(".resume-bullet-row");
+
+                    if (row) {
+                        row.remove();
+                    }
+                }
+            });
+
+            loadResumes();
+        }
+
+        initResumeBuilder();
     }
 );

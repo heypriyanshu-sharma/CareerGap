@@ -793,6 +793,55 @@ def test_update_resume_as_default_returns_the_store_record(store):
     assert body == store.rows[RESUME_ID]
 
 
+def test_update_resume_returns_complete_record_including_content(store):
+    """The update response must include the full row, not just title.
+
+    The RPC functions return the entire refreshed row (content, plain_text,
+    is_default, timestamps). This guards against a future change that might
+    strip fields from the response.
+    """
+
+    store.seed(RESUME_ID, USER_ID)
+
+    new_content = {
+        "contact": {"full_name": "Grace Hopper", "email": "grace@navy.mil"},
+        "summary": "Compiler pioneer.",
+        "sections": [],
+    }
+
+    response = client.put(
+        f"/resumes/{RESUME_ID}",
+        json={
+            "title": "Updated CV",
+            "content": new_content,
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    # All core columns present
+    assert set(body.keys()) >= {
+        "id",
+        "user_id",
+        "title",
+        "content",
+        "plain_text",
+        "is_default",
+        "created_at",
+        "updated_at",
+    }
+
+    # Content is present and normalized (empty fields filled in)
+    assert isinstance(body["content"], dict)
+    assert body["content"]["contact"]["full_name"] == "Grace Hopper"
+    assert body["content"]["contact"]["email"] == "grace@navy.mil"
+    assert body["content"]["summary"] == "Compiler pioneer."
+    assert body["title"] == "Updated CV"
+    assert body["is_default"] is False
+
+
 def test_update_resume_maps_not_authorized(store):
     store.update_error = DatabaseRequestError(
         "Not authorized for this resume.",

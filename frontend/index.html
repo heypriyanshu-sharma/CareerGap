@@ -791,21 +791,239 @@
     class="workspace-section hidden"
     aria-labelledby="resume-builder-heading"
 >
-    <div class="workspace-panel">
-        <p class="eyebrow">
-            RESUME BUILDER
-        </p>
+    <div class="resume-builder-layout">
 
-        <h2 id="resume-builder-heading">
-            Resume Builder
-        </h2>
+        <!-- LEFT: LIST PANEL -->
+        <aside class="resume-list-panel" aria-label="Resume list">
+            <header class="resume-list-header">
+                <h2>Your Resumes</h2>
+                <button
+                    type="button"
+                    id="create-resume-btn"
+                    class="resume-create-btn"
+                    aria-label="Create new resume"
+                >
+                    <span aria-hidden="true">+</span>
+                    New Resume
+                </button>
+            </header>
 
-        <p class="workspace-note">
-            The Resume Builder is a separate workspace and is
-            not built yet. Nothing here generates or edits a
-            resume, so it is intentionally left empty rather
-            than showing controls that would not work.
-        </p>
+            <div
+                id="resume-list"
+                class="resume-list"
+                role="list"
+                aria-live="polite"
+            ></div>
+
+            <div
+                id="resume-list-empty"
+                class="resume-empty hidden"
+            >
+                <p>No resumes yet.</p>
+                <button
+                    type="button"
+                    id="create-first-resume-btn"
+                    class="resume-create-btn inline"
+                >
+                    <span aria-hidden="true">+</span>
+                    Create your first resume
+                </button>
+            </div>
+
+            <div
+                id="resume-list-loading"
+                class="resume-loading hidden"
+            >
+                <div class="loading-orbit-small"></div>
+                <p>Loading...</p>
+            </div>
+
+            <div
+                id="resume-list-error"
+                class="resume-error hidden"
+                role="alert"
+            ></div>
+        </aside>
+
+        <!-- RIGHT: EDITOR / PREVIEW PANEL -->
+        <div class="resume-editor-panel">
+            <!-- View state: shows resume preview or empty state -->
+            <div
+                id="resume-view"
+                class="resume-view"
+                hidden
+            >
+                <header class="resume-view-header">
+                    <h3 id="resume-view-title">Resume Title</h3>
+                    <div class="resume-view-actions">
+                        <button
+                            type="button"
+                            id="resume-set-default-btn"
+                            class="resume-action-btn secondary"
+                            aria-pressed="false"
+                        >
+                            Set as Default
+                        </button>
+                        <button
+                            type="button"
+                            id="resume-edit-btn"
+                            class="resume-action-btn primary"
+                        >
+                            Edit
+                        </button>
+                        <button
+                            type="button"
+                            id="resume-delete-btn"
+                            class="resume-action-btn danger"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </header>
+
+                <div
+                    id="resume-preview"
+                    class="resume-preview"
+                ></div>
+            </div>
+
+            <!-- Edit state: structured form -->
+            <div
+                id="resume-editor"
+                class="resume-editor hidden"
+                aria-live="polite"
+            >
+                <header class="resume-editor-header">
+                    <h3>Edit Resume</h3>
+                    <div class="resume-editor-actions">
+                        <button
+                            type="button"
+                            id="resume-cancel-btn"
+                            class="resume-action-btn secondary"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            id="resume-save-btn"
+                            class="resume-action-btn primary"
+                        >
+                            Save
+                        </button>
+                    </div>
+                </header>
+
+                <form id="resume-form" class="resume-form" novalidate>
+                    <input type="hidden" name="id" id="resume-form-id">
+                    <input type="hidden" name="is_default" id="resume-form-is-default" value="false">
+
+                    <!-- Resume Title -->
+                    <div class="resume-field full-width" style="margin-bottom: 16px;">
+                        <label for="resume-title">Resume Title</label>
+                        <input type="text" name="title" id="resume-title" maxlength="120" placeholder="e.g. Senior Software Engineer — 2024">
+                        <div class="resume-field-hint"><span id="title-count">0</span>/120 characters</div>
+                    </div>
+
+                    <!-- Contact Section -->
+                    <section class="resume-section" aria-labelledby="contact-heading">
+                        <header class="resume-section-header">
+                            <h4 id="contact-heading">Contact</h4>
+                        </header>
+                        <div class="resume-field-grid">
+                            <div class="resume-field">
+                                <label for="contact-full_name">Full Name</label>
+                                <input type="text" name="contact.full_name" id="contact-full_name" maxlength="120" placeholder="Jane Doe">
+                            </div>
+                            <div class="resume-field">
+                                <label for="contact-email">Email</label>
+                                <input type="email" name="contact.email" id="contact-email" maxlength="254" placeholder="jane@example.com">
+                            </div>
+                            <div class="resume-field">
+                                <label for="contact-phone">Phone</label>
+                                <input type="tel" name="contact.phone" id="contact-phone" maxlength="40" placeholder="+1 (555) 123-4567">
+                            </div>
+                            <div class="resume-field">
+                                <label for="contact-location">Location</label>
+                                <input type="text" name="contact.location" id="contact-location" maxlength="120" placeholder="City, State / Remote">
+                            </div>
+                        </div>
+                        <fieldset class="resume-field resume-links" aria-labelledby="links-legend">
+                            <legend id="links-legend">Links</legend>
+                            <div id="contact-links-container"></div>
+                            <button type="button" id="add-link-btn" class="resume-add-link-btn">
+                                <span aria-hidden="true">+</span> Add Link
+                            </button>
+                        </fieldset>
+                    </section>
+
+                    <!-- Summary Section -->
+                    <section class="resume-section" aria-labelledby="summary-heading">
+                        <header class="resume-section-header">
+                            <h4 id="summary-heading">Professional Summary</h4>
+                        </header>
+                        <div class="resume-field">
+                            <textarea
+                                name="summary"
+                                id="resume-summary"
+                                placeholder="A brief overview of your background, strengths, and career goals..."
+                                maxlength="2000"
+                            ></textarea>
+                            <div class="resume-field-hint"><span id="summary-count">0</span>/2000 characters</div>
+                        </div>
+                    </section>
+
+                    <!-- Sections Container (Skills, Education, Experience, Projects, Certifications, Custom) -->
+                    <section class="resume-section" aria-labelledby="sections-heading">
+                        <header class="resume-section-header">
+                            <h4 id="sections-heading">Sections</h4>
+                            <p class="resume-section-hint">Add and reorder sections. Drag to reorder (not implemented yet).</p>
+                        </header>
+                        <div id="resume-sections-container"></div>
+                        <div class="resume-add-section">
+                            <label for="add-section-type">Add Section</label>
+                            <div class="resume-add-section-row">
+                                <select name="section_type" id="add-section-type" required>
+                                    <option value="">Select section type</option>
+                                    <option value="skills">Skills</option>
+                                    <option value="education">Education</option>
+                                    <option value="experience">Experience</option>
+                                    <option value="projects">Projects</option>
+                                    <option value="certifications">Certifications</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                                <button type="button" id="add-section-btn" class="resume-action-btn primary" disabled>
+                                    Add
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+                </form>
+
+                <div
+                    id="resume-editor-error"
+                    class="resume-editor-error hidden"
+                    role="alert"
+                ></div>
+            </div>
+
+            <!-- Empty state when no resume selected -->
+            <div
+                id="resume-editor-empty"
+                class="resume-editor-empty"
+            >
+                <div class="resume-editor-empty-icon" aria-hidden="true">📄</div>
+                <h3>No resume selected</h3>
+                <p>Select a resume from the list to view or edit it, or create a new one.</p>
+                <button
+                    type="button"
+                    id="create-resume-from-empty-btn"
+                    class="resume-action-btn primary"
+                >
+                    <span aria-hidden="true">+</span>
+                    Create Resume
+                </button>
+            </div>
+        </div>
     </div>
 </section>
 
