@@ -727,9 +727,11 @@ document.addEventListener(
         // API CONFIGURATION
         // =================================================
 
-        // Read API base URL from meta tag (for local dev override),
+        // Read API base URL from meta tag (local dev override only),
         // otherwise auto-detect: localhost/127.0.0.1 -> local backend,
-        // file: protocol -> local backend, otherwise production.
+        // file: protocol -> local backend, otherwise production. The
+        // override is scoped to localhost so a local URL in the meta
+        // tag can never be used by the deployed frontend.
         const metaApiUrl = document.querySelector('meta[name="api-base-url"]');
         const configuredApiUrl = metaApiUrl ? metaApiUrl.getAttribute("content").trim() : "";
         const isLocalhost =
@@ -737,10 +739,10 @@ document.addEventListener(
             window.location.hostname === "localhost" ||
             window.location.hostname === "127.0.0.1";
 
-        const API_BASE_URL = configuredApiUrl
+        const API_BASE_URL = configuredApiUrl && isLocalhost
             ? configuredApiUrl
             : isLocalhost
-            ? "http://127.0.0.1:8000"
+            ? "http://127.0.0.1:8001"
             : "https://careergap.onrender.com";
 
         async function getAccessToken(
