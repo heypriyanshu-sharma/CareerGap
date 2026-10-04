@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
@@ -35,6 +35,7 @@ from resume_builder import (
     build_plain_text,
     normalize_content,
 )
+from resume_pdf import ResumePDFError, generate_resume_pdf
 
 
 # ---------------------------------------------------------------------------
@@ -440,6 +441,95 @@ def resume_error_response(error) -> NoReturn:
     raise HTTPException(
         status_code=500,
         detail="Resume request failed.",
+    )
+
+
+# ============================================================
+# PDF EXPORT
+# ============================================================
+
+import urllib.parse
+
+
+def _content_disposition_filename(filename: str) -> str:
+    """
+    Build a standards-compliant Content-Disposition filename value.
+
+    Uses RFC 5987 encoding (filename*) for UTF-8 support with an
+    ASCII-safe fallback in the filename parameter. Replaces unsafe
+    characters in the fallback with underscores.
+    """
+    # ASCII fallback: replace non-ASCII and unsafe characters
+    ascii_fallback = "".join(
+        c if 32 <= ord(c) < 127 and c not in '",;\\' else "_" for c in filename
+    ).strip()
+
+    # UTF-8 encoded filename per RFC 5987
+    utf8_encoded = urllib.parse.quote(filename, safe="")
+
+    # If fallback equals the original (all ASCII safe), just use simple form
+    if ascii_fallback == filename and ascii_fallback:
+        return f'attachment; filename="{ascii_fallback}"'
+
+    # Empty filename edge case
+    if not ascii_fallback:
+        return 'attachment; filename=""'
+
+    return f'attachment; filename="{ascii_fallback}"; filename*=UTF-8\'\'{utf8_encoded}'
+
+
+@app.get(
+    "/resumes/{resume_id}/export",
+    responses={
+        200: {
+            "content": {"application/pdf": {}},
+            "description": "Download the resume as a PDF.",
+        },
+        404: {"description": "Resume not found."},
+        401: {"description": "Unauthorized."},
+        500: {"description": "PDF generation failed."},
+    },
+)
+def export_resume_pdf(
+    resume_id: UUID,
+    claims: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    Export a resume as a professional PDF.
+
+    The PDF is generated server-side using ReportLab and includes
+    all resume sections with ATS-friendly formatting.
+    """
+    try:
+        resume = get_resume(
+            credentials.credentials,
+            claims["sub"],
+            str(resume_id),
+        )
+    except Exception as error:
+        resume_error_response(error)
+
+    if resume is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Resume not found.",
+        )
+
+    try:
+        pdf_bytes = generate_resume_pdf(resume)
+    except ResumePDFError as error:
+        print("PDF GENERATION ERROR:", error)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate PDF.",
+        ) from error
+
+    filename = f"{resume.get('title', 'resume').replace(' ', '_')}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": _content_disposition_filename(filename)},
     )
 
 

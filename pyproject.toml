@@ -11,6 +11,7 @@ dependencies = [
     "python-docx>=1.2.0",
     "python-dotenv>=1.2.3",
     "python-multipart>=0.0.32",
+    "reportlab>=4.2.0",
     "slowapi>=0.1.10",
     "supabase>=2.31.0",
     "uvicorn>=0.53.0",

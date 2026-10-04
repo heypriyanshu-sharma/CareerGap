@@ -727,12 +727,21 @@ document.addEventListener(
         // API CONFIGURATION
         // =================================================
 
-        const API_BASE_URL =
-    window.location.protocol === "file:" ||
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1"
-        ? "http://127.0.0.1:8000"
-        : "https://careergap.onrender.com";
+        // Read API base URL from meta tag (for local dev override),
+        // otherwise auto-detect: localhost/127.0.0.1 -> local backend,
+        // file: protocol -> local backend, otherwise production.
+        const metaApiUrl = document.querySelector('meta[name="api-base-url"]');
+        const configuredApiUrl = metaApiUrl ? metaApiUrl.getAttribute("content").trim() : "";
+        const isLocalhost =
+            window.location.protocol === "file:" ||
+            window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1";
+
+        const API_BASE_URL = configuredApiUrl
+            ? configuredApiUrl
+            : isLocalhost
+            ? "http://127.0.0.1:8000"
+            : "https://careergap.onrender.com";
 
         async function getAccessToken(
             redirectIfMissing = true
@@ -4135,20 +4144,23 @@ document.addEventListener(
             viewMode: "empty",
         };
 
+        // Holds the custom section-type dropdown controller
+        // created by setupSectionTypeSelect().
+        let sectionTypeSelect = null;
+
         const resumeElements = {
             list: document.getElementById("resume-list"),
             empty: document.getElementById("resume-list-empty"),
             loading: document.getElementById("resume-list-loading"),
             error: document.getElementById("resume-list-error"),
             createBtn: document.getElementById("create-resume-btn"),
-            createFirstBtn: document.getElementById("create-first-resume-btn"),
-            createFromEmptyBtn: document.getElementById("create-resume-from-empty-btn"),
             view: document.getElementById("resume-view"),
             viewTitle: document.getElementById("resume-view-title"),
             preview: document.getElementById("resume-preview"),
             setDefaultBtn: document.getElementById("resume-set-default-btn"),
             editBtn: document.getElementById("resume-edit-btn"),
             deleteBtn: document.getElementById("resume-delete-btn"),
+            exportBtn: document.getElementById("resume-export-btn"),
             editor: document.getElementById("resume-editor"),
             editorEmpty: document.getElementById("resume-editor-empty"),
             cancelBtn: document.getElementById("resume-cancel-btn"),
@@ -4157,7 +4169,6 @@ document.addEventListener(
             formId: document.getElementById("resume-form-id"),
             formIsDefault: document.getElementById("resume-form-is-default"),
             editorError: document.getElementById("resume-editor-error"),
-            addSectionType: document.getElementById("add-section-type"),
             addSectionBtn: document.getElementById("add-section-btn"),
             sectionsContainer: document.getElementById("resume-sections-container"),
             linksContainer: document.getElementById("contact-links-container"),
@@ -4556,6 +4567,7 @@ document.addEventListener(
 
         function resetEditorForm() {
             resumeElements.form.reset();
+            autoGrowTextarea(resumeElements.summaryTextarea);
             resumeElements.formId.value = "";
             resumeElements.formIsDefault.value = "false";
             resumeElements.linksContainer.innerHTML = "";
@@ -4588,6 +4600,7 @@ document.addEventListener(
             (contact.links || []).forEach((link) => addLinkRow(link.label, link.url));
 
             resumeElements.summaryTextarea.value = summary;
+            autoGrowTextarea(resumeElements.summaryTextarea);
             updateSummaryCount();
 
             resumeElements.sectionsContainer.innerHTML = "";
@@ -4853,6 +4866,51 @@ document.addEventListener(
             }
         }
 
+        async function exportResume() {
+            if (!resumeBuilderState.selectedResumeId) {
+                return;
+            }
+
+            const exportBtn = resumeElements.exportBtn;
+            const originalText = exportBtn.textContent;
+            exportBtn.disabled = true;
+            exportBtn.textContent = "Preparing...";
+
+            try {
+                const resumeId = resumeBuilderState.selectedResumeId;
+                const response = await fetch(`${API_BASE_URL}/resumes/${encodeURIComponent(resumeId)}/export`, {
+                    headers: {
+                        Authorization: `Bearer ${await getAccessToken()}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    let message = "Export failed.";
+                    try {
+                        const error = await response.json();
+                        message = error.detail || message;
+                    } catch (_) {}
+                    throw new Error(message);
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `${resumeBuilderState.selectedResume?.title?.replace(/\s+/g, "_") || "resume"}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error("Export error:", error);
+                alert(error.message || "Failed to export PDF.");
+            } finally {
+                exportBtn.disabled = false;
+                exportBtn.textContent = originalText;
+            }
+        }
+
         function addLinkRow(label = "", url = "") {
             const row = document.createElement("div");
             row.className = "resume-link-row";
@@ -4893,6 +4951,10 @@ document.addEventListener(
                 </div>
                 <div class="resume-section-fields">${fieldsHtml}</div>
             `;
+
+            // Entry descriptions are textareas, so they grow
+            // with their content instead of staying fixed.
+            item.querySelectorAll("textarea").forEach(setupAutoGrow);
 
             item.querySelector("[data-move-up]")
                 .addEventListener("click", () => moveSection(item, -1));
@@ -5037,7 +5099,9 @@ document.addEventListener(
                         type="button"
                         class="resume-section-item-btn danger"
                         data-remove-entry
-                    >Remove Entry</button>
+                        aria-label="Remove entry"
+                        title="Remove entry"
+                    >&#10005;</button>
 
                 </div>
             `;
@@ -5154,8 +5218,11 @@ document.addEventListener(
         }
 
         function updateAddSectionButton() {
-            resumeElements.addSectionBtn.disabled =
-                !resumeElements.addSectionType.value;
+            const value = sectionTypeSelect
+                ? sectionTypeSelect.getValue()
+                : "";
+
+            resumeElements.addSectionBtn.disabled = !value;
         }
 
         function updateSummaryCount() {
@@ -5168,24 +5235,332 @@ document.addEventListener(
             resumeElements.titleCount.textContent = count;
         }
 
+        // Accessible custom dropdown for the section-type
+        // picker. Follows the ARIA listbox pattern: the
+        // trigger button opens the menu, focus moves to the
+        // listbox while it is open, and arrow keys move an
+        // active option tracked with aria-activedescendant.
+        // Selecting an option only updates the picker; a
+        // section is created solely by the explicit Add
+        // button.
+        function setupSectionTypeSelect(onChange) {
+            const trigger = document.getElementById(
+                "add-section-type"
+            );
+            const menu = document.getElementById(
+                "add-section-type-menu"
+            );
+            const valueText = document.getElementById(
+                "add-section-type-text"
+            );
+
+            if (!trigger || !menu || !valueText) {
+                return {
+                    getValue: function () {
+                        return "";
+                    },
+                    setValue: function () {},
+                };
+            }
+
+            const options = Array.from(
+                menu.querySelectorAll('[role="option"]')
+            );
+
+            let selectedValue = "";
+            let activeIndex = 0;
+            let isOpen = false;
+
+            function getSelectedIndex() {
+                return options.findIndex(
+                    (option) => option.dataset.value === selectedValue
+                );
+            }
+
+            function setActiveIndex(index) {
+                if (!options.length) {
+                    return;
+                }
+
+                activeIndex = Math.max(
+                    0,
+                    Math.min(index, options.length - 1)
+                );
+
+                options.forEach(function (option, position) {
+                    option.classList.toggle(
+                        "is-active",
+                        position === activeIndex
+                    );
+                });
+
+                const activeOption = options[activeIndex];
+
+                if (activeOption) {
+                    menu.setAttribute(
+                        "aria-activedescendant",
+                        activeOption.id
+                    );
+
+                    if (activeOption.scrollIntoView) {
+                        activeOption.scrollIntoView({
+                            block: "nearest",
+                        });
+                    }
+                }
+            }
+
+            function positionMenu() {
+                const rect = trigger.getBoundingClientRect();
+                const menuHeight = menu.offsetHeight || 240;
+                const spaceBelow =
+                    window.innerHeight - rect.bottom;
+                const opensUpward =
+                    spaceBelow < menuHeight + 8;
+                const top = opensUpward
+                    ? Math.max(8, rect.top - menuHeight - 4)
+                    : rect.bottom + 4;
+
+                menu.style.top = `${top}px`;
+                menu.style.left = `${rect.left}px`;
+                menu.style.minWidth = `${rect.width}px`;
+
+                const menuRect = menu.getBoundingClientRect();
+
+                if (menuRect.right > window.innerWidth - 8) {
+                    menu.style.left = `${Math.max(
+                        8,
+                        window.innerWidth - menuRect.width - 8
+                    )}px`;
+                }
+            }
+
+            function applySelection(option, shouldNotify) {
+                if (!option) {
+                    return;
+                }
+
+                selectedValue = option.dataset.value || "";
+
+                options.forEach(function (candidate) {
+                    const isSelected = candidate === option;
+
+                    candidate.setAttribute(
+                        "aria-selected",
+                        isSelected ? "true" : "false"
+                    );
+                    candidate.classList.toggle(
+                        "is-selected",
+                        isSelected
+                    );
+                });
+
+                valueText.textContent = option.textContent;
+                valueText.classList.toggle(
+                    "is-placeholder",
+                    !selectedValue
+                );
+
+                if (shouldNotify && typeof onChange === "function") {
+                    onChange(selectedValue);
+                }
+            }
+
+            function open() {
+                if (isOpen) {
+                    return;
+                }
+
+                isOpen = true;
+                positionMenu();
+                menu.classList.add("is-open");
+                trigger.setAttribute("aria-expanded", "true");
+                setActiveIndex(getSelectedIndex());
+
+                if (menu.focus) {
+                    menu.focus();
+                }
+            }
+
+            function close(returnFocus) {
+                if (!isOpen) {
+                    return;
+                }
+
+                isOpen = false;
+                menu.classList.remove("is-open");
+                trigger.setAttribute("aria-expanded", "false");
+                menu.removeAttribute("aria-activedescendant");
+
+                if (
+                    returnFocus ||
+                    menu.contains(document.activeElement)
+                ) {
+                    trigger.focus();
+                }
+            }
+
+            function selectOption(option) {
+                if (!option) {
+                    return;
+                }
+
+                applySelection(option, true);
+                close(true);
+            }
+
+            function setValue(value) {
+                const option = options.find(
+                    (candidate) => candidate.dataset.value === value
+                );
+
+                if (option) {
+                    applySelection(option, true);
+                }
+            }
+
+            trigger.addEventListener("click", function () {
+                if (isOpen) {
+                    close();
+                } else {
+                    open();
+                }
+            });
+
+            trigger.addEventListener("keydown", function (event) {
+                if (
+                    event.key === "ArrowDown" ||
+                    event.key === "ArrowUp"
+                ) {
+                    event.preventDefault();
+
+                    if (!isOpen) {
+                        open();
+                    } else {
+                        setActiveIndex(
+                            activeIndex +
+                                (event.key === "ArrowDown" ? 1 : -1)
+                        );
+                    }
+                } else if (
+                    event.key === "Enter" ||
+                    event.key === " "
+                ) {
+                    if (isOpen) {
+                        event.preventDefault();
+                        selectOption(options[activeIndex]);
+                    }
+                } else if (event.key === "Escape") {
+                    if (isOpen) {
+                        event.preventDefault();
+                        close(true);
+                    }
+                }
+            });
+
+            menu.addEventListener("keydown", function (event) {
+                if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    setActiveIndex(activeIndex + 1);
+                } else if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    setActiveIndex(activeIndex - 1);
+                } else if (
+                    event.key === "Home"
+                ) {
+                    event.preventDefault();
+                    setActiveIndex(0);
+                } else if (event.key === "End") {
+                    event.preventDefault();
+                    setActiveIndex(options.length - 1);
+                } else if (
+                    event.key === "Enter" ||
+                    event.key === " "
+                ) {
+                    event.preventDefault();
+                    selectOption(options[activeIndex]);
+                } else if (event.key === "Escape") {
+                    event.preventDefault();
+                    close(true);
+                } else if (event.key === "Tab") {
+                    close();
+                }
+            });
+
+            options.forEach(function (option) {
+                option.addEventListener("click", function () {
+                    selectOption(option);
+                });
+
+                option.addEventListener("mousemove", function () {
+                    const index = options.indexOf(option);
+
+                    if (index !== -1 && index !== activeIndex) {
+                        setActiveIndex(index);
+                    }
+                });
+            });
+
+            document.addEventListener("click", function (event) {
+                if (
+                    isOpen &&
+                    !trigger.contains(event.target) &&
+                    !menu.contains(event.target)
+                ) {
+                    close();
+                }
+            });
+
+            window.addEventListener(
+                "scroll",
+                function () {
+                    if (isOpen) {
+                        positionMenu();
+                    }
+                },
+                true
+            );
+
+            window.addEventListener("resize", function () {
+                if (isOpen) {
+                    positionMenu();
+                }
+            });
+
+            applySelection(options[0], false);
+
+            return {
+                getValue: function () {
+                    return selectedValue;
+                },
+                setValue: setValue,
+                close: function () {
+                    close();
+                },
+            };
+        }
+
         function initResumeBuilder() {
             resumeElements.createBtn.addEventListener("click", createResume);
-            resumeElements.createFirstBtn.addEventListener("click", createResume);
-            resumeElements.createFromEmptyBtn.addEventListener("click", createResume);
             resumeElements.editBtn.addEventListener("click", editResume);
             resumeElements.cancelBtn.addEventListener("click", cancelEdit);
             resumeElements.saveBtn.addEventListener("click", saveResume);
             resumeElements.deleteBtn.addEventListener("click", deleteResume);
             resumeElements.setDefaultBtn.addEventListener("click", setDefaultResume);
+            resumeElements.exportBtn.addEventListener("click", exportResume);
 
-            resumeElements.addSectionType.addEventListener("change", () => {
-                updateAddSectionButton();
-            });
+            sectionTypeSelect = setupSectionTypeSelect(
+                updateAddSectionButton
+            );
+
             resumeElements.addSectionBtn.addEventListener("click", () => {
-                const type = resumeElements.addSectionType.value;
+                const type = sectionTypeSelect
+                    ? sectionTypeSelect.getValue()
+                    : "";
+
                 if (type) {
                     addSectionItem({ type, items: [] });
-                    resumeElements.addSectionType.value = "";
+                    sectionTypeSelect.setValue("");
                     updateAddSectionButton();
                 }
             });
@@ -5193,6 +5568,8 @@ document.addEventListener(
             resumeElements.addLinkBtn.addEventListener("click", () => addLinkRow());
 
             resumeElements.summaryTextarea.addEventListener("input", updateSummaryCount);
+
+            setupAutoGrow(resumeElements.summaryTextarea);
 
             resumeElements.titleInput.addEventListener("input", updateTitleCount);
 
@@ -5236,6 +5613,14 @@ document.addEventListener(
                         )
                     );
 
+                    const newEntry = entries.lastElementChild;
+
+                    if (newEntry) {
+                        newEntry
+                            .querySelectorAll("textarea")
+                            .forEach(setupAutoGrow);
+                    }
+
                     return;
                 }
 
@@ -5251,7 +5636,19 @@ document.addEventListener(
                 }
 
                 if (target.closest("[data-add-skill]")) {
-                    const skillsList = target.closest(
+                    // The Add Skill button is a sibling of the
+                    // .resume-bullets container, not a descendant,
+                    // so the container must be resolved from the
+                    // enclosing section item.
+                    const sectionItem = target.closest(
+                        ".resume-section-item"
+                    );
+
+                    if (!sectionItem) {
+                        return;
+                    }
+
+                    const skillsList = sectionItem.querySelector(
                         ".resume-bullets"
                     );
 

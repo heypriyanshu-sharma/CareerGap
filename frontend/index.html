@@ -10,6 +10,8 @@
         content="width=device-width, initial-scale=1.0"
     >
 
+    <meta name="api-base-url" content="http://127.0.0.1:8001">
+
     <title>CareerGap — Career Readiness Engine</title>
 
     <link
@@ -819,15 +821,7 @@
                 id="resume-list-empty"
                 class="resume-empty hidden"
             >
-                <p>No resumes yet.</p>
-                <button
-                    type="button"
-                    id="create-first-resume-btn"
-                    class="resume-create-btn inline"
-                >
-                    <span aria-hidden="true">+</span>
-                    Create your first resume
-                </button>
+                <p>No resumes yet. Use the "New Resume" button above to create one.</p>
             </div>
 
             <div
@@ -856,6 +850,15 @@
                 <header class="resume-view-header">
                     <h3 id="resume-view-title">Resume Title</h3>
                     <div class="resume-view-actions">
+                        <button
+                            type="button"
+                            id="resume-export-btn"
+                            class="resume-action-btn secondary"
+                            aria-label="Download PDF"
+                        >
+                            <span aria-hidden="true">⬇</span>
+                            Download PDF
+                        </button>
                         <button
                             type="button"
                             id="resume-set-default-btn"
@@ -980,17 +983,88 @@
                         </header>
                         <div id="resume-sections-container"></div>
                         <div class="resume-add-section">
-                            <label for="add-section-type">Add Section</label>
+                            <span
+                                class="resume-section-select-label"
+                                id="add-section-type-label"
+                            >Add Section</span>
                             <div class="resume-add-section-row">
-                                <select name="section_type" id="add-section-type" required>
-                                    <option value="">Select section type</option>
-                                    <option value="skills">Skills</option>
-                                    <option value="education">Education</option>
-                                    <option value="experience">Experience</option>
-                                    <option value="projects">Projects</option>
-                                    <option value="certifications">Certifications</option>
-                                    <option value="custom">Custom</option>
-                                </select>
+                                <div class="resume-section-select">
+                                    <button
+                                        type="button"
+                                        id="add-section-type"
+                                        class="resume-section-select-trigger"
+                                        aria-haspopup="listbox"
+                                        aria-expanded="false"
+                                        aria-controls="add-section-type-menu"
+                                        aria-labelledby="add-section-type-label add-section-type-text"
+                                    >
+                                        <span
+                                            id="add-section-type-text"
+                                            class="resume-section-select-value"
+                                        >Select section type</span>
+                                        <span
+                                            class="resume-section-select-caret"
+                                            aria-hidden="true"
+                                        >&#9662;</span>
+                                    </button>
+                                    <ul
+                                        id="add-section-type-menu"
+                                        class="resume-section-select-menu"
+                                        role="listbox"
+                                        aria-labelledby="add-section-type-label"
+                                        tabindex="-1"
+                                    >
+                                        <li
+                                            class="resume-section-select-option"
+                                            role="option"
+                                            aria-selected="true"
+                                            data-value=""
+                                            id="add-section-type-option-0"
+                                        >Select section type</li>
+                                        <li
+                                            class="resume-section-select-option"
+                                            role="option"
+                                            aria-selected="false"
+                                            data-value="skills"
+                                            id="add-section-type-option-1"
+                                        >Skills</li>
+                                        <li
+                                            class="resume-section-select-option"
+                                            role="option"
+                                            aria-selected="false"
+                                            data-value="education"
+                                            id="add-section-type-option-2"
+                                        >Education</li>
+                                        <li
+                                            class="resume-section-select-option"
+                                            role="option"
+                                            aria-selected="false"
+                                            data-value="experience"
+                                            id="add-section-type-option-3"
+                                        >Experience</li>
+                                        <li
+                                            class="resume-section-select-option"
+                                            role="option"
+                                            aria-selected="false"
+                                            data-value="projects"
+                                            id="add-section-type-option-4"
+                                        >Projects</li>
+                                        <li
+                                            class="resume-section-select-option"
+                                            role="option"
+                                            aria-selected="false"
+                                            data-value="certifications"
+                                            id="add-section-type-option-5"
+                                        >Certifications</li>
+                                        <li
+                                            class="resume-section-select-option"
+                                            role="option"
+                                            aria-selected="false"
+                                            data-value="custom"
+                                            id="add-section-type-option-6"
+                                        >Custom</li>
+                                    </ul>
+                                </div>
                                 <button type="button" id="add-section-btn" class="resume-action-btn primary" disabled>
                                     Add
                                 </button>
@@ -1013,15 +1087,7 @@
             >
                 <div class="resume-editor-empty-icon" aria-hidden="true">📄</div>
                 <h3>No resume selected</h3>
-                <p>Select a resume from the list to view or edit it, or create a new one.</p>
-                <button
-                    type="button"
-                    id="create-resume-from-empty-btn"
-                    class="resume-action-btn primary"
-                >
-                    <span aria-hidden="true">+</span>
-                    Create Resume
-                </button>
+                <p>Select a resume from the list to view or edit it, or use the "New Resume" button in the list header.</p>
             </div>
         </div>
     </div>
