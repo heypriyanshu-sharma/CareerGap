@@ -341,36 +341,18 @@ a {
 
 
 /* =========================================================
-   ACCOUNT AREA
+   PROFILE DROPDOWN
 ========================================================= */
 
 .account-area {
+    position: relative;
+}
+
+.profile-trigger {
     display: flex;
     align-items: center;
-    gap: 12px;
-
-    min-width: 0;
-}
-
-.user-email {
-    max-width: 240px;
-    min-width: 0;
-
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-
-    color: var(--olive-soft);
-    font-size: 0.8rem;
-    font-weight: 650;
-}
-
-.user-email.is-empty {
-    display: none;
-}
-
-.logout-button {
-    padding: 8px 13px;
+    gap: 8px;
+    padding: 6px 10px 6px 8px;
 
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -379,8 +361,8 @@ a {
     color: var(--olive-dark);
 
     font: inherit;
-    font-size: 0.78rem;
-    font-weight: 750;
+    font-size: 0.8rem;
+    font-weight: 700;
 
     transition:
         background 0.2s ease,
@@ -389,24 +371,166 @@ a {
         transform 0.2s ease;
 }
 
-.logout-button:hover {
+.profile-trigger:hover {
     background: var(--pistachio-soft);
     border-color: var(--pistachio);
     color: var(--olive);
     transform: translateY(-1px);
 }
 
-.logout-button:focus-visible {
-    outline: 3px solid
-        rgba(198, 216, 167, 0.45);
+.profile-trigger:focus-visible {
+    outline: 3px solid rgba(198, 216, 167, 0.45);
     outline-offset: 2px;
 }
 
-.logout-button:disabled {
-    cursor: wait;
-    opacity: 0.6;
+.profile-avatar,
+.profile-menu-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--pistachio);
+    color: var(--olive);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
 }
 
+.profile-name {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-caret {
+    width: 16px;
+    height: 16px;
+    color: var(--olive-soft);
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.profile-trigger[aria-expanded="true"] .profile-caret {
+    transform: rotate(180deg);
+}
+
+.profile-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 200;
+
+    min-width: 240px;
+    max-width: 300px;
+
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    background: var(--cream);
+    box-shadow: var(--shadow-pop);
+
+    overflow: hidden;
+}
+
+.profile-menu.hidden {
+    display: none;
+}
+
+.profile-menu-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.profile-menu-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 0.85rem;
+}
+
+.profile-menu-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--olive-dark);
+    margin: 0;
+}
+
+.profile-menu-email {
+    font-size: 0.72rem;
+    color: var(--olive-soft);
+    margin: 2px 0 0;
+}
+
+.profile-menu-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+}
+
+.profile-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+
+    border: none;
+    background: transparent;
+    color: var(--olive-dark);
+
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: left;
+
+    transition: background 0.15s ease;
+}
+
+.profile-menu-item:hover {
+    background: var(--pistachio-soft);
+}
+
+.profile-menu-item:focus-visible {
+    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline-offset: -2px;
+    border-radius: 8px;
+}
+
+.profile-menu-item--danger {
+    color: #a45747;
+}
+
+.profile-menu-item--danger:hover {
+    background: #fdeae8;
+}
+
+.menu-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: var(--olive-soft);
+}
+
+.profile-menu-item:hover .menu-icon {
+    color: var(--olive);
+}
+
+.profile-menu-item--danger .menu-icon {
+    color: #a45747;
+}
+
+.profile-menu-item--danger:hover .menu-icon {
+    color: #a45747;
+}
 
 /* =========================================================
 
@@ -2985,6 +3109,516 @@ textarea:focus,
 
 }
 
+
+
+
+
+/* =========================================================
+
+   ACCOUNT PAGES
+   Profile and Settings. Same tokens, radii and border as the rest
+   of the application, so these read as part of the existing product
+   rather than as a separate area.
+
+========================================================= */
+
+.account-page {
+
+    min-height: 100vh;
+
+}
+
+.account-main {
+
+    width: min(760px, 90%);
+
+    margin: 0 auto;
+
+    padding: 64px 0 80px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 18px;
+
+}
+
+.account-card {
+
+    padding: 34px;
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius-lg);
+
+    background: var(--cream);
+
+    box-shadow: var(--shadow-soft);
+
+}
+
+.account-card-header {
+
+    margin-bottom: 26px;
+
+}
+
+.account-card-header h1 {
+
+    margin-top: 10px;
+
+    font-size: 2.4rem;
+
+    line-height: 1.05;
+
+    letter-spacing: -0.04em;
+
+    color: var(--olive-dark);
+
+}
+
+.account-back-link {
+
+    align-self: flex-start;
+
+    font-size: 0.82rem;
+
+    font-weight: 700;
+
+    color: var(--olive-soft);
+
+    transition: color 0.2s ease;
+
+}
+
+.account-back-link:hover {
+
+    color: var(--olive);
+
+}
+
+
+
+/* ---- Identity summary ---- */
+
+.profile-summary {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 16px;
+
+    margin-bottom: 28px;
+
+    padding: 18px;
+
+    border-radius: var(--radius-md);
+
+    background: var(--pistachio-soft);
+
+}
+
+.profile-page-avatar {
+
+    width: 54px;
+
+    height: 54px;
+
+    border-radius: 50%;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    background-color: var(--pistachio);
+    background-size: cover;
+    background-position: center;
+
+    color: var(--olive);
+
+    font-size: 1.05rem;
+
+    font-weight: 800;
+
+}
+
+.profile-page-name {
+
+    font-size: 1.05rem;
+
+    font-weight: 750;
+
+    color: var(--olive-dark);
+
+}
+
+.profile-page-email {
+
+    font-size: 0.82rem;
+
+    color: var(--olive-soft);
+
+}
+
+
+
+/* ---- Forms ---- */
+
+.account-form {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 20px;
+
+}
+
+.account-field {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 7px;
+
+}
+
+.account-field label {
+
+    font-size: 0.8rem;
+
+    font-weight: 750;
+
+    color: var(--olive-dark);
+
+}
+
+.account-field input,
+
+.account-field select {
+
+    width: 100%;
+
+    padding: 12px 14px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 12px;
+
+    background: white;
+
+    color: var(--olive-dark);
+
+    font: inherit;
+
+    font-size: 0.9rem;
+
+    outline: none;
+
+    transition:
+
+        border-color 0.2s ease,
+
+        box-shadow 0.2s ease;
+
+}
+
+.account-field input:focus,
+
+.account-field select:focus {
+
+    border-color: var(--pistachio);
+
+    box-shadow:
+
+        0 0 0 4px rgba(198, 216, 167, 0.25);
+
+}
+
+.account-actions {
+
+    display: flex;
+
+    align-items: center;
+
+    flex-wrap: wrap;
+
+    gap: 14px;
+
+    margin-top: 4px;
+
+}
+
+.account-primary-button,
+.account-secondary-button,
+.account-danger-button {
+
+    padding: 11px 18px;
+
+    border-radius: 12px;
+
+    font: inherit;
+
+    font-size: 0.82rem;
+
+    font-weight: 750;
+
+    transition:
+
+        background 0.2s ease,
+
+        border-color 0.2s ease,
+
+        color 0.2s ease,
+
+        transform 0.2s ease;
+
+}
+
+.account-primary-button {
+
+    border: none;
+
+    background: var(--olive);
+
+    color: white;
+
+}
+
+.account-primary-button:hover:not(:disabled) {
+
+    transform: translateY(-1px);
+
+}
+
+.account-secondary-button {
+
+    border: 1px solid var(--border);
+
+    background: var(--pistachio-soft);
+
+    color: var(--olive-dark);
+
+}
+
+.account-secondary-button:hover:not(:disabled) {
+
+    background: var(--pistachio-light);
+
+    border-color: var(--pistachio);
+
+    color: var(--olive);
+
+    transform: translateY(-1px);
+
+}
+
+.account-danger-button {
+
+    border: 1px solid rgba(164, 87, 71, 0.35);
+
+    background: transparent;
+
+    color: #a45747;
+
+}
+
+.account-danger-button:hover:not(:disabled) {
+
+    background: #fdeae8;
+
+    border-color: #a45747;
+
+    transform: translateY(-1px);
+
+}
+
+.account-primary-button:disabled,
+.account-secondary-button:disabled,
+.account-danger-button:disabled {
+
+    cursor: wait;
+
+    opacity: 0.6;
+
+}
+
+.account-primary-button:focus-visible,
+.account-secondary-button:focus-visible,
+.account-danger-button:focus-visible {
+
+    outline: 3px solid rgba(198, 216, 167, 0.45);
+
+    outline-offset: 2px;
+
+}
+
+.account-status {
+
+    min-height: 20px;
+
+    font-size: 0.78rem;
+
+    color: var(--olive-soft);
+
+}
+
+.account-status.success {
+
+    color: var(--olive);
+
+    font-weight: 700;
+
+}
+
+.account-status.error {
+
+    color: #a45747;
+
+    font-weight: 700;
+
+}
+
+
+
+/* ---- Settings rows ---- */
+
+.account-row {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    flex-wrap: wrap;
+
+    gap: 16px;
+
+    padding: 18px 0;
+
+    border-top: 1px solid var(--border);
+
+}
+
+.account-row:first-of-type {
+
+    border-top: none;
+
+    padding-top: 0;
+
+}
+
+.account-row-label {
+
+    font-size: 0.88rem;
+
+    font-weight: 750;
+
+    color: var(--olive-dark);
+
+}
+
+.account-row-value {
+
+    font-size: 0.85rem;
+
+    color: var(--olive-soft);
+
+    word-break: break-word;
+
+}
+
+.account-row-hint {
+
+    margin-top: 3px;
+
+    font-size: 0.78rem;
+
+    color: var(--olive-soft);
+
+}
+
+
+
+/* ---- Delete confirmation ---- */
+
+.account-modal {
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 500;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 20px;
+
+    background: rgba(53, 72, 50, 0.32);
+
+}
+
+.account-modal.hidden {
+
+    display: none;
+
+}
+
+.account-modal-card {
+
+    width: min(400px, 100%);
+
+    padding: 28px;
+
+    border-radius: var(--radius-lg);
+
+    background: var(--cream);
+
+    box-shadow: var(--shadow-pop);
+
+}
+
+.account-modal-card h2 {
+
+    font-size: 1.25rem;
+
+    color: var(--olive-dark);
+
+}
+
+.account-modal-card p {
+
+    margin-top: 10px;
+
+    font-size: 0.85rem;
+
+    color: var(--olive-soft);
+
+}
+
+.account-modal-actions {
+
+    display: flex;
+
+    justify-content: flex-end;
+
+    gap: 10px;
+
+    margin-top: 22px;
+
+}
 
 
 
@@ -5792,5 +6426,87 @@ textarea:focus,
 
     .loading-orbit-small {
         animation: none;
+    }
+}
+
+/* The account menu and the account pages stay usable when the
+   navbar wraps on a narrow screen: the trigger collapses to the
+   avatar alone and the menu is allowed to use more of the
+   viewport. */
+@media (max-width: 700px) {
+    .profile-name {
+        display: none;
+    }
+
+    .profile-trigger {
+        padding: 6px;
+    }
+
+    .profile-caret {
+        display: none;
+    }
+
+    .profile-menu {
+        min-width: 220px;
+        max-width: min(280px, calc(100vw - 32px));
+    }
+
+    .account-main {
+        padding: 36px 0 60px;
+    }
+
+    .account-card {
+        padding: 24px 20px;
+    }
+
+    .account-card-header h1 {
+        font-size: 1.9rem;
+    }
+
+    .profile-summary {
+        gap: 12px;
+        padding: 14px;
+    }
+
+    .account-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .account-row .account-secondary-button,
+    .account-row .account-danger-button {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .account-modal-card {
+        padding: 22px 18px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .profile-trigger,
+    .profile-caret,
+    .profile-menu-item,
+    .account-primary-button,
+    .account-secondary-button,
+    .account-danger-button,
+    .account-back-link,
+    .account-field input,
+    .account-field select {
+        transition: none;
+    }
+
+    .profile-trigger:hover,
+    .account-primary-button:hover:not(:disabled),
+    .account-secondary-button:hover:not(:disabled),
+    .account-danger-button:hover:not(:disabled) {
+        transform: none;
+    }
+
+    .profile-trigger[aria-expanded="true"]
+    .profile-caret {
+        transform: none;
     }
 }

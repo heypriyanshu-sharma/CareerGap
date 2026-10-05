@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta name="api-base-url" content="">
+
+    <title>My Profile — CareerGap</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+
+<body class="account-page">
+
+
+<!-- =========================================================
+     NAVBAR
+========================================================= -->
+
+<header class="navbar">
+
+    <div class="nav-inner">
+
+        <a href="index.html" class="brand">
+
+            <svg
+                class="brand-leaf"
+                viewBox="0 0 40 40"
+                aria-hidden="true"
+            >
+                <path
+                    d="M33 6C18 7 8 14 7 25c0 5 3 8 7 8 10-1 17-11 19-27Z"
+                />
+
+                <path
+                    d="M9 31C14 23 20 18 29 12"
+                />
+
+            </svg>
+
+            <span>CareerGap</span>
+
+        </a>
+
+
+        <nav class="primary-nav" aria-label="Primary navigation">
+
+            <a
+                href="index.html"
+                class="primary-nav-btn"
+            >
+                Back to CareerGap
+            </a>
+
+        </nav>
+
+    </div>
+
+</header>
+
+
+
+<main class="account-main">
+
+
+    <!-- =========================================================
+         PROFILE
+    ========================================================= -->
+
+    <section
+        class="account-card"
+        aria-labelledby="profile-heading"
+    >
+
+        <header class="account-card-header">
+
+            <p class="eyebrow">
+                YOUR ACCOUNT
+            </p>
+
+            <h1 id="profile-heading">
+                My Profile
+            </h1>
+
+        </header>
+
+
+        <div class="profile-summary">
+
+            <span
+                id="profile-page-avatar"
+                class="profile-page-avatar"
+                aria-hidden="true"
+            ></span>
+
+            <div>
+                <p id="profile-page-name" class="profile-page-name"></p>
+                <p id="profile-page-email" class="profile-page-email"></p>
+            </div>
+
+        </div>
+
+
+        <form
+            id="profile-form"
+            class="account-form"
+            novalidate
+        >
+
+            <div class="account-field">
+
+                <label for="profile-full-name">
+                    Full name
+                </label>
+
+                <input
+                    type="text"
+                    id="profile-full-name"
+                    maxlength="120"
+                    autocomplete="name"
+                    placeholder="Your name"
+                >
+
+            </div>
+
+
+            <div class="account-field">
+
+                <label for="profile-target-role">
+                    Target role
+                </label>
+
+                <input
+                    type="text"
+                    id="profile-target-role"
+                    maxlength="120"
+                    placeholder="e.g. Backend Engineer"
+                >
+
+            </div>
+
+
+            <div class="account-field">
+
+                <label for="profile-experience-level">
+                    Experience level
+                </label>
+
+                <select id="profile-experience-level">
+
+                    <option value="">
+                        Not set
+                    </option>
+
+                    <option value="student">
+                        Student
+                    </option>
+
+                    <option value="junior">
+                        Junior
+                    </option>
+
+                    <option value="mid">
+                        Mid-level
+                    </option>
+
+                    <option value="senior">
+                        Senior
+                    </option>
+
+                    <option value="lead">
+                        Lead
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="account-actions">
+
+                <button
+                    type="submit"
+                    id="profile-save"
+                    class="account-primary-button"
+                >
+                    Save profile
+                </button>
+
+                <span
+                    id="profile-status"
+                    class="account-status"
+                    role="status"
+                    aria-live="polite"
+                ></span>
+
+            </div>
+
+        </form>
+
+    </section>
+
+
+    <a href="settings.html" class="account-back-link">
+        ← Settings
+    </a>
+
+
+</main>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="profile.js"></script>
+
+</body>
+
+</html>

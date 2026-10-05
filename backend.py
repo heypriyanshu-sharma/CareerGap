@@ -7,9 +7,11 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 from starlette.types import ASGIApp, Receive, Scope, Send
-from typing import NoReturn
+from typing import NoReturn, Optional
 from uuid import UUID
-from fastapi.middleware.cors import CORSMiddleware
+import os
+import requests
+from supabase import create_client
 from auth import get_current_user, security
 from career_gap import run_careergap
 from ai_advisor import generate_career_advice, safe_error_detail
@@ -64,6 +66,90 @@ RESUME_WRITE_METHODS = (
     "POST",
     "PUT",
 )
+
+# ---------------------------------------------------------------------------
+# Supabase Admin Client (for account deletion)
+# ---------------------------------------------------------------------------
+#
+# The service key is read lazily instead of at import time. A missing key is
+# a configuration problem for one feature, not a reason to stop the whole
+# API from starting, so only the delete-account route reports it.
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_PUBLISHABLE_KEY = os.getenv(
+    "SUPABASE_PUBLISHABLE_KEY"
+)
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+
+_supabase_admin = None
+
+
+def get_supabase_admin():
+    """Return a Supabase admin client, or None when unconfigured.
+
+    The service key is never sent to the browser: it is only used
+    server-side to delete the caller's own account.
+    """
+
+    global _supabase_admin
+
+    if _supabase_admin is None:
+        if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+            return None
+
+        _supabase_admin = create_client(
+            SUPABASE_URL,
+            SUPABASE_SERVICE_KEY,
+        )
+
+    return _supabase_admin
+
+
+# ---------------------------------------------------------------------------
+# Profile models
+# ---------------------------------------------------------------------------
+
+PROFILE_COLUMNS = (
+    "id,avatar_url,full_name,target_role,"
+    "experience_level,created_at,updated_at"
+)
+
+EXPERIENCE_LEVELS = (
+    "student",
+    "junior",
+    "mid",
+    "senior",
+    "lead",
+)
+
+MAX_FULL_NAME_LENGTH = 120
+MAX_TARGET_ROLE_LENGTH = 120
+MAX_AVATAR_URL_LENGTH = 500
+
+
+class ProfileUpdateRequest(BaseModel):
+    """Fields a user may change about their own profile.
+
+    Extra fields are rejected rather than ignored, so a payload
+    containing `id` or `user_id` fails with 422 instead of being
+    silently dropped.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    full_name: Optional[str] = Field(
+        default=None,
+        max_length=MAX_FULL_NAME_LENGTH,
+    )
+    target_role: Optional[str] = Field(
+        default=None,
+        max_length=MAX_TARGET_ROLE_LENGTH,
+    )
+    experience_level: Optional[str] = None
+    avatar_url: Optional[str] = Field(
+        default=None,
+        max_length=MAX_AVATAR_URL_LENGTH,
+    )
 
 
 class BodySizeLimitMiddleware:
@@ -552,6 +638,367 @@ def auth_me(
         "user_id": claims["sub"],
         "email": claims.get("email"),
     }
+
+
+# ---------------------------------------------------------------------------
+# Profile
+# ---------------------------------------------------------------------------
+#
+# The caller's own access token is forwarded to Supabase so row level
+# security applies, and every request is additionally scoped to the user
+# id taken from the verified token. Ownership therefore comes from the
+# token, never from anything the client sent: the write model rejects
+# unknown fields, so a payload carrying `id` or `user_id` is refused
+# with 422 instead of being silently ignored.
+
+
+def _profile_headers(
+    access_token,
+    prefer=None,
+):
+    """Headers for a PostgREST call made as the signed-in user.
+
+    The service key is deliberately not used here so the RLS policies
+    stay meaningful for profile data.
+    """
+
+    headers = {
+        "apikey": SUPABASE_PUBLISHABLE_KEY,
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+
+    if prefer:
+        headers["Prefer"] = prefer
+
+    return headers
+
+
+def _normalize_profile_text(value):
+    """Trim a submitted string, mapping blank input to NULL."""
+
+    trimmed = value.strip()
+
+    return trimmed or None
+
+
+def _select_profile(
+    access_token,
+    user_id,
+):
+    """Return the caller's profile row, or None when it has none yet."""
+
+    response = requests.get(
+        f"{SUPABASE_URL}/rest/v1/profiles",
+        headers=_profile_headers(access_token),
+        params={
+            "id": f"eq.{user_id}",
+            "select": PROFILE_COLUMNS,
+        },
+        timeout=10,
+    )
+
+    if not response.ok:
+        return None
+
+    rows = response.json()
+
+    if not rows:
+        return None
+
+    return rows[0]
+
+
+def _write_profile(
+    access_token,
+    user_id,
+    updates,
+):
+    """Insert or update the caller's profile row.
+
+    PostgREST upsert is used so a user who signed up before the profiles
+    table existed still gets a row on their first edit, instead of the
+    update silently matching nothing.
+    """
+
+    payload = {
+        "id": user_id,
+        **updates,
+    }
+
+    response = requests.post(
+        f"{SUPABASE_URL}/rest/v1/profiles",
+        headers=_profile_headers(
+            access_token,
+            prefer="resolution=merge-duplicates,return=representation",
+        ),
+        params={"on_conflict": "id"},
+        json=payload,
+        timeout=10,
+    )
+
+    if not response.ok:
+        return None
+
+    rows = response.json()
+
+    if not rows:
+        return None
+
+    return rows[0]
+
+
+def _ensure_profile_row(access_token, user_id):
+    """Create the caller's profile row when it does not exist yet.
+
+    The on_auth_user_created trigger only covers users created after
+    0002_create_profiles.sql was applied, so an account that predates
+    the table has no row at all. Reading the Profile page therefore
+    creates one on the spot.
+
+    The row is created with the same PostgREST upsert the edit path
+    uses, so on_conflict=id plus resolution=merge-duplicates means a
+    repeated call merges into the existing row instead of adding a
+    second one. Only the id is sent, so an existing row's columns are
+    never overwritten by this.
+
+    Returns None when the row cannot be created, which lets the caller
+    fall back to an empty profile rather than failing the request.
+    """
+
+    try:
+        return _write_profile(access_token, user_id, {})
+
+    except Exception as error:
+        # Creating the row is a convenience. Losing it must not stop
+        # the profile page from loading, so this is logged and the
+        # caller reports empty fields instead.
+        print(
+            "PROFILE CREATE ERROR:",
+            type(error).__name__,
+            safe_error_detail(error),
+        )
+
+        return None
+
+
+@app.get("/auth/profile")
+def get_profile(
+    claims: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(
+        security
+    ),
+):
+    """Return the caller's identity together with their profile.
+
+    A missing profile row is reported as null fields rather than an
+    error, so a user who signed up before the table existed can still
+    use the page and create their profile.
+    """
+
+    user_id = claims["sub"]
+
+    try:
+        profile = _select_profile(
+            credentials.credentials,
+            user_id,
+        )
+
+    except Exception as error:
+        print(
+            "PROFILE READ ERROR:",
+            type(error).__name__,
+            safe_error_detail(error),
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to load profile.",
+        )
+
+    if profile is None:
+        profile = _ensure_profile_row(
+            credentials.credentials,
+            user_id,
+        )
+
+    if profile is None:
+        profile = {
+            "id": user_id,
+            "avatar_url": None,
+            "full_name": None,
+            "target_role": None,
+            "experience_level": None,
+            "created_at": None,
+            "updated_at": None,
+        }
+
+    return {
+        "user_id": user_id,
+        "email": claims.get("email"),
+        "profile": profile,
+    }
+
+
+@app.put("/auth/profile")
+@limiter.limit("10/minute")
+def update_profile(
+    request: Request,
+    profile_update: ProfileUpdateRequest,
+    claims: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(
+        security
+    ),
+):
+    """Update the caller's own profile."""
+
+    user_id = claims["sub"]
+
+    if (
+        profile_update.experience_level is not None
+        and profile_update.experience_level
+        not in EXPERIENCE_LEVELS
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Experience level must be one of: "
+                + ", ".join(EXPERIENCE_LEVELS)
+                + "."
+            ),
+        )
+
+    if (
+        profile_update.avatar_url is not None
+        and profile_update.avatar_url
+        and not profile_update.avatar_url.startswith(
+            ("http://", "https://")
+        )
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Avatar URL must start with http:// "
+                "or https://."
+            ),
+        )
+
+    # Only the fields the client actually sent are written, so one
+    # update never blanks out the others.
+    updates = {}
+
+    for field in (
+        "full_name",
+        "target_role",
+        "avatar_url",
+    ):
+        value = getattr(profile_update, field)
+
+        if value is not None:
+            updates[field] = _normalize_profile_text(
+                value
+            )
+
+    if profile_update.experience_level is not None:
+        updates["experience_level"] = (
+            _normalize_profile_text(
+                profile_update.experience_level
+            )
+        )
+
+    if not updates:
+        raise HTTPException(
+            status_code=400,
+            detail="No profile fields to update.",
+        )
+
+    try:
+        profile = _write_profile(
+            credentials.credentials,
+            user_id,
+            updates,
+        )
+
+    except Exception as error:
+        print(
+            "PROFILE WRITE ERROR:",
+            type(error).__name__,
+            safe_error_detail(error),
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to update profile.",
+        )
+
+    if profile is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to update profile.",
+        )
+
+    return profile
+
+
+# ---------------------------------------------------------------------------
+# Account deletion
+# ---------------------------------------------------------------------------
+#
+# The target account comes from the verified token claims only. There is
+# no user id in the request model at all, so a caller cannot ask the API
+# to delete somebody else's account, and an extra field is rejected with
+# 422 rather than ignored.
+#
+# Deleting the auth user cascades in the database: `profiles.id` and
+# `resumes.user_id` are declared `references auth.users (id) on delete
+# cascade`, so the profile and every resume are removed with the account.
+
+
+@app.delete("/auth/delete-account", status_code=204)
+@limiter.limit("3/minute")
+def delete_account(
+    request: Request,
+    claims: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(
+        security
+    ),
+):
+    """Delete the authenticated user's account and its user-owned data."""
+
+    user_id = claims["sub"]
+
+    admin = get_supabase_admin()
+
+    if admin is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Account deletion is not available right now."
+            ),
+        )
+
+    try:
+        admin.auth.admin.delete_user(user_id)
+
+    except Exception as error:
+        # Only the exception type is logged. The Supabase SDK error
+        # can embed the service key in its request URL, so the message
+        # is redacted before it reaches the log.
+        print(
+            "DELETE ACCOUNT ERROR:",
+            type(error).__name__,
+            safe_error_detail(error),
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to delete account.",
+        )
+
+    # The caller's own session is now invalid. The client is expected to
+    # sign out locally and leave the page.
+    return Response(status_code=204)
+
 
 @app.get("/analyses")
 def get_analyses(

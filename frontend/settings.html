@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta name="api-base-url" content="">
+
+    <title>Settings — CareerGap</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+
+<body class="account-page">
+
+
+<!-- =========================================================
+     NAVBAR
+========================================================= -->
+
+<header class="navbar">
+
+    <div class="nav-inner">
+
+        <a href="index.html" class="brand">
+
+            <svg
+                class="brand-leaf"
+                viewBox="0 0 40 40"
+                aria-hidden="true"
+            >
+                <path
+                    d="M33 6C18 7 8 14 7 25c0 5 3 8 7 8 10-1 17-11 19-27Z"
+                />
+
+                <path
+                    d="M9 31C14 23 20 18 29 12"
+                />
+
+            </svg>
+
+            <span>CareerGap</span>
+
+        </a>
+
+
+        <nav class="primary-nav" aria-label="Primary navigation">
+
+            <a
+                href="index.html"
+                class="primary-nav-btn"
+            >
+                Back to CareerGap
+            </a>
+
+        </nav>
+
+    </div>
+
+</header>
+
+
+
+<main class="account-main">
+
+
+    <section
+        class="account-card"
+        aria-labelledby="settings-heading"
+    >
+
+        <header class="account-card-header">
+
+            <p class="eyebrow">
+                YOUR ACCOUNT
+            </p>
+
+            <h1 id="settings-heading">
+                Settings
+            </h1>
+
+        </header>
+
+
+        <!-- =========================================================
+             ACCOUNT INFORMATION
+        ========================================================= -->
+
+        <div class="account-row">
+
+            <div>
+                <p class="account-row-label">
+                    Email
+                </p>
+
+                <p
+                    id="settings-email"
+                    class="account-row-value"
+                ></p>
+
+            </div>
+
+            <a
+                href="profile.html"
+                class="account-secondary-button"
+            >
+                Edit profile
+            </a>
+
+        </div>
+
+
+        <div class="account-row">
+
+            <div>
+                <p class="account-row-label">
+                    Signed in as
+                </p>
+
+                <p
+                    id="settings-name"
+                    class="account-row-value"
+                ></p>
+
+            </div>
+
+        </div>
+
+
+        <!-- =========================================================
+             ACTIONS
+        ========================================================= -->
+
+        <div class="account-row">
+
+            <div>
+                <p class="account-row-label">
+                    Session
+                </p>
+
+                <p class="account-row-hint">
+                    End this session on this device.
+                </p>
+
+            </div>
+
+            <button
+                type="button"
+                id="settings-signout"
+                class="account-secondary-button"
+            >
+                Sign out
+            </button>
+
+        </div>
+
+
+        <div class="account-row">
+
+            <div>
+                <p class="account-row-label">
+                    Delete account
+                </p>
+
+                <p class="account-row-hint">
+                    Removes your account, profile and
+                    resumes.
+                </p>
+
+            </div>
+
+            <button
+                type="button"
+                id="settings-delete-account"
+                class="account-danger-button"
+            >
+                Delete account
+            </button>
+
+        </div>
+
+
+        <p
+            id="settings-status"
+            class="account-status"
+            role="status"
+            aria-live="polite"
+        ></p>
+
+    </section>
+
+
+    <a href="profile.html" class="account-back-link">
+        ← My Profile
+    </a>
+
+
+</main>
+
+
+
+<!-- =========================================================
+     DELETE CONFIRMATION
+========================================================= -->
+
+<div
+    id="delete-modal"
+    class="account-modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="delete-modal-title"
+    aria-describedby="delete-modal-text"
+>
+
+    <div class="account-modal-card">
+
+        <h2 id="delete-modal-title">
+            Delete your account?
+        </h2>
+
+        <p id="delete-modal-text">
+            This action cannot be undone. Your profile,
+            resumes and saved analyses are removed.
+        </p>
+
+        <div class="account-modal-actions">
+
+            <button
+                type="button"
+                id="delete-cancel"
+                class="account-secondary-button"
+            >
+                Cancel
+            </button>
+
+            <button
+                type="button"
+                id="delete-confirm"
+                class="account-danger-button"
+            >
+                Delete
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="settings.js"></script>
+
+</body>
+
+</html>

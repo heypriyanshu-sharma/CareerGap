@@ -93,16 +93,6 @@ document.addEventListener(
                 "analysis-history-list"
             );
 
-        const authActionButton =
-            document.getElementById(
-                "auth-action-button"
-            );
-
-        const userIdentityLabel =
-            document.getElementById(
-                "user-email"
-            );
-
         // =================================================
         // DASHBOARD NAVIGATION
         // =================================================
@@ -567,21 +557,43 @@ document.addEventListener(
         syncStickyOffsets();
 
         // =================================================
-        // AUTH ACTION
+        // PROFILE DROPDOWN
         // =================================================
 
-        function resolveUserIdentity(
-            user
-        ) {
+        const profileTrigger =
+            document.getElementById("profile-trigger");
+        const profileMenu =
+            document.getElementById("profile-menu");
+        const profileName =
+            document.getElementById("profile-name");
+        const menuUserName =
+            document.getElementById("menu-user-name");
+        const menuUserEmail =
+            document.getElementById("menu-user-email");
+        const menuProfileAvatar =
+            document.querySelector(".profile-menu-avatar");
+        const profileAvatar =
+            document.querySelector(".profile-avatar");
 
+        const menuProfile =
+            document.getElementById("menu-profile");
+        const menuResumes =
+            document.getElementById("menu-resumes");
+        const menuAnalyses =
+            document.getElementById("menu-analyses");
+        const menuSettings =
+            document.getElementById("menu-settings");
+        const menuSignout =
+            document.getElementById("menu-signout");
+
+        function resolveUserIdentity(user) {
             if (!user) {
                 return "";
             }
 
             const metadata =
                 user.user_metadata &&
-                typeof user.user_metadata ===
-                    "object"
+                typeof user.user_metadata === "object"
                     ? user.user_metadata
                     : {};
 
@@ -607,121 +619,237 @@ document.addEventListener(
             return "";
         }
 
-        function displayUserIdentity(
-            user
-        ) {
+        // Only absolute http(s) image URLs are rendered. Anything else
+        // falls back to initials, so a stored value can never become a
+        // javascript: or data: source.
+        function safeAvatarUrl(value) {
 
-            if (!userIdentityLabel) {
-                return;
+            if (
+                typeof value !== "string"
+            ) {
+                return "";
             }
 
-            const identity =
-                resolveUserIdentity(
-                    user
-                );
+            const trimmed = value.trim();
 
-            userIdentityLabel.textContent =
-                identity;
+            if (
+                !trimmed.startsWith("http://")
+                && !trimmed.startsWith("https://")
+            ) {
+                return "";
+            }
 
-            userIdentityLabel.title =
-                identity;
+            try {
+                new URL(trimmed);
+            } catch (_) {
+                return "";
+            }
 
-            userIdentityLabel.classList.toggle(
-                "is-empty",
-                !identity
-            );
+            return trimmed;
+
         }
 
-        async function setupAuthAction() {
+        function getInitials(name) {
+            if (!name) return "?";
+            const parts = name.trim().split(/\s+/);
+            if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+            return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+        }
 
-            if (!authActionButton) {
-                return;
+        function setAvatar(element, user) {
+            if (!element) return;
+            const metadata = user.user_metadata || {};
+            const avatarUrl = safeAvatarUrl(metadata.avatar_url);
+            if (avatarUrl) {
+                element.style.backgroundImage = `url("${avatarUrl}")`;
+                element.textContent = "";
+            } else {
+                const name = resolveUserIdentity(user) || user.email || "";
+                element.textContent = getInitials(name);
+                element.style.backgroundImage = "none";
             }
+        }
+
+        function updateProfileUI(user) {
+            const name = resolveUserIdentity(user);
+            const email = user.email || "";
+
+            if (profileName) {
+                profileName.textContent = name || email;
+            }
+            if (menuUserName) {
+                menuUserName.textContent = name || email;
+            }
+            if (menuUserEmail) {
+                menuUserEmail.textContent = email;
+            }
+            setAvatar(profileAvatar, user);
+            setAvatar(menuProfileAvatar, user);
+        }
+
+        function clearProfileUI() {
+            if (profileName) profileName.textContent = "";
+            if (menuUserName) menuUserName.textContent = "";
+            if (menuUserEmail) menuUserEmail.textContent = "";
+            if (profileAvatar) {
+                profileAvatar.textContent = "";
+                profileAvatar.style.backgroundImage = "none";
+            }
+            if (menuProfileAvatar) {
+                menuProfileAvatar.textContent = "";
+                menuProfileAvatar.style.backgroundImage = "none";
+            }
+        }
+
+        function toggleProfileMenu(forceClose) {
+            if (!profileMenu || !profileTrigger) return;
+
+            const isOpen = !profileMenu.classList.contains("hidden");
+
+            if (forceClose || isOpen) {
+                profileMenu.classList.add("hidden");
+                profileTrigger.setAttribute("aria-expanded", "false");
+            } else {
+                profileMenu.classList.remove("hidden");
+                profileTrigger.setAttribute("aria-expanded", "true");
+            }
+        }
+
+        function closeProfileMenu() {
+            toggleProfileMenu(true);
+        }
+
+        function setupSignedOutTrigger() {
+
+            // The account icon is the only route to the sign-in page,
+            // so it stays visible when there is no session and simply
+            // navigates instead of opening the menu. Hiding it would
+            // remove the way back into the product.
+
+            clearProfileUI();
+
+            profileMenu.classList.add("hidden");
+
+            if (profileAvatar) {
+                profileAvatar.textContent = "?";
+            }
+
+            profileTrigger.setAttribute(
+                "aria-label",
+                "Log in"
+            );
+
+            profileTrigger.setAttribute(
+                "aria-expanded",
+                "false"
+            );
+
+            profileTrigger.addEventListener(
+                "click",
+                function () {
+                    window.location.replace(
+                        "login.html"
+                    );
+                }
+            );
+
+        }
+
+        async function setupProfileDropdown() {
+
+            if (!profileTrigger || !profileMenu) return;
 
             const { data, error } =
                 await careerGapSupabase.auth.getSession();
 
             if (error || !data.session) {
 
-                displayUserIdentity(
-                    null
-                );
-
-                authActionButton.textContent =
-                    "Login";
-
-                authActionButton.disabled =
-                    false;
-
-                authActionButton.addEventListener(
-                    "click",
-                    function () {
-
-                        window.location.replace(
-                            "login.html"
-                        );
-
-                    }
-                );
+                setupSignedOutTrigger();
 
                 return;
+
             }
 
-            displayUserIdentity(
-                data.session.user
-            );
+            updateProfileUI(data.session.user);
+            profileTrigger.style.display = "flex";
 
-            authActionButton.textContent =
-                "Log out";
+            profileTrigger.addEventListener("click", function (e) {
+                e.stopPropagation();
+                toggleProfileMenu();
+            });
 
-            authActionButton.disabled =
-                false;
+            document.addEventListener("click", function (e) {
+                if (
+                    profileMenu &&
+                    !profileMenu.contains(e.target) &&
+                    !profileTrigger.contains(e.target)
+                ) {
+                    closeProfileMenu();
+                }
+            });
 
-            authActionButton.addEventListener(
-                "click",
-                async function () {
+            document.addEventListener("keydown", function (e) {
+                if (e.key === "Escape") {
+                    closeProfileMenu();
+                }
+            });
 
-                    authActionButton.disabled =
-                        true;
+            if (menuProfile) {
+                menuProfile.addEventListener("click", function () {
+                    closeProfileMenu();
+                    window.location.href = "profile.html";
+                });
+            }
 
-                    authActionButton.textContent =
-                        "Logging out...";
+            if (menuResumes) {
+                menuResumes.addEventListener("click", function () {
+                    closeProfileMenu();
+                    const btn = document.getElementById("nav-resume-builder");
+                    if (btn) btn.click();
+                });
+            }
 
-                    displayUserIdentity(
-                        null
-                    );
+            if (menuAnalyses) {
+                menuAnalyses.addEventListener("click", function () {
+                    closeProfileMenu();
+                    const btn = document.getElementById("nav-saved-analyses");
+                    if (btn) btn.click();
+                });
+            }
 
-                    const { error } =
-                        await careerGapSupabase.auth.signOut();
+            if (menuSettings) {
+                menuSettings.addEventListener("click", function () {
+                    closeProfileMenu();
+                    window.location.href = "settings.html";
+                });
+            }
 
-                    if (error) {
+            if (menuSignout) {
+                menuSignout.addEventListener("click", async function () {
+                    closeProfileMenu();
+                    menuSignout.disabled = true;
+                    menuSignout.textContent = "Signing out...";
 
-                        alert(
-                            "Unable to log out. Please try again."
-                        );
+                    const result = await careerGapSignOut();
 
-                        authActionButton.disabled =
-                            false;
-
-                        authActionButton.textContent =
-                            "Log out";
-
-                        displayUserIdentity(
-                            data.session.user
-                        );
-
+                    if (!result.ok) {
+                        alert("Unable to sign out. Please try again.");
+                        menuSignout.disabled = false;
+                        menuSignout.innerHTML = `
+                            <svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                <polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                                <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Sign out
+                        `;
                         return;
                     }
-
-                    window.location.replace(
-                        "login.html"
-                    );
-
-                }
-            );
+                });
+            }
         }
 
-        setupAuthAction();
+        setupProfileDropdown();
 
         // =================================================
         // API CONFIGURATION
