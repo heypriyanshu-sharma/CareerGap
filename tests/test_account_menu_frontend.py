@@ -634,6 +634,62 @@ class TestProfilePage:
             in source
         )
 
+    def test_successful_save_redirects_home(self):
+        """A completed save shows the success state, then
+        hands the user back to the dashboard."""
+
+        source = _read(FRONTEND_DIR / "profile.js")
+
+        compact = re.sub(r"\s+", "", source)
+
+        assert (
+            'setStatus("Profilesaved.","success")'
+            in compact
+        )
+
+        assert (
+            'window.location.href="index.html"' in compact
+        )
+
+        assert "window.setTimeout" in compact
+
+    def test_failed_save_does_not_redirect(self):
+        """The redirect lives inside the try block, after
+        the response is known to be ok, so a rejected
+        request can never reach it."""
+
+        source = _read(FRONTEND_DIR / "profile.js")
+
+        compact = re.sub(r"\s+", "", source)
+
+        # The save handler is the last try block in the
+        # file, so its catch is the final one.
+        redirect = compact.rindex(
+            'window.location.href="index.html"'
+        )
+        catch = compact.rindex("}catch(error){")
+
+        assert redirect < catch
+
+        # The failure path reports the error instead.
+        assert '"error"' in compact
+
+    def test_profile_page_has_no_settings_link(self):
+        """Settings is reached from the account menu, not
+        from the profile page, so the two pages do not
+        loop back and forth."""
+
+        html = _read(PROFILE_HTML)
+
+        assert "settings.html" not in html
+        assert "account-back-link" not in html
+
+    def test_profile_page_keeps_back_to_careergap(self):
+        html = _read(PROFILE_HTML)
+
+        assert 'href="index.html"' in html
+        assert "Back to CareerGap" in html
+
 
 # ============================================================
 # SETTINGS PAGE
@@ -705,6 +761,23 @@ class TestSettingsPage:
             'deleteConfirm.addEventListener("click"'
             in compact.replace(" ", "")
         )
+
+    def test_no_profile_settings_navigation_loop(self):
+        """The bottom back-link is removed so Settings does
+        not point straight back at the profile page. The
+        account dropdown remains the way back to Profile,
+        which keeps the two pages from looping."""
+
+        html = _read(SETTINGS_HTML)
+
+        assert "account-back-link" not in html
+        assert "← My Profile" not in html
+
+    def test_settings_keeps_back_to_careergap(self):
+        html = _read(SETTINGS_HTML)
+
+        assert 'href="index.html"' in html
+        assert "Back to CareerGap" in html
 
     def test_delete_calls_backend_not_supabase_directly(self):
         """Account deletion goes through the API so ownership is

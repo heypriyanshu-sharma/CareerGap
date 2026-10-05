@@ -397,6 +397,14 @@ document.addEventListener(
                     profile
                 );
 
+                // The save succeeded, so hand the user back to
+                // the dashboard. Only the success path redirects:
+                // a failed or rejected request falls through to
+                // the catch below and stays on the page.
+                window.setTimeout(function () {
+                    window.location.href = "index.html";
+                }, 800);
+
             } catch (error) {
 
                 console.error(
