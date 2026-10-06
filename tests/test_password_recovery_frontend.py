@@ -287,6 +287,107 @@ class TestResetPasswordPage:
 
 
 # ============================================================
+# RESET PASSWORD — VISIBILITY TOGGLES
+# ============================================================
+
+class TestPasswordVisibilityToggles:
+    """Both reset fields reuse the login page's
+    eye toggle, so the markup, styling and behaviour
+    are identical to the existing auth pages."""
+
+    def test_reset_page_has_a_toggle_for_both_fields(self):
+        html = _read(RESET_HTML)
+
+        assert 'id="new-password-toggle"' in html
+        assert 'id="confirm-new-password-toggle"' in html
+
+    def test_reset_toggles_use_the_login_page_markup(self):
+        """Each toggle sits in a password wrap and
+        carries both eye states, exactly as on the
+        login and signup pages."""
+
+        html = _read(RESET_HTML)
+
+        assert 'class="password-input-wrap"' in html
+        assert 'class="password-toggle"' in html
+        assert "password-eye password-eye-open" in html
+        assert (
+            "password-eye password-eye-closed hidden"
+            in html
+        )
+
+        # Both toggles start in the "show" state.
+        assert 'aria-label="Show password"' in html
+        assert 'aria-pressed="false"' in html
+
+    def test_reset_toggles_are_wired_to_their_inputs(self):
+        source = _read(RESET_JS)
+
+        assert "setupPasswordToggle" in source
+
+        compact = _compact(source)
+
+        assert (
+            'getElementById("new-password-toggle")'
+            in compact
+        )
+        assert (
+            'getElementById("confirm-new-password-toggle")'
+            in compact
+        )
+
+    def test_reset_toggle_swaps_only_the_input_type(self):
+        """Toggling swaps the input type so the
+        entered value is never read or modified."""
+
+        source = _read(RESET_JS)
+
+        compact = _compact(source)
+
+        assert (
+            'input.type=isPassword?"text":"password"'
+            in compact
+        )
+
+    def test_reset_toggle_toggles_both_eye_icons(self):
+        source = _read(RESET_JS)
+
+        compact = _compact(source)
+
+        assert (
+            'openEye.classList.toggle("hidden",isPassword)'
+            in compact
+        )
+        assert (
+            'closedEye.classList.toggle'
+            '("hidden",!isPassword)' in compact
+        )
+
+    def test_reset_toggle_updates_accessibility_state(self):
+        source = _read(RESET_JS)
+
+        compact = _compact(source)
+
+        assert '"Hidepassword":"Showpassword"' in (
+            compact
+        )
+        assert "String(isPassword)" in compact
+
+    def test_reset_toggle_matches_login_behaviour(self):
+        """Login and reset both swap the input type
+        and toggle the same eye icons, so the value
+        is never exposed beyond the input itself."""
+
+        for path in (LOGIN_JS, RESET_JS):
+            source = _read(path)
+
+            assert "password-eye-open" in source
+            assert "password-eye-closed" in source
+            assert '"Hide password"' in source
+            assert '"Show password"' in source
+
+
+# ============================================================
 # PROFILE — CHANGE PASSWORD
 # ============================================================
 
