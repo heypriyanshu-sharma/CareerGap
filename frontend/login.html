@@ -57,7 +57,7 @@
         </a>
 
 
-        <div class="login-heading">
+<div class="login-heading" id="login-heading">
 
             <p class="eyebrow">
                 WELCOME BACK
@@ -78,7 +78,7 @@
         <form
             class="login-form"
             id="login-form"
->
+        >
 
             <div class="form-field">
 
@@ -106,7 +106,10 @@
                         Password
                     </label>
 
-                    <a href="#">
+                    <a
+                        href="login.html"
+                        id="forgot-password"
+                    >
                         Forgot password?
                     </a>
 
@@ -178,7 +181,68 @@
         </form>
 
 
-        <div class="signup-prompt">
+        <form
+            class="login-form hidden"
+            id="password-recovery"
+        >
+
+            <div class="login-heading" id="recovery-heading">
+
+                <p class="eyebrow">
+                    PASSWORD RESET
+                </p>
+
+                <h1>
+                    Reset your<br>
+                    password.
+                </h1>
+
+                <p class="login-description">
+                    Enter the email address for your account and
+                    we will send you a link to set a new password.
+                </p>
+
+            </div>
+
+
+            <div class="form-field">
+
+                <label for="recovery-email">
+                    Email
+                </label>
+
+                <input
+                    type="email"
+                    id="recovery-email"
+                    name="recovery-email"
+                    placeholder="you@example.com"
+                    autocomplete="email"
+                    required
+                >
+
+            </div>
+
+
+            <p
+                class="recovery-status"
+                id="recovery-status"
+                role="status"
+                aria-live="polite"
+            ></p>
+
+
+            <button
+                type="submit"
+                class="login-button"
+                id="recovery-submit"
+            >
+                Send reset link
+            </button>
+
+        </form>
+
+
+        <div class="signup-prompt" id="signup-prompt">
 
             <span>
                 Don't have an account?
@@ -192,8 +256,17 @@
 
 
         <a
+            href="login.html"
+            class="back-link hidden"
+            id="recovery-back"
+        >
+            ← Back to sign in
+        </a>
+
+        <a
             href="/"
             class="back-link"
+            id="home-back"
         >
             ← Back to CareerGap
         </a>

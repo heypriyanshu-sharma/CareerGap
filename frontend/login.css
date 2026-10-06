@@ -431,8 +431,44 @@ a {
 }
 
 /* =========================================================
+   PASSWORD RECOVERY
+   ========================================================= */
+
+.hidden {
+    display: none;
+}
+
+
+.recovery-status {
+
+    margin-top: 18px;
+
+    font-size: 0.82rem;
+
+    font-weight: 650;
+
+    color: var(--olive-soft);
+
+}
+
+
+.recovery-status.success {
+
+    color: var(--olive);
+
+}
+
+
+.recovery-status.error {
+
+    color: #a45747;
+
+}
+
+
+/* =========================================================
    LOGIN BUTTON
-========================================================= */
+   ========================================================= */
 
 .login-button {
 

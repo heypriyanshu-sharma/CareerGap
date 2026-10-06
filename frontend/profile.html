@@ -213,6 +213,114 @@
     </section>
 
 
+    <!-- =========================================================
+         ACCOUNT SECURITY
+    ========================================================= -->
+
+    <section
+        class="account-card"
+        aria-labelledby="security-heading"
+    >
+
+        <header class="account-card-header">
+
+            <p class="eyebrow">
+                ACCOUNT SECURITY
+            </p>
+
+            <h2 id="security-heading">
+                Password
+            </h2>
+
+        </header>
+
+
+        <div class="account-row">
+
+            <div>
+
+                <p class="account-row-label">
+                    Password
+                </p>
+
+                <p class="account-row-hint">
+                    ••••••••••••••••
+                </p>
+
+            </div>
+
+            <button
+                type="button"
+                id="change-password"
+                class="account-secondary-button"
+            >
+                Change password
+            </button>
+
+        </div>
+
+
+        <form
+            id="change-password-form"
+            class="account-form hidden"
+        >
+
+            <div class="account-field">
+
+                <label for="new-password">
+                    New password
+                </label>
+
+                <input
+                    type="password"
+                    id="new-password"
+                    autocomplete="new-password"
+                    placeholder="Enter new password"
+                >
+
+            </div>
+
+
+            <div class="account-field">
+
+                <label for="confirm-new-password">
+                    Confirm new password
+                </label>
+
+                <input
+                    type="password"
+                    id="confirm-new-password"
+                    autocomplete="new-password"
+                    placeholder="Enter new password again"
+                >
+
+            </div>
+
+
+            <div class="account-actions">
+
+                <button
+                    type="submit"
+                    id="update-password"
+                    class="account-primary-button"
+                >
+                    Update Password
+                </button>
+
+                <span
+                    id="password-status"
+                    class="account-status"
+                    role="status"
+                    aria-live="polite"
+                ></span>
+
+            </div>
+
+        </form>
+
+    </section>
+
+
 </main>
 
 

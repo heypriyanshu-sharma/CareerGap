@@ -437,6 +437,209 @@ document.addEventListener(
             );
         }
 
+
+        // =================================================
+        // CHANGE PASSWORD
+        // =================================================
+        // Password changes go straight to Supabase Auth
+        // with the existing session. The current password
+        // is never requested, read or displayed: Supabase
+        // only allows setting a new one.
+        // =================================================
+
+        const MIN_PASSWORD_LENGTH = 6;
+
+        const changePasswordButton =
+            document.getElementById(
+                "change-password"
+            );
+
+        const changePasswordForm =
+            document.getElementById(
+                "change-password-form"
+            );
+
+        const newPasswordInput =
+            document.getElementById(
+                "new-password"
+            );
+
+        const confirmPasswordInput =
+            document.getElementById(
+                "confirm-new-password"
+            );
+
+        const updatePasswordButton =
+            document.getElementById(
+                "update-password"
+            );
+
+        const passwordStatusLabel =
+            document.getElementById(
+                "password-status"
+            );
+
+
+        function setPasswordStatus(
+            message,
+            type = ""
+        ) {
+
+            if (!passwordStatusLabel) {
+                return;
+            }
+
+            passwordStatusLabel.textContent =
+                message;
+
+            passwordStatusLabel.className =
+                `account-status ${type}`.trim();
+
+        }
+
+
+        if (
+            changePasswordButton &&
+            changePasswordForm
+        ) {
+
+            changePasswordButton.addEventListener(
+                "click",
+                function () {
+
+                    const isHidden =
+                        changePasswordForm.classList
+                            .contains("hidden");
+
+                    changePasswordForm.classList
+                        .toggle("hidden");
+
+                    if (
+                        isHidden &&
+                        newPasswordInput
+                    ) {
+                        newPasswordInput.focus();
+                    }
+
+                }
+            );
+
+        }
+
+
+        if (changePasswordForm) {
+
+            changePasswordForm.addEventListener(
+                "submit",
+                async function (event) {
+
+                    event.preventDefault();
+
+                    const newPassword =
+                        newPasswordInput
+                            ? newPasswordInput.value
+                            : "";
+
+                    const confirmPassword =
+                        confirmPasswordInput
+                            ? confirmPasswordInput.value
+                            : "";
+
+
+                    if (!newPassword || !confirmPassword) {
+
+                        setPasswordStatus(
+                            "Both password fields are required.",
+                            "error"
+                        );
+
+                        return;
+
+                    }
+
+
+                    if (
+                        newPassword.length <
+                        MIN_PASSWORD_LENGTH
+                    ) {
+
+                        setPasswordStatus(
+                            "Password must be at least " +
+                                MIN_PASSWORD_LENGTH +
+                                " characters.",
+                            "error"
+                        );
+
+                        return;
+
+                    }
+
+
+                    if (newPassword !== confirmPassword) {
+
+                        setPasswordStatus(
+                            "Passwords do not match.",
+                            "error"
+                        );
+
+                        return;
+
+                    }
+
+
+                    if (updatePasswordButton) {
+                        updatePasswordButton.disabled =
+                            true;
+                        updatePasswordButton.textContent =
+                            "Updating...";
+                    }
+
+
+                    const { error } =
+                        await careerGapSupabase.auth
+                            .updateUser({
+                                password: newPassword
+                            });
+
+
+                    if (error) {
+
+                        setPasswordStatus(
+                            error.message ||
+                                "Unable to update your password.",
+                            "error"
+                        );
+
+                        if (updatePasswordButton) {
+                            updatePasswordButton.disabled =
+                                false;
+                            updatePasswordButton.textContent =
+                                "Update Password";
+                        }
+
+                        return;
+
+                    }
+
+
+                    setPasswordStatus(
+                        "Password updated successfully.",
+                        "success"
+                    );
+
+                    changePasswordForm.reset();
+
+                    if (changePasswordForm) {
+                        changePasswordForm.classList
+                            .add("hidden");
+                    }
+
+                }
+            );
+
+        }
+
+
         loadProfile();
 
     }
