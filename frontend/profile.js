@@ -498,6 +498,85 @@ document.addEventListener(
         }
 
 
+        // =================================================
+        // SHOW / HIDE PASSWORD
+        // Matches the login page pattern. Toggling only
+        // swaps the input type, so the entered value is
+        // never read or modified.
+        // =================================================
+
+        function setupPasswordToggle(input, toggle) {
+
+            if (!input || !toggle) {
+                return;
+            }
+
+            const openEye =
+                toggle.querySelector(
+                    ".password-eye-open"
+                );
+
+            const closedEye =
+                toggle.querySelector(
+                    ".password-eye-closed"
+                );
+
+            toggle.addEventListener("click", function () {
+
+                const isPassword =
+                    input.type === "password";
+
+                input.type =
+                    isPassword ? "text" : "password";
+
+                if (openEye) {
+                    openEye.classList.toggle(
+                        "hidden",
+                        isPassword
+                    );
+                }
+
+                if (closedEye) {
+                    closedEye.classList.toggle(
+                        "hidden",
+                        !isPassword
+                    );
+                }
+
+                toggle.setAttribute(
+                    "aria-label",
+                    isPassword
+                        ? "Hide password"
+                        : "Show password"
+                );
+
+                toggle.setAttribute(
+                    "aria-pressed",
+                    String(isPassword)
+                );
+
+                input.focus();
+
+            });
+
+        }
+
+
+        setupPasswordToggle(
+            newPasswordInput,
+            document.getElementById(
+                "new-password-toggle"
+            )
+        );
+
+        setupPasswordToggle(
+            confirmPasswordInput,
+            document.getElementById(
+                "confirm-new-password-toggle"
+            )
+        );
+
+
         if (
             changePasswordButton &&
             changePasswordForm

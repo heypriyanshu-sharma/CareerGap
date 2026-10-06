@@ -3343,6 +3343,104 @@ textarea:focus,
 
 }
 
+
+/* ---- Password visibility toggle ---- */
+
+.password-input-wrap {
+
+    position: relative;
+
+    width: 100%;
+
+}
+
+.password-input-wrap input {
+
+    width: 100%;
+
+    padding-right: 52px;
+
+}
+
+.password-toggle {
+
+    position: absolute;
+
+    top: 50%;
+
+    right: 8px;
+
+    width: 40px;
+
+    height: 40px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    transform: translateY(-50%);
+
+    border: none;
+
+    border-radius: 10px;
+
+    background: transparent;
+
+    color: var(--olive-soft);
+
+    padding: 0;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease;
+
+}
+
+.password-toggle:hover {
+
+    background: var(--pistachio-soft);
+
+    color: var(--olive);
+
+}
+
+.password-toggle:focus-visible {
+
+    outline: 3px solid
+        rgba(198, 216, 167, 0.5);
+
+    outline-offset: 2px;
+
+}
+
+.password-eye {
+
+    width: 20px;
+
+    height: 20px;
+
+    fill: none;
+
+    stroke: currentColor;
+
+    stroke-width: 1.8;
+
+    stroke-linecap: round;
+
+    stroke-linejoin: round;
+
+}
+
+.password-eye.hidden {
+
+    display: none;
+
+}
+
 .account-actions {
 
     display: flex;
