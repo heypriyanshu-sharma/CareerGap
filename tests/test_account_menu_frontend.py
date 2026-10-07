@@ -552,6 +552,62 @@ class TestAccountMenuBehaviour:
                 'startsWith("https://")' in helper
             )
 
+    def test_navbar_uses_profile_full_name(self):
+        """The navbar trigger must show the stored profile name instead
+        of the email-derived label."""
+
+        source = _read(SCRIPT_JS)
+
+        assert "function loadProfileForUI(" in source
+        assert "/auth/profile" in source
+        assert "function resolveProfileName(" in source
+        assert "profile.full_name" in source
+
+        helper = _extract_braced_block(
+            source, "function resolveProfileName"
+        )
+
+        assert "resolveUserIdentity(" in helper, (
+            "profile name must fall back to the existing identity "
+            "resolution when no profile name is stored"
+        )
+
+        assert "profileTrigger.style.display = \"none\"" not in source
+
+    def test_navbar_falls_back_to_email_without_profile_name(self):
+        """When no profile row or full_name exists the existing email
+        behaviour must be preserved."""
+
+        source = _read(SCRIPT_JS)
+
+        compact = re.sub(r"\s+", "", source)
+
+        assert (
+            "returnresolveUserIdentity(user);" in compact
+        )
+
+        # The fallback path must still reach the email when the
+        # identity helper returns empty.
+        assert "name||email" in compact
+
+    def test_navbar_fetches_profile_after_session(self):
+        """The dropdown setup must fetch the profile row and pass it
+        to the UI before rendering."""
+
+        source = _read(SCRIPT_JS)
+
+        setup = _extract_braced_block(
+            source, "function setupProfileDropdown"
+        )
+
+        assert "loadProfileForUI(" in setup
+
+        compact = re.sub(r"\s+", "", setup)
+
+        assert (
+            "updateProfileUI(data.session.user,profile)" in compact
+        )
+
 
 # ============================================================
 # PROFILE PAGE

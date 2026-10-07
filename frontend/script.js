@@ -619,6 +619,52 @@ document.addEventListener(
             return "";
         }
 
+        async function loadProfileForUI(accessToken) {
+
+            try {
+
+                const response =
+                    await fetch(
+                        `${API_BASE_URL}/auth/profile`,
+                        {
+                            headers: {
+                                Authorization:
+                                    `Bearer ${accessToken}`
+                            }
+                        }
+                    );
+
+                if (!response.ok) {
+                    return null;
+                }
+
+                const data =
+                    await response.json();
+
+                return data && data.profile
+                    ? data.profile
+                    : null;
+
+            } catch (_) {
+                return null;
+            }
+
+        }
+
+        function resolveProfileName(user, profile) {
+
+            if (
+                profile &&
+                typeof profile.full_name === "string" &&
+                profile.full_name.trim()
+            ) {
+                return profile.full_name.trim();
+            }
+
+            return resolveUserIdentity(user);
+
+        }
+
         // Only absolute http(s) image URLs are rendered. Anything else
         // falls back to initials, so a stored value can never become a
         // javascript: or data: source.
@@ -670,8 +716,8 @@ document.addEventListener(
             }
         }
 
-        function updateProfileUI(user) {
-            const name = resolveUserIdentity(user);
+        function updateProfileUI(user, profile) {
+            const name = resolveProfileName(user, profile);
             const email = user.email || "";
 
             if (profileName) {
@@ -772,6 +818,20 @@ document.addEventListener(
 
             updateProfileUI(data.session.user);
             profileTrigger.style.display = "flex";
+
+            const accessToken =
+                data.session.access_token || "";
+
+            if (accessToken) {
+                const profile =
+                    await loadProfileForUI(
+                        accessToken
+                    );
+                updateProfileUI(
+                    data.session.user,
+                    profile
+                );
+            }
 
             profileTrigger.addEventListener("click", function (e) {
                 e.stopPropagation();
