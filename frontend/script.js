@@ -732,19 +732,24 @@ document.addEventListener(
             setAvatar(profileAvatar, user);
             setAvatar(menuProfileAvatar, user);
 
-            // The navbar trigger shows a single initial. It must come
-            // from the same resolved display name as the trigger text
-            // (the stored profile.full_name), so "PRIYANSHU SHARMA"
-            // renders as [P] rather than the email-derived initial.
-            // The menu avatar keeps the existing two-initial behaviour.
+            // Both the navbar trigger and the opened dropdown header
+            // show a single initial. It must come from the same resolved
+            // display name as the trigger text (the stored
+            // profile.full_name), so "PRIYANSHU SHARMA" renders as [P]
+            // in both places rather than the email-derived initial.
+            const resolvedAvatarName =
+                resolveProfileName(user, profile) ||
+                user.email || "";
+            const avatarInitial =
+                resolvedAvatarName.trim()
+                    ? resolvedAvatarName.trim().charAt(0).toUpperCase()
+                    : "?";
+
             if (profileAvatar && profileAvatar.textContent) {
-                const resolvedName =
-                    resolveProfileName(user, profile) ||
-                    user.email || "";
-                profileAvatar.textContent =
-                    resolvedName.trim()
-                        ? resolvedName.trim().charAt(0).toUpperCase()
-                        : "?";
+                profileAvatar.textContent = avatarInitial;
+            }
+            if (menuProfileAvatar && menuProfileAvatar.textContent) {
+                menuProfileAvatar.textContent = avatarInitial;
             }
         }
 
