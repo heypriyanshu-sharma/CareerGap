@@ -1156,13 +1156,27 @@
                                         >Custom</li>
                                     </ul>
                                 </div>
-                                <button type="button" id="add-section-btn" class="resume-action-btn primary" disabled>
-                                    Add
+                                <button type="button" id="add-section-btn" class="rb-add-btn" disabled>
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <line x1="12" y1="5" x2="12" y2="19"/>
+                                        <line x1="5" y1="12" x2="19" y2="12"/>
+                                    </svg>
+                                    Add Section
                                 </button>
                             </div>
                         </div>
                     </section>
                 </form>
+
+                <div class="resume-editor-bottom-bar">
+                    <button
+                        type="button"
+                        id="resume-save-btn-bottom"
+                        class="resume-action-btn primary"
+                    >
+                        Save Resume
+                    </button>
+                </div>
 
                 <div
                     id="resume-editor-error"

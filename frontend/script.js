@@ -4375,6 +4375,7 @@ document.addEventListener(
             editorEmpty: document.getElementById("resume-editor-empty"),
             cancelBtn: document.getElementById("resume-cancel-btn"),
             saveBtn: document.getElementById("resume-save-btn"),
+            saveBtnBottom: document.getElementById("resume-save-btn-bottom"),
             form: document.getElementById("resume-form"),
             formId: document.getElementById("resume-form-id"),
             formIsDefault: document.getElementById("resume-form-is-default"),
@@ -4967,7 +4968,9 @@ document.addEventListener(
             };
 
             resumeElements.saveBtn.disabled = true;
+            resumeElements.saveBtnBottom.disabled = true;
             resumeElements.saveBtn.textContent = "Saving...";
+            resumeElements.saveBtnBottom.textContent = "Saving...";
             resumeElements.editorError.classList.add("hidden");
 
             try {
@@ -4995,7 +4998,9 @@ document.addEventListener(
                 resumeElements.editorError.classList.remove("hidden");
             } finally {
                 resumeElements.saveBtn.disabled = false;
+                resumeElements.saveBtnBottom.disabled = false;
                 resumeElements.saveBtn.textContent = "Save";
+                resumeElements.saveBtnBottom.textContent = "Save Resume";
             }
         }
 
@@ -5142,9 +5147,14 @@ document.addEventListener(
                     <label>URL</label>
                     <input type="url" name="contact.links[].url" maxlength="500" placeholder="https://github.com/username" value="${escapeHTML(url)}">
                 </div>
-                <button type="button" class="resume-section-item-btn danger" aria-label="Remove link">&times;</button>
+                <button type="button" class="rb-icon-btn danger" aria-label="Remove link">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                </button>
             `;
-            row.querySelector(".resume-section-item-btn").addEventListener("click", () => row.remove());
+            row.querySelector(".rb-icon-btn").addEventListener("click", () => row.remove());
             resumeElements.linksContainer.appendChild(row);
         }
 
@@ -5163,9 +5173,22 @@ document.addEventListener(
                 <div class="resume-section-item-header">
                     <span class="resume-section-item-type">${escapeHTML(typeLabel)}</span>
                     <div class="resume-section-item-actions">
-                        <button type="button" class="resume-section-item-btn" data-move-up aria-label="Move section up" title="Move up">&#9650;</button>
-                        <button type="button" class="resume-section-item-btn" data-move-down aria-label="Move section down" title="Move down">&#9660;</button>
-                        <button type="button" class="resume-section-item-btn danger" data-remove-section aria-label="Remove section" title="Remove section">&times;</button>
+                        <button type="button" class="rb-icon-btn nav" data-move-up aria-label="Move section up">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <polyline points="18 15 12 9 6 15"/>
+                            </svg>
+                        </button>
+                        <button type="button" class="rb-icon-btn nav" data-move-down aria-label="Move section down">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </button>
+                        <button type="button" class="rb-icon-btn danger" data-remove-section aria-label="Remove section">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
                 <div class="resume-section-fields">${fieldsHtml}</div>
@@ -5334,11 +5357,15 @@ document.addEventListener(
                     >
                     <button
                         type="button"
-                        class="resume-section-item-btn danger"
+                        class="rb-icon-btn danger"
                         data-remove-bullet
                         aria-label="Remove bullet"
-                        title="Remove bullet"
-                    >&times;</button>
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
                 </div>
             `;
         }
@@ -5365,20 +5392,28 @@ document.addEventListener(
 
                         <button
                             type="button"
-                            class="resume-bullet-add"
+                            class="rb-add-btn"
                             data-add-bullet
                         >
-                            <span aria-hidden="true">+</span> Add Bullet
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Add Bullet
                         </button>
                     </div>
 
                     <button
                         type="button"
-                        class="resume-section-item-btn danger"
+                        class="rb-icon-btn danger resume-entry-remove"
                         data-remove-entry
                         aria-label="Remove entry"
-                        title="Remove entry"
-                    >&#10005;</button>
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
 
                 </div>
             `;
@@ -5398,11 +5433,15 @@ document.addEventListener(
                     >
                     <button
                         type="button"
-                        class="resume-section-item-btn danger"
+                        class="rb-icon-btn danger"
                         data-remove-skill
                         aria-label="Remove skill"
-                        title="Remove skill"
-                    >&times;</button>
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
                 </div>
             `;
         }
@@ -5421,10 +5460,14 @@ document.addEventListener(
 
                 <button
                     type="button"
-                    class="resume-bullet-add"
+                    class="rb-add-btn"
                     data-add-skill
                 >
-                    <span aria-hidden="true">+</span> Add Skill
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Add Skill
                 </button>
             `;
         }
@@ -5474,10 +5517,14 @@ document.addEventListener(
 
                 <button
                     type="button"
-                    class="resume-bullet-add"
+                    class="rb-add-btn"
                     data-add-entry
                 >
-                    <span aria-hidden="true">+</span> Add Another Entry
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Add Another Entry
                 </button>
             `;
         }
@@ -5822,6 +5869,7 @@ document.addEventListener(
             resumeElements.editBtn.addEventListener("click", editResume);
             resumeElements.cancelBtn.addEventListener("click", cancelEdit);
             resumeElements.saveBtn.addEventListener("click", saveResume);
+            resumeElements.saveBtnBottom.addEventListener("click", saveResume);
             resumeElements.deleteBtn.addEventListener("click", deleteResume);
             resumeElements.setDefaultBtn.addEventListener("click", setDefaultResume);
             resumeElements.exportBtn.addEventListener("click", exportResume);

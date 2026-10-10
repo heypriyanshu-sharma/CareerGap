@@ -6092,9 +6092,275 @@ textarea:focus,
     outline-offset: 2px;
 }
 
-.resume-add-section {
-    padding-top: 16px;
-    border-top: 1px dashed var(--ref-green-border);
+/* =========================================================
+   RESUME BUILDER — UI CONTROL SYSTEM
+   Reusable button/icon styles for the resume editor.
+   ========================================================= */
+
+/* ---- Icon button base ---- */
+.rb-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--ref-green-border);
+    border-radius: 50%;
+    background: var(--white);
+    color: var(--ref-green-dark);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease,
+                color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    flex-shrink: 0;
+}
+
+.rb-icon-btn:hover:not(:disabled) {
+    background: var(--ref-green-pale);
+    border-color: var(--ref-green-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(75, 96, 67, 0.10);
+}
+
+.rb-icon-btn:focus-visible {
+    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline-offset: 2px;
+}
+
+.rb-icon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.rb-icon-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ---- Remove/Danger variant ---- */
+.rb-icon-btn.danger {
+    background: rgba(164, 87, 71, 0.05);
+    border-color: rgba(164, 87, 71, 0.22);
+    color: #a45747;
+}
+
+.rb-icon-btn.danger:hover:not(:disabled) {
+    background: rgba(164, 87, 71, 0.08);
+    border-color: rgba(164, 87, 71, 0.4);
+    color: #a45747;
+}
+
+/* ---- Navigation/Reorder (chevron) ---- */
+.rb-icon-btn.nav {
+    color: var(--ref-green-dark);
+}
+
+.rb-icon-btn.nav:hover:not(:disabled) {
+    background: var(--ref-green-pale);
+    border-color: var(--ref-green-primary);
+    color: var(--ref-green-primary);
+}
+
+/* ---- Add action (plus) ---- */
+.rb-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px dashed var(--ref-green-border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--ref-green-dark);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease,
+                color 0.15s ease, transform 0.15s ease, border-style 0.15s ease;
+}
+
+.rb-add-btn:hover:not(:disabled) {
+    background: var(--ref-green-pale);
+    border-color: var(--ref-green-primary);
+    border-style: solid;
+    transform: translateY(-1px);
+}
+
+.rb-add-btn:focus-visible {
+    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline-offset: 2px;
+}
+
+.rb-add-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.rb-add-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+}
+
+/* ---- Section item header controls ---- */
+.resume-section-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+.resume-section-item-type {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--pistachio);
+    color: var(--olive-dark);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: capitalize;
+}
+
+.resume-section-item-actions {
+    display: inline-flex;
+    gap: 6px;
+}
+
+/* ---- Bullet/skill rows ---- */
+.resume-bullet-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.resume-bullet-row input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid var(--ref-green-border);
+    border-radius: 10px;
+    background: var(--white);
+    color: var(--olive-dark);
+    font: inherit;
+    font-size: 0.88rem;
+    outline: none;
+    transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.resume-bullet-row input:focus {
+    border-color: var(--pistachio);
+    box-shadow: 0 0 0 4px rgba(198, 216, 167, 0.25);
+}
+
+.resume-bullet-row input::placeholder {
+    color: var(--olive-soft);
+}
+
+/* ---- Entry remove button ---- */
+.resume-entry-remove {
+    margin-left: auto;
+}
+
+/* ---- Link row ---- */
+.resume-link-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 10px;
+    margin-bottom: 8px;
+    align-items: start;
+}
+
+.resume-link-row .resume-field {
+    margin: 0;
+}
+
+.resume-link-row .resume-field label {
+    display: none;
+}
+
+.resume-link-row .resume-field input {
+    width: 100%;
+}
+
+/* ---- Bottom save bar ---- */
+.resume-editor-bottom-bar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 16px 22px 22px;
+    border-top: 1px solid var(--ref-green-border);
+    background: var(--ref-green-pale);
+    margin: 0 -22px -22px;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.resume-editor-bottom-bar .resume-action-btn.primary {
+    min-width: 160px;
+    justify-content: center;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 700px) {
+    .resume-section-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .resume-section-item-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .resume-link-row {
+        grid-template-columns: 1fr;
+    }
+
+    .rb-add-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .resume-editor-bottom-bar {
+        padding: 16px;
+        margin: 0 -22px -22px;
+    }
+
+    .resume-editor-bottom-bar .resume-action-btn.primary {
+        width: 100%;
+    }
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+    .rb-icon-btn,
+    .rb-add-btn,
+    .resume-bullet-row input,
+    .resume-section-item-type,
+    .resume-field input,
+    .resume-field select,
+    .resume-field textarea {
+        transition: none;
+    }
+
+    .rb-icon-btn:hover:not(:disabled),
+    .rb-add-btn:hover:not(:disabled),
+    .resume-action-btn.primary:hover {
+        transform: none;
+    }
 }
 
 .resume-section-select-label {
