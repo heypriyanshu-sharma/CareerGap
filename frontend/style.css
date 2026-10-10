@@ -5873,6 +5873,23 @@ textarea:focus,
     gap: 8px;
 }
 
+.resume-preview-skill-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.resume-preview-skill-category {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--olive-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-right: 4px;
+}
+
 .resume-preview-skill {
     display: inline-flex;
     align-items: center;

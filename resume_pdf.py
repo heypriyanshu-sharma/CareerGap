@@ -141,12 +141,74 @@ def _contact_link_row(label: str, url: str):
     return None
 
 
+# ============================================================
+# SKILL CATEGORIZATION (Presentation-only)
+# Derived from CANONICAL_SKILL_RESOURCES in career_gap.py.
+# Does not affect stored schema — skills remain a flat string list.
+# ============================================================
+
+_SKILL_CATEGORIES = {
+    # Programming languages
+    "python": "Languages", "c": "Languages", "c++": "Languages", "java": "Languages",
+    "javascript": "Languages", "typescript": "Languages", "go": "Languages",
+    "rust": "Languages", "r": "Languages",
+    # Data / ML
+    "sql": "Data & ML", "pandas": "Data & ML", "numpy": "Data & ML",
+    "scikit-learn": "Data & ML", "machine learning": "Data & ML",
+    "deep learning": "Data & ML", "tensorflow": "Data & ML",
+    "pytorch": "Data & ML", "keras": "Data & ML",
+    "matplotlib": "Data & ML", "seaborn": "Data & ML",
+    "power bi": "Data & ML", "tableau": "Data & ML", "excel": "Data & ML",
+    # Backend / APIs
+    "fastapi": "Backend & APIs", "flask": "Backend & APIs", "django": "Backend & APIs",
+    "rest api": "Backend & APIs", "graphql": "Backend & APIs",
+    # Databases
+    "postgresql": "Databases", "mysql": "Databases", "mongodb": "Databases",
+    "sqlite": "Databases", "redis": "Databases",
+    # Cloud / DevOps
+    "docker": "Cloud & DevOps", "kubernetes": "Cloud & DevOps",
+    "aws": "Cloud & DevOps", "azure": "Cloud & DevOps", "google cloud": "Cloud & DevOps",
+    "git": "Cloud & DevOps", "github": "Cloud & DevOps", "linux": "Cloud & DevOps",
+    "github actions": "Cloud & DevOps",
+    # Web / Frontend
+    "html": "Frontend", "css": "Frontend", "react": "Frontend", "node.js": "Frontend",
+    # Core CS
+    "data structures": "Core CS", "algorithms": "Core CS",
+    "object-oriented programming": "Core CS", "oop": "Core CS",
+}
+
+_SKILL_CATEGORY_ORDER = [
+    "Languages", "Frontend", "Backend & APIs", "Databases",
+    "Cloud & DevOps", "Data & ML", "Core CS", "Other"
+]
+
+def _categorize_skill(skill: str) -> str:
+    if not skill:
+        return "Other"
+    return _SKILL_CATEGORIES.get(skill.strip().lower(), "Other")
+
+def _group_skills_by_category(skills: list[str]) -> list[tuple[str, list[str]]]:
+    groups: dict[str, list[str]] = {}
+    for skill in skills:
+        cat = _categorize_skill(skill)
+        groups.setdefault(cat, []).append(skill)
+    result = []
+    for cat in _SKILL_CATEGORY_ORDER:
+        if cat in groups:
+            result.append((cat, groups.pop(cat)))
+    for cat, skill_list in groups.items():
+        result.append((cat, skill_list))
+    return result
+
+
 class SkillsPills(Flowable):
     """Renders each skill as an individual pill chip that wraps.
 
     Mirrors the web preview's `.resume-preview-skill` chips: a
     pistachio pill with olive text, one pill per skill, so skills
     never blend into a single concatenated paragraph.
+
+    Now supports grouped rendering by category with subtle labels.
     """
 
     def __init__(
@@ -163,6 +225,7 @@ class SkillsPills(Flowable):
     ):
         super().__init__()
         self.skills = [skill for skill in skills if skill and skill.strip()]
+        self.groups = _group_skills_by_category(self.skills)
         self.font_name = font_name
         self.font_size = font_size
         self.text_color = text_color
@@ -180,25 +243,35 @@ class SkillsPills(Flowable):
             + 2 * self.padding_x
         )
 
+    def _category_label_width(self, label: str) -> float:
+        return pdfmetrics.stringWidth(label, self.font_name, self.font_size - 1) + 6
+
     def wrap(self, availWidth, availHeight):
-        """Pack pills into rows that fit the available width."""
+        """Pack pills into rows that fit the available width, with category labels."""
         self._rows = []
-        row: list[tuple[str, float]] = []
-        row_width = 0.0
 
-        for skill in self.skills:
-            pill_width = self._pill_width(skill)
-            if row and row_width + self.gap_x + pill_width > availWidth:
-                self._rows.append(row)
-                row = []
-                row_width = 0.0
+        for cat, cat_skills in self.groups:
+            # Category label row
+            label = cat
+            label_width = self._category_label_width(label)
+            self._rows.append([("__CAT__", label_width, label)])
+
+            row: list[tuple[str, float]] = []
+            row_width = 0.0
+
+            for skill in cat_skills:
+                pill_width = self._pill_width(skill)
+                if row and row_width + self.gap_x + pill_width > availWidth:
+                    self._rows.append(row)
+                    row = []
+                    row_width = 0.0
+                if row:
+                    row_width += self.gap_x
+                row.append((skill, pill_width))
+                row_width += pill_width
+
             if row:
-                row_width += self.gap_x
-            row.append((skill, pill_width))
-            row_width += pill_width
-
-        if row:
-            self._rows.append(row)
+                self._rows.append(row)
 
         self._pill_height = self.font_size + 2 * self.padding_y
         if not self._rows:
@@ -223,26 +296,37 @@ class SkillsPills(Flowable):
             row_bottom = row_top - self._pill_height
             x = 0.0
 
-            for skill, pill_width in row:
-                radius = self._pill_height / 2
-                canvas.setFillColor(self.background)
-                canvas.roundRect(
-                    x,
-                    row_bottom,
-                    pill_width,
-                    self._pill_height,
-                    radius=radius,
-                    stroke=0,
-                    fill=1,
-                )
-                canvas.setFillColor(self.text_color)
-                canvas.setFont(self.font_name, self.font_size)
+            # Check if this is a category label row
+            if row and row[0][0] == "__CAT__":
+                _, _, label = row[0]
+                canvas.setFillColor(OLIVE_SOFT)
+                canvas.setFont(self.font_name, self.font_size - 1)
                 canvas.drawString(
-                    x + self.padding_x,
-                    row_bottom + self.padding_y,
-                    skill,
+                    x + 3,
+                    row_bottom + self.padding_y - 1,
+                    label.upper()
                 )
-                x += pill_width + self.gap_x
+            else:
+                for skill, pill_width in row:
+                    radius = self._pill_height / 2
+                    canvas.setFillColor(self.background)
+                    canvas.roundRect(
+                        x,
+                        row_bottom,
+                        pill_width,
+                        self._pill_height,
+                        radius=radius,
+                        stroke=0,
+                        fill=1,
+                    )
+                    canvas.setFillColor(self.text_color)
+                    canvas.setFont(self.font_name, self.font_size)
+                    canvas.drawString(
+                        x + self.padding_x,
+                        row_bottom + self.padding_y,
+                        skill,
+                    )
+                    x += pill_width + self.gap_x
 
         canvas.restoreState()
 

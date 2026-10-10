@@ -4646,15 +4646,24 @@ document.addEventListener(
                     return "";
                 }
 
+                const groups = _groupSkillsByCategory(skills);
+
                 return `
                     <div class="resume-preview-section">
                         <div class="resume-preview-section-title">${escapeHTML(heading)}</div>
                         <div class="resume-preview-skills">
-                            ${skills
-                                .map(
-                                    (skill) =>
-                                        `<span class="resume-preview-skill">${escapeHTML(skill)}</span>`
-                                )
+                            ${groups
+                                .map((group) => `
+                                    <div class="resume-preview-skill-group">
+                                        <span class="resume-preview-skill-category">${escapeHTML(group.category)}</span>
+                                        ${group.skills
+                                            .map(
+                                                (skill) =>
+                                                    `<span class="resume-preview-skill">${escapeHTML(skill)}</span>`
+                                            )
+                                            .join("")}
+                                    </div>
+                                `)
                                 .join("")}
                         </div>
                     </div>
@@ -5205,6 +5214,64 @@ document.addEventListener(
             custom: "",
         };
 
+        // Presentation-only skill categorization for grouped display.
+        // Derived from the canonical skill taxonomy in career_gap.py.
+        // Does not affect stored schema — skills remain a flat string list.
+        const SKILL_CATEGORIES = {
+            // Programming languages
+            "python": "Languages", "c": "Languages", "c++": "Languages", "java": "Languages",
+            "javascript": "Languages", "typescript": "Languages", "go": "Languages",
+            "rust": "Languages", "r": "Languages",
+            // Data / ML
+            "sql": "Data & ML", "pandas": "Data & ML", "numpy": "Data & ML",
+            "scikit-learn": "Data & ML", "machine learning": "Data & ML",
+            "deep learning": "Data & ML", "tensorflow": "Data & ML",
+            "pytorch": "Data & ML", "keras": "Data & ML",
+            "matplotlib": "Data & ML", "seaborn": "Data & ML",
+            "power bi": "Data & ML", "tableau": "Data & ML", "excel": "Data & ML",
+            // Backend / APIs
+            "fastapi": "Backend & APIs", "flask": "Backend & APIs", "django": "Backend & APIs",
+            "rest api": "Backend & APIs", "graphql": "Backend & APIs",
+            // Databases
+            "postgresql": "Databases", "mysql": "Databases", "mongodb": "Databases",
+            "sqlite": "Databases", "redis": "Databases",
+            // Cloud / DevOps
+            "docker": "Cloud & DevOps", "kubernetes": "Cloud & DevOps",
+            "aws": "Cloud & DevOps", "azure": "Cloud & DevOps", "google cloud": "Cloud & DevOps",
+            "git": "Cloud & DevOps", "github": "Cloud & DevOps", "linux": "Cloud & DevOps",
+            "github actions": "Cloud & DevOps",
+            // Web / Frontend
+            "html": "Frontend", "css": "Frontend", "react": "Frontend", "node.js": "Frontend",
+            // Core CS
+            "data structures": "Core CS", "algorithms": "Core CS",
+            "object-oriented programming": "Core CS", "oop": "Core CS",
+        };
+
+        function _categorizeSkill(skill) {
+            if (!skill) return "Other";
+            const lower = skill.trim().toLowerCase();
+            return SKILL_CATEGORIES[lower] || "Other";
+        }
+
+        function _groupSkillsByCategory(skills) {
+            const groups = {};
+            for (const skill of skills) {
+                const cat = _categorizeSkill(skill);
+                if (!groups[cat]) groups[cat] = [];
+                groups[cat].push(skill);
+            }
+            // Order categories for consistent presentation
+            const order = ["Languages", "Frontend", "Backend & APIs", "Databases", "Cloud & DevOps", "Data & ML", "Core CS", "Other"];
+            const result = [];
+            for (const cat of order) {
+                if (groups[cat]) result.push({ category: cat, skills: groups[cat] });
+            }
+            for (const cat of Object.keys(groups)) {
+                if (!order.includes(cat) && groups[cat]) result.push({ category: cat, skills: groups[cat] });
+            }
+            return result;
+        }
+
         const RESUME_ITEM_FIELDS = {
             education: [
                 { name: "title", label: "Degree", placeholder: "B.S. Computer Science" },
@@ -5262,7 +5329,7 @@ document.addEventListener(
                         type="text"
                         name="bullets[]"
                         maxlength="1000"
-                        placeholder="Achievement or responsibility"
+                        placeholder="Action → Technical work → Result (e.g., Built API with FastAPI, cut latency 40%)"
                         value="${escapeHTML(bullet)}"
                     >
                     <button

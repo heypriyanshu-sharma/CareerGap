@@ -156,6 +156,51 @@ def _optional_string(
     )
 
 
+def _normalize_date(value: str) -> str:
+    """Normalize common date variants leniently.
+
+    - "jan 2022" → "Jan 2022"
+    - "present"/"current" → "Present"
+    - "2022" → "2022" (unchanged)
+    - Unknown formats pass through unchanged.
+    """
+    if not value:
+        return value
+    trimmed = value.strip()
+    if not trimmed:
+        return value
+
+    lower = trimmed.lower()
+    if lower in ("present", "current"):
+        return "Present"
+
+    # Try to match "mon YYYY" or "month YYYY" (e.g., "jan 2022", "January 2022")
+    import re
+    m = re.match(r"^([a-z]+)[.\s]*(\d{4})$", trimmed, re.IGNORECASE)
+    if m:
+        month_str = m.group(1)
+        year = m.group(2)
+        month_map = {
+            "jan": "Jan", "january": "Jan",
+            "feb": "Feb", "february": "Feb",
+            "mar": "Mar", "march": "Mar",
+            "apr": "Apr", "april": "Apr",
+            "may": "May",
+            "jun": "Jun", "june": "Jun",
+            "jul": "Jul", "july": "Jul",
+            "aug": "Aug", "august": "Aug",
+            "sep": "Sep", "sept": "Sep", "september": "Sep",
+            "oct": "Oct", "october": "Oct",
+            "nov": "Nov", "november": "Nov",
+            "dec": "Dec", "december": "Dec",
+        }
+        month = month_map.get(month_str.lower())
+        if month:
+            return f"{month} {year}"
+
+    return trimmed
+
+
 # ============================================================
 # CONTACT
 # ============================================================
@@ -351,7 +396,8 @@ def normalize_dict_item(
         )
 
         if value:
-
+            if field in ("start", "end"):
+                value = _normalize_date(value)
             normalized[field] = value
 
     # "summary" is accepted as an alias so clients can use either name.

@@ -281,9 +281,12 @@ def test_skills_pills_wrap_into_multiple_rows():
     width, height = pills.wrap(468, 10000)
     assert width == 468
     assert height > 0
-    # 60 skills cannot fit on one row, so they must wrap
+    # 60 skills cannot fit on one row, so they must wrap (including category rows)
     assert len(pills._rows) > 1
     for row in pills._rows:
+        # Category rows have 3-tuples, skill rows have 2-tuples
+        if row and row[0][0] == "__CAT__":
+            continue
         row_width = sum(w for _, w in row) + pills.gap_x * (len(row) - 1)
         assert row_width <= 468 + 1e-6
 
@@ -293,7 +296,12 @@ def test_skills_pills_single_wide_skill_does_not_crash():
     pills = SkillsPills(["Very long skill name that exceeds the frame width"])
     width, height = pills.wrap(100, 10000)
     assert height > 0
-    assert len(pills._rows) == 1
+    # Now has a category label row + skill row = 2 rows
+    assert len(pills._rows) == 2
+    # First row is category label
+    assert pills._rows[0][0][0] == "__CAT__"
+    # Second row has the skill
+    assert pills._rows[1][0][0] == "Very long skill name that exceeds the frame width"
 
 
 def test_skills_pills_empty():
