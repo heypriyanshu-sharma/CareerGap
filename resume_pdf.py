@@ -44,7 +44,7 @@ PISTACHIO = HexColor("#C6D8A7")
 WHITE = HexColor("#FFFFFF")
 
 
-def _heading_style(name: str, font_size: int, space_after: int = 6, space_before: int = 12, color: HexColor = REF_GREEN_DARK) -> ParagraphStyle:
+def _heading_style(name: str, font_size: int, space_after: int = 4, space_before: int = 10, color: HexColor = REF_GREEN_DARK) -> ParagraphStyle:
     """Create a heading style."""
     return ParagraphStyle(
         name,
@@ -58,7 +58,7 @@ def _heading_style(name: str, font_size: int, space_after: int = 6, space_before
     )
 
 
-def _body_style(name: str, font_size: int = 9, leading: int = 12, color: HexColor = OLIVE_DARK, space_after: int = 2, space_before: int = 0) -> ParagraphStyle:
+def _body_style(name: str, font_size: int = 9, leading: int = 11, color: HexColor = OLIVE_DARK, space_after: int = 1, space_before: int = 0) -> ParagraphStyle:
     """Create a body text style."""
     return ParagraphStyle(
         name,
@@ -72,7 +72,7 @@ def _body_style(name: str, font_size: int = 9, leading: int = 12, color: HexColo
     )
 
 
-def _link_style(name: str, font_size: int = 9, leading: int = 12) -> ParagraphStyle:
+def _link_style(name: str, font_size: int = 9, leading: int = 11) -> ParagraphStyle:
     """Create a link style."""
     return ParagraphStyle(
         name,
@@ -80,13 +80,13 @@ def _link_style(name: str, font_size: int = 9, leading: int = 12) -> ParagraphSt
         fontSize=font_size,
         leading=leading,
         textColor=REF_GREEN_PRIMARY,
-        spaceAfter=2,
+        spaceAfter=1,
         spaceBefore=0,
         alignment=TA_LEFT,
     )
 
 
-def _bullet_style(name: str, font_size: int = 9, leading: int = 12) -> ParagraphStyle:
+def _bullet_style(name: str, font_size: int = 9, leading: int = 11) -> ParagraphStyle:
     """Create a bullet point style."""
     return ParagraphStyle(
         name,
@@ -102,19 +102,56 @@ def _bullet_style(name: str, font_size: int = 9, leading: int = 12) -> Paragraph
     )
 
 
+def _skill_category_style(name: str, font_size: int = 9, leading: int = 11) -> ParagraphStyle:
+    """Create a skill category label style."""
+    return ParagraphStyle(
+        name,
+        fontName="Helvetica-Bold",
+        fontSize=font_size,
+        leading=leading,
+        textColor=OLIVE_SOFT,
+        spaceAfter=0,
+        spaceBefore=3,
+        alignment=TA_LEFT,
+    )
+
+
+def _skill_list_style(name: str, font_size: int = 9, leading: int = 11) -> ParagraphStyle:
+    """Create a skill list style."""
+    return ParagraphStyle(
+        name,
+        fontName="Helvetica",
+        fontSize=font_size,
+        leading=leading,
+        textColor=OLIVE_DARK,
+        spaceAfter=0,
+        spaceBefore=0,
+        alignment=TA_LEFT,
+    )
+
+
 # Pre-defined styles
 STYLES = {
-    "name": _heading_style("ResumeName", 18, space_after=2, space_before=0),
-    "contact": _body_style("ResumeContact", 9, leading=11, space_after=8),
-    "section_heading": _heading_style("SectionHeading", 11, space_after=6, space_before=14),
-    "item_title": _heading_style("ItemTitle", 10, space_after=1, space_before=4),
+    "name": _heading_style("ResumeName", 16, space_after=2, space_before=0),
+    "contact": _body_style("ResumeContact", 9, leading=11, space_after=4),
+    "section_heading": _heading_style("SectionHeading", 11, space_after=4, space_before=10),
+    "item_title": _heading_style("ItemTitle", 10, space_after=1, space_before=3),
     "item_subtitle": _body_style("ItemSubtitle", 9, leading=11, color=OLIVE_SOFT, space_after=0),
-    "item_meta": _body_style("ItemMeta", 8, leading=10, color=OLIVE_SOFT, space_after=4),
-    "item_text": _body_style("ItemText", 9, leading=12, space_after=4),
+    "item_meta": _body_style("ItemMeta", 8, leading=10, color=OLIVE_SOFT, space_after=3),
+    "item_text": _body_style("ItemText", 9, leading=11, space_after=3),
     "bullet": _bullet_style("Bullet"),
     "link": _link_style("Link"),
-    "summary": _body_style("Summary", 9, leading=13, space_after=10),
+    "summary": _body_style("Summary", 9, leading=12, space_after=8),
+    "skill_category": _skill_category_style("SkillCategory"),
+    "skill_list": _skill_list_style("SkillList"),
 }
+
+
+def _escape_markup(text: str) -> str:
+    """Escape ReportLab markup special characters."""
+    if not text:
+        return ""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _section_divider():
@@ -123,22 +160,26 @@ def _section_divider():
         [[""]],
         colWidths=[6.5 * inch],
         style=TableStyle([
-            ("LINEBELOW", (0, 0), (-1, -1), 1, REF_GREEN_BORDER),
+            ("LINEBELOW", (0, 0), (-1, -1), 0.5, REF_GREEN_BORDER),
             ("TOPPADDING", (0, 0), (-1, -1), 0),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
         ])
     )
 
 
-def _contact_link_row(label: str, url: str):
-    """Create a contact link as a clickable paragraph."""
+def _contact_link_text(label: str, url: str) -> str:
+    """Create clickable link text for contact info.
+
+    Shows only the label as the link text. If no label is provided,
+    falls back to showing the URL.
+    """
     if label and url:
-        return Paragraph(f'<link href="{url}" color="{REF_GREEN_PRIMARY}">{label}: {url}</link>', STYLES["link"])
+        return f'<link href="{_escape_markup(url)}" color="{REF_GREEN_PRIMARY}">{_escape_markup(label)}</link>'
     elif url:
-        return Paragraph(f'<link href="{url}" color="{REF_GREEN_PRIMARY}">{url}</link>', STYLES["link"])
+        return f'<link href="{_escape_markup(url)}" color="{REF_GREEN_PRIMARY}">{_escape_markup(url)}</link>'
     elif label:
-        return Paragraph(label, STYLES["contact"])
-    return None
+        return _escape_markup(label)
+    return ""
 
 
 # ============================================================
@@ -152,26 +193,38 @@ _SKILL_CATEGORIES = {
     "python": "Languages", "c": "Languages", "c++": "Languages", "java": "Languages",
     "javascript": "Languages", "typescript": "Languages", "go": "Languages",
     "rust": "Languages", "r": "Languages",
+    # Frontend
+    "html": "Frontend", "css": "Frontend", "react": "Frontend", "node.js": "Frontend",
+    "vue": "Frontend", "svelte": "Frontend", "angular": "Frontend",
+    # Backend & APIs
+    "fastapi": "Backend & APIs", "flask": "Backend & APIs", "django": "Backend & APIs",
+    "rest api": "Backend & APIs", "rest apis": "Backend & APIs", "graphql": "Backend & APIs",
+    "express": "Backend & APIs", "spring": "Backend & APIs",
+    # Databases
+    "sql": "Databases", "postgresql": "Databases", "mysql": "Databases",
+    "mongodb": "Databases", "sqlite": "Databases", "redis": "Databases",
+    "supabase": "Databases", "firebase": "Databases", "dynamodb": "Databases",
+    # Tools & Version Control
+    "git": "Tools & Version Control", "github": "Tools & Version Control",
+    "gitlab": "Tools & Version Control", "bitbucket": "Tools & Version Control",
+    "svn": "Tools & Version Control", "mercurial": "Tools & Version Control",
+    # Testing
+    "pytest": "Testing", "jest": "Testing", "mocha": "Testing", "junit": "Testing",
+    "cypress": "Testing", "playwright": "Testing", "selenium": "Testing",
+    "unittest": "Testing", "vitest": "Testing",
+    # Cloud / DevOps
+    "docker": "Cloud & DevOps", "kubernetes": "Cloud & DevOps",
+    "aws": "Cloud & DevOps", "azure": "Cloud & DevOps", "google cloud": "Cloud & DevOps",
+    "linux": "Cloud & DevOps", "github actions": "Cloud & DevOps",
+    "terraform": "Cloud & DevOps", "ansible": "Cloud & DevOps",
+    "ci/cd": "Cloud & DevOps", "jenkins": "Cloud & DevOps",
     # Data / ML
-    "sql": "Data & ML", "pandas": "Data & ML", "numpy": "Data & ML",
+    "pandas": "Data & ML", "numpy": "Data & ML",
     "scikit-learn": "Data & ML", "machine learning": "Data & ML",
     "deep learning": "Data & ML", "tensorflow": "Data & ML",
     "pytorch": "Data & ML", "keras": "Data & ML",
     "matplotlib": "Data & ML", "seaborn": "Data & ML",
     "power bi": "Data & ML", "tableau": "Data & ML", "excel": "Data & ML",
-    # Backend / APIs
-    "fastapi": "Backend & APIs", "flask": "Backend & APIs", "django": "Backend & APIs",
-    "rest api": "Backend & APIs", "graphql": "Backend & APIs",
-    # Databases
-    "postgresql": "Databases", "mysql": "Databases", "mongodb": "Databases",
-    "sqlite": "Databases", "redis": "Databases",
-    # Cloud / DevOps
-    "docker": "Cloud & DevOps", "kubernetes": "Cloud & DevOps",
-    "aws": "Cloud & DevOps", "azure": "Cloud & DevOps", "google cloud": "Cloud & DevOps",
-    "git": "Cloud & DevOps", "github": "Cloud & DevOps", "linux": "Cloud & DevOps",
-    "github actions": "Cloud & DevOps",
-    # Web / Frontend
-    "html": "Frontend", "css": "Frontend", "react": "Frontend", "node.js": "Frontend",
     # Core CS
     "data structures": "Core CS", "algorithms": "Core CS",
     "object-oriented programming": "Core CS", "oop": "Core CS",
@@ -179,13 +232,15 @@ _SKILL_CATEGORIES = {
 
 _SKILL_CATEGORY_ORDER = [
     "Languages", "Frontend", "Backend & APIs", "Databases",
-    "Cloud & DevOps", "Data & ML", "Core CS", "Other"
+    "Tools & Version Control", "Testing", "Cloud & DevOps", "Data & ML", "Core CS", "Other"
 ]
+
 
 def _categorize_skill(skill: str) -> str:
     if not skill:
         return "Other"
     return _SKILL_CATEGORIES.get(skill.strip().lower(), "Other")
+
 
 def _group_skills_by_category(skills: list[str]) -> list[tuple[str, list[str]]]:
     groups: dict[str, list[str]] = {}
@@ -201,142 +256,23 @@ def _group_skills_by_category(skills: list[str]) -> list[tuple[str, list[str]]]:
     return result
 
 
-class SkillsPills(Flowable):
-    """Renders each skill as an individual pill chip that wraps.
-
-    Mirrors the web preview's `.resume-preview-skill` chips: a
-    pistachio pill with olive text, one pill per skill, so skills
-    never blend into a single concatenated paragraph.
-
-    Now supports grouped rendering by category with subtle labels.
-    """
-
-    def __init__(
-        self,
-        skills: list[str],
-        font_name: str = "Helvetica-Bold",
-        font_size: int = 8,
-        text_color: HexColor = OLIVE_DARK,
-        background: HexColor = PISTACHIO,
-        padding_x: int = 8,
-        padding_y: int = 4,
-        gap_x: int = 6,
-        gap_y: int = 5,
-    ):
-        super().__init__()
-        self.skills = [skill for skill in skills if skill and skill.strip()]
-        self.groups = _group_skills_by_category(self.skills)
-        self.font_name = font_name
-        self.font_size = font_size
-        self.text_color = text_color
-        self.background = background
-        self.padding_x = padding_x
-        self.padding_y = padding_y
-        self.gap_x = gap_x
-        self.gap_y = gap_y
-        self._rows: list[list[tuple[str, float]]] = []
-        self._pill_height = 0.0
-
-    def _pill_width(self, skill: str) -> float:
-        return (
-            pdfmetrics.stringWidth(skill, self.font_name, self.font_size)
-            + 2 * self.padding_x
-        )
-
-    def _category_label_width(self, label: str) -> float:
-        return pdfmetrics.stringWidth(label, self.font_name, self.font_size - 1) + 6
-
-    def wrap(self, availWidth, availHeight):
-        """Pack pills into rows that fit the available width, with category labels."""
-        self._rows = []
-
-        for cat, cat_skills in self.groups:
-            # Category label row
-            label = cat
-            label_width = self._category_label_width(label)
-            self._rows.append([("__CAT__", label_width, label)])
-
-            row: list[tuple[str, float]] = []
-            row_width = 0.0
-
-            for skill in cat_skills:
-                pill_width = self._pill_width(skill)
-                if row and row_width + self.gap_x + pill_width > availWidth:
-                    self._rows.append(row)
-                    row = []
-                    row_width = 0.0
-                if row:
-                    row_width += self.gap_x
-                row.append((skill, pill_width))
-                row_width += pill_width
-
-            if row:
-                self._rows.append(row)
-
-        self._pill_height = self.font_size + 2 * self.padding_y
-        if not self._rows:
-            return (availWidth, 0)
-
-        height = (
-            len(self._rows) * self._pill_height
-            + (len(self._rows) - 1) * self.gap_y
-        )
-        return (availWidth, height)
-
-    def draw(self):
-        """Draw the pill rows from the top of the flowable down."""
-        if not self._rows:
-            return
-
-        canvas = self.canv
-        canvas.saveState()
-
-        for row_index, row in enumerate(self._rows):
-            row_top = self.height - row_index * (self._pill_height + self.gap_y)
-            row_bottom = row_top - self._pill_height
-            x = 0.0
-
-            # Check if this is a category label row
-            if row and row[0][0] == "__CAT__":
-                _, _, label = row[0]
-                canvas.setFillColor(OLIVE_SOFT)
-                canvas.setFont(self.font_name, self.font_size - 1)
-                canvas.drawString(
-                    x + 3,
-                    row_bottom + self.padding_y - 1,
-                    label.upper()
-                )
-            else:
-                for skill, pill_width in row:
-                    radius = self._pill_height / 2
-                    canvas.setFillColor(self.background)
-                    canvas.roundRect(
-                        x,
-                        row_bottom,
-                        pill_width,
-                        self._pill_height,
-                        radius=radius,
-                        stroke=0,
-                        fill=1,
-                    )
-                    canvas.setFillColor(self.text_color)
-                    canvas.setFont(self.font_name, self.font_size)
-                    canvas.drawString(
-                        x + self.padding_x,
-                        row_bottom + self.padding_y,
-                        skill,
-                    )
-                    x += pill_width + self.gap_x
-
-        canvas.restoreState()
-
-
-def _skills_pills(skills: list[str]):
-    """Create one pill chip per skill, wrapping across rows."""
+def _skills_categorized(skills: list[str]) -> list:
+    """Render skills as categorized, comma-separated text rows."""
     cleaned = [skill for skill in skills if skill and skill.strip()]
     if not cleaned:
         return []
-    return [SkillsPills(cleaned)]
+
+    groups = _group_skills_by_category(cleaned)
+    flowables = []
+
+    for cat, cat_skills in groups:
+        # Category label
+        flowables.append(Paragraph(_escape_markup(cat.upper()), STYLES["skill_category"]))
+        # Comma-separated skills
+        skills_text = ", ".join(_escape_markup(s) for s in cat_skills)
+        flowables.append(Paragraph(skills_text, STYLES["skill_list"]))
+
+    return flowables
 
 
 def _render_item(item: dict, sec_type: str) -> list:
@@ -353,46 +289,46 @@ def _render_item(item: dict, sec_type: str) -> list:
         if sec_type == "projects" and url:
             flowables.append(
                 Paragraph(
-                    f'<link href="{url}" color="{REF_GREEN_DARK}">{title_text}</link>',
+                    f'<link href="{_escape_markup(url)}" color="{REF_GREEN_DARK}">{_escape_markup(title_text)}</link>',
                     STYLES["item_title"],
                 )
             )
         else:
-            flowables.append(Paragraph(title_text, STYLES["item_title"]))
+            flowables.append(Paragraph(_escape_markup(title_text), STYLES["item_title"]))
 
     # Subtitle (organization / institution / issuer / context)
     org = item.get("organization", "").strip()
     if org:
-        flowables.append(Paragraph(org, STYLES["item_subtitle"]))
+        flowables.append(Paragraph(_escape_markup(org), STYLES["item_subtitle"]))
 
     # Meta line: location | dates
     meta_parts = []
     loc = item.get("location", "").strip()
     if loc:
-        meta_parts.append(loc)
+        meta_parts.append(_escape_markup(loc))
     start = item.get("start", "").strip()
     end = item.get("end", "").strip()
     if start or end:
         if start and end:
-            meta_parts.append(f"{start} – {end}")
+            meta_parts.append(f"{_escape_markup(start)} \u2013 {_escape_markup(end)}")
         elif start:
-            meta_parts.append(start)
+            meta_parts.append(_escape_markup(start))
         elif end:
-            meta_parts.append(end)
+            meta_parts.append(_escape_markup(end))
     if meta_parts:
         flowables.append(Paragraph(" | ".join(meta_parts), STYLES["item_meta"]))
 
     # Description text
     text_val = item.get("text", "").strip()
     if text_val:
-        flowables.append(Paragraph(text_val, STYLES["item_text"]))
+        flowables.append(Paragraph(_escape_markup(text_val), STYLES["item_text"]))
 
     # URL link. Projects with a title already carry the link on
     # the title itself, so the URL is not repeated below.
     if url and not (sec_type == "projects" and title_text):
         flowables.append(
             Paragraph(
-                f'<link href="{url}" color="{REF_GREEN_PRIMARY}">{url}</link>',
+                f'<link href="{_escape_markup(url)}" color="{REF_GREEN_PRIMARY}">{_escape_markup(url)}</link>',
                 STYLES["link"],
             )
         )
@@ -401,7 +337,7 @@ def _render_item(item: dict, sec_type: str) -> list:
     bullets = item.get("bullets", [])
     for bullet in bullets:
         if bullet and bullet.strip():
-            flowables.append(Paragraph(f"• {bullet.strip()}", STYLES["bullet"]))
+            flowables.append(Paragraph(f"\u2022 {_escape_markup(bullet.strip())}", STYLES["bullet"]))
 
     return flowables
 
@@ -413,7 +349,7 @@ def _heading_block(heading_text: str, content: list) -> list:
     KeepTogether so a heading is never orphaned at the
     bottom of a page while its content starts the next one.
     """
-    heading_paragraph = Paragraph(heading_text, STYLES["section_heading"])
+    heading_paragraph = Paragraph(_escape_markup(heading_text), STYLES["section_heading"])
     if content:
         return [KeepTogether([heading_paragraph, content[0]])] + content[1:]
     return [heading_paragraph]
@@ -425,7 +361,7 @@ def build_resume_pdf(resume_data: dict[str, Any]) -> bytes:
 
     Args:
         resume_data: Normalized resume document from resume_builder.normalize_content
-                    or a database row containing title, content, etc.
+                     or a database row containing title, content, etc.
 
     Returns:
         PDF bytes ready for download.
@@ -444,10 +380,10 @@ def build_resume_pdf(resume_data: dict[str, Any]) -> bytes:
     doc = BaseDocTemplate(
         buffer,
         pagesize=letter,
-        leftMargin=0.75 * inch,
-        rightMargin=0.75 * inch,
-        topMargin=0.75 * inch,
-        bottomMargin=0.75 * inch,
+        leftMargin=0.65 * inch,
+        rightMargin=0.65 * inch,
+        topMargin=0.65 * inch,
+        bottomMargin=0.65 * inch,
         title=title,
         author=contact.get("full_name", ""),
     )
@@ -467,26 +403,23 @@ def build_resume_pdf(resume_data: dict[str, Any]) -> bytes:
     # ---- NAME ----
     name = contact.get("full_name", "").strip()
     if name:
-        story.append(Paragraph(name, STYLES["name"]))
+        story.append(Paragraph(_escape_markup(name), STYLES["name"]))
 
     # ---- CONTACT LINE ----
     contact_parts = []
     for key in ("email", "phone", "location"):
         val = contact.get(key, "").strip()
         if val:
-            contact_parts.append(val)
+            contact_parts.append(_escape_markup(val))
 
     links = contact.get("links", [])
     for link in links:
         if isinstance(link, dict):
             label = link.get("label", "").strip()
             url = link.get("url", "").strip()
-            if label and url:
-                contact_parts.append(f'{label}: <link href="{url}" color="{REF_GREEN_PRIMARY}">{url}</link>')
-            elif url:
-                contact_parts.append(f'<link href="{url}" color="{REF_GREEN_PRIMARY}">{url}</link>')
-            elif label:
-                contact_parts.append(label)
+            link_text = _contact_link_text(label, url)
+            if link_text:
+                contact_parts.append(link_text)
 
     if contact_parts:
         contact_text = " | ".join(contact_parts)
@@ -499,7 +432,7 @@ def build_resume_pdf(resume_data: dict[str, Any]) -> bytes:
         story.extend(
             _heading_block(
                 "Professional Summary",
-                [Paragraph(summary.strip(), STYLES["summary"])],
+                [Paragraph(_escape_markup(summary.strip()), STYLES["summary"])],
             )
         )
 
@@ -529,27 +462,34 @@ def build_resume_pdf(resume_data: dict[str, Any]) -> bytes:
         else:
             display_heading = "Section"
 
-        content: list = []
+        section_flowables: list = []
 
         # Section text (for custom sections with narrative text)
         if text:
-            content.append(Paragraph(text, STYLES["item_text"]))
+            section_flowables.append(Paragraph(_escape_markup(text), STYLES["item_text"]))
 
         # Section items
         if sec_type == "skills":
-            # Skills are a flat list of strings, each rendered
-            # as its own pill chip.
-            content.extend(_skills_pills(items))
-        else:
-            # Dictionary-style items (education, experience, etc.)
+            # Skills are a flat list of strings, rendered as categorized rows
+            section_flowables.extend(_skills_categorized(items))
+        elif sec_type == "certifications":
+            # Keep each certification entry together to avoid splitting across pages
             for item in items:
                 if not isinstance(item, dict):
                     continue
-                content.extend(_render_item(item, sec_type))
+                item_flowables = _render_item(item, sec_type)
+                if item_flowables:
+                    section_flowables.extend(item_flowables)  # No KeepTogether - let flow naturally
+        else:
+            # Dictionary-style items (education, experience, projects, etc.)
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                section_flowables.extend(_render_item(item, sec_type))
 
         # Bind the heading to its first content block so a
         # heading is never orphaned at the bottom of a page.
-        story.extend(_heading_block(display_heading, content))
+        story.extend(_heading_block(display_heading, section_flowables))
 
     # Build PDF
     doc.build(story)
