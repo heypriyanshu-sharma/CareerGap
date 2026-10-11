@@ -439,6 +439,14 @@ def test_skill_categorization_specific_assignments():
         "Pytest",                                     # Testing
         "Pandas", "TensorFlow",                       # Data & ML
         "Docker", "Kubernetes",                       # Cloud & DevOps
+        # Cybersecurity skills
+        "Vulnerability Assessment", "Vulnerability Management",
+        "Security Automation", "Threat Analysis",
+        "Security Operations", "OWASP Top 10",
+        "Trivy", "Burp Suite", "Nmap",
+        "SAST/DAST Fundamentals",
+        # AI / Agentic Engineering skills
+        "LLM Tool Use", "Structured Outputs", "Agent Workflows",
         "Data Structures", "Algorithms",              # Core CS
         "UnknownSkill123",                            # Other
     ]
@@ -464,6 +472,8 @@ def test_skill_categorization_specific_assignments():
     assert "TOOLS & VERSION CONTROL" in text
     assert "TESTING" in text
     assert "CLOUD & DEVOPS" in text
+    assert "SECURITY" in text
+    assert "AI ENGINEERING" in text
     assert "DATA & ML" in text
     assert "CORE CS" in text
     assert "OTHER" in text
@@ -473,14 +483,18 @@ def test_skill_categorization_case_insensitive():
     """Skill categorization should be case-insensitive."""
     skills = ["PYTHON", "python", "Python", "GIT", "Git", "git", "PYTEST", "pytest"]
     flowables = _skills_categorized(skills)
-    # Should produce category + list for each category that has skills
-    # Languages: Python (3 variants) -> 1 category + 1 list
-    # Tools & Version Control: Git (3 variants) -> 1 category + 1 list
-    # Testing: Pytest (2 variants) -> 1 category + 1 list
-    # Total: 6 flowables
-    assert len(flowables) == 6
+    # Should produce a Table with skills
+    assert len(flowables) == 1
+    table = flowables[0]
+    # Extract text from table cells
+    text = ""
+    for row in table._cellvalues:
+        for cell in row:
+            if hasattr(cell, 'text'):
+                text += cell.text + " "
+            elif isinstance(cell, str):
+                text += cell + " "
     # All original skill names preserved
-    text = " ".join(f.text for f in flowables if hasattr(f, 'text'))
     assert "PYTHON" in text
     assert "python" in text
     assert "Python" in text
@@ -495,7 +509,15 @@ def test_skill_categorization_preserves_original_names():
     """Original skill text should be preserved in display."""
     skills = ["Python", "C++", "REST APIs", "PostgreSQL", "GitHub Actions"]
     flowables = _skills_categorized(skills)
-    text = " ".join(f.text for f in flowables if hasattr(f, 'text'))
+    assert len(flowables) == 1
+    table = flowables[0]
+    text = ""
+    for row in table._cellvalues:
+        for cell in row:
+            if hasattr(cell, 'text'):
+                text += cell.text + " "
+            elif isinstance(cell, str):
+                text += cell + " "
     assert "Python" in text
     assert "C++" in text
     assert "REST APIs" in text
@@ -507,9 +529,16 @@ def test_skill_categorization_unknown_skills():
     """Unknown skills should go to Other category."""
     skills = ["SomeRandomSkill", "AnotherUnknown"]
     flowables = _skills_categorized(skills)
-    assert len(flowables) == 2  # category + list
-    assert "OTHER" in flowables[0].text
-    text = flowables[1].text
+    assert len(flowables) == 1
+    table = flowables[0]
+    text = ""
+    for row in table._cellvalues:
+        for cell in row:
+            if hasattr(cell, 'text'):
+                text += cell.text + " "
+            elif isinstance(cell, str):
+                text += cell + " "
+    assert "OTHER" in text
     assert "SomeRandomSkill" in text
     assert "AnotherUnknown" in text
 
@@ -518,8 +547,15 @@ def test_skill_categorization_no_duplicates():
     """Duplicate skills should not appear multiple times."""
     skills = ["Python", "python", "PYTHON", "Git", "git"]
     flowables = _skills_categorized(skills)
-    # Each unique skill should appear once per its category
-    text = " ".join(f.text for f in flowables if hasattr(f, 'text'))
+    assert len(flowables) == 1
+    table = flowables[0]
+    text = ""
+    for row in table._cellvalues:
+        for cell in row:
+            if hasattr(cell, 'text'):
+                text += cell.text + " "
+            elif isinstance(cell, str):
+                text += cell + " "
     # Count occurrences - each should appear once
     assert text.count("Python") == 1
     assert text.count("python") == 1
@@ -538,10 +574,16 @@ def test_skills_categorized_unknown_goes_to_other():
     """Unknown skills should be categorized as Other."""
     skills = ["UnknownSkill123", "AnotherUnknown"]
     flowables = _skills_categorized(skills)
-    # Should produce category label and skill list
-    assert len(flowables) == 2  # category + list
-    # Check that the category is "OTHER"
-    assert "OTHER" in flowables[0].text
+    assert len(flowables) == 1
+    table = flowables[0]
+    text = ""
+    for row in table._cellvalues:
+        for cell in row:
+            if hasattr(cell, 'text'):
+                text += cell.text + " "
+            elif isinstance(cell, str):
+                text += cell + " "
+    assert "OTHER" in text
 
 
 def test_skills_categorized_special_chars_escaped():
@@ -549,7 +591,7 @@ def test_skills_categorized_special_chars_escaped():
     skills = ["C++", "A&B", "X<Y", "Foo>Bar"]
     flowables = _skills_categorized(skills)
     # Should not raise and should produce flowables
-    assert len(flowables) > 0
+    assert len(flowables) == 1
 
 
 def test_skills_categorized_many_skills():
@@ -566,9 +608,18 @@ def test_skills_categorized_many_skills():
         "CustomSkill1", "CustomSkill2",      # Other
     ]
     flowables = _skills_categorized(skills)
-    # Should have category + list for each category that has skills
-    # 8 categories with skills = 16 flowables (category + list per category)
-    assert len(flowables) >= 16
+    assert len(flowables) == 1
+    table = flowables[0]
+    text = ""
+    for row in table._cellvalues:
+        for cell in row:
+            if hasattr(cell, 'text'):
+                text += cell.text + " "
+            elif isinstance(cell, str):
+                text += cell + " "
+    # Check that skills from each category are present
+    for skill in skills:
+        assert skill in text
 
 
 # ============================================================
@@ -1215,3 +1266,264 @@ def test_certification_entry_stays_together_on_page_boundary():
         for page in page_texts
     )
     assert cert1_together, "Certification title and issuer should be on same page"
+
+
+# ============================================================
+# REGRESSION TESTS FOR RECENT FIXES
+# ============================================================
+
+def test_education_details_render_in_text_field():
+    """Education 'text' field (CGPA, percentages) should render in PDF."""
+    resume = {
+        "title": "Education Details Test",
+        "content": {
+            "contact": {"full_name": "Test User"},
+            "summary": "",
+            "sections": [
+                {"type": "education", "heading": "Education", "items": [
+                    {"title": "B.Tech Computer Science", "organization": "University",
+                     "location": "City", "start": "2020", "end": "2024",
+                     "text": "CGPA: 8.49/10 | 12th: 92% | 10th: 95%"},
+                ]},
+            ],
+        },
+    }
+    pdf_bytes = build_resume_pdf(resume)
+    text = _extract_pdf_text(pdf_bytes)
+    assert "CGPA: 8.49/10" in text
+    assert "12th: 92%" in text
+    assert "10th: 95%" in text
+
+
+def test_skills_categories_and_labels_present():
+    """Skill category labels and skill items should be present in extracted text.
+
+    This test verifies content presence only; visual spacing is not checked
+    because PDF text extraction does not reliably preserve layout spacing.
+    """
+    skills = ["Python", "JavaScript", "React", "Docker", "AWS"]
+    resume = {
+        "title": "Skills Spacing Test",
+        "content": {
+            "contact": {"full_name": "Test User"},
+            "summary": "",
+            "sections": [
+                {"type": "skills", "heading": "Skills", "items": skills},
+            ],
+        },
+    }
+    pdf_bytes = build_resume_pdf(resume)
+    reader = PdfReader(BytesIO(pdf_bytes))
+    # Verify the PDF is valid and all skills present
+    text = _extract_pdf_text(pdf_bytes)
+    for skill in skills:
+        assert skill in text
+    # Category labels should be present
+    assert "LANGUAGES" in text
+    assert "FRONTEND" in text
+    assert "CLOUD & DEVOPS" in text
+
+
+def test_project_entry_stays_together_on_page_boundary():
+    """A project entry (title, description, and all bullets) should stay together on page break."""
+    resume = {
+        "title": "Project Pagination Test",
+        "content": {
+            "contact": {"full_name": "Test User", "email": "test@example.com"},
+            "summary": "Summary line. " * 60,  # Push projects to page boundary
+            "sections": [
+                {"type": "skills", "heading": "Skills", "items": ["Python"] * 5},
+                {"type": "experience", "heading": "Experience", "items": [{
+                    "title": "Engineer", "organization": "Corp", "text": "Desc. " * 20, "bullets": ["B1"] * 3
+                }]},
+                {"type": "projects", "heading": "Projects", "items": [
+                    {"title": "Test Project", "text": "Project description here",
+                     "bullets": ["First bullet", "Second bullet", "Third bullet"]},
+                    {"title": "Another Project", "text": "Another description",
+                     "bullets": ["Bullet A", "Bullet B"]},
+                ]},
+            ],
+        },
+    }
+    pdf_bytes = build_resume_pdf(resume)
+    reader = PdfReader(BytesIO(pdf_bytes))
+    page_texts = [page.extract_text() for page in reader.pages]
+    full_text = "\n".join(page_texts)
+    # Verify project entries are present
+    assert "Test Project" in full_text
+    assert "Another Project" in full_text
+    assert "First bullet" in full_text
+    assert "Second bullet" in full_text
+    assert "Third bullet" in full_text
+    assert "Bullet A" in full_text
+    assert "Bullet B" in full_text
+    # Check that title, description, and ALL bullets appear on same page for at least one project
+    proj1_together = any(
+        "Test Project" in page and "Project description here" in page and
+        "First bullet" in page and "Second bullet" in page and "Third bullet" in page
+        for page in page_texts
+    )
+    assert proj1_together, (
+        "Project title, description, and all bullets should stay together on page break"
+    )
+
+
+def test_long_project_entry_falls_back_to_natural_flow():
+    """Very long project entries should not cause LayoutError; they flow naturally."""
+    resume = {
+        "title": "Long Project Test",
+        "content": {
+            "contact": {"full_name": "Test User", "email": "test@example.com"},
+            "summary": "Summary. " * 30,
+            "sections": [
+                {"type": "skills", "heading": "Skills", "items": ["Python"] * 5},
+                {"type": "projects", "heading": "Projects", "items": [
+                    {"title": "Huge Project", "text": "Description. " * 500,
+                     "bullets": [f"Bullet {i}" for i in range(20)]},
+                ]},
+            ],
+        },
+    }
+    # Should not raise LayoutError
+    pdf_bytes = build_resume_pdf(resume)
+    assert pdf_bytes[:4] == b"%PDF"
+    reader = PdfReader(BytesIO(pdf_bytes))
+    # Should produce at least one page
+    assert len(reader.pages) >= 1
+    # Content should be present
+    text = _extract_pdf_text(pdf_bytes)
+    assert "Huge Project" in text
+    assert "Bullet 0" in text
+    assert "Bullet 19" in text
+
+
+# ============================================================
+# ADAPTIVE PAGINATION REGRESSION TESTS
+# ============================================================
+
+def test_moderate_resume_fits_one_page_when_possible():
+    """A moderately detailed resume should fit on one page when content allows.
+
+    This resume has education, skills, two experience entries, two projects,
+    and two certifications - a realistic moderate resume that should fit
+    on one page with the adaptive layout.
+    """
+    resume = {
+        "title": "Moderate Resume",
+        "content": {
+            "contact": {
+                "full_name": "Jane Developer",
+                "email": "jane@example.com",
+                "phone": "+1 555 1234",
+                "location": "San Francisco, CA",
+                "links": [{"label": "GitHub", "url": "https://github.com/janedev"}],
+            },
+            "summary": "Software engineer with 3 years experience building web applications.",
+            "sections": [
+                {"type": "education", "heading": "Education", "items": [
+                    {"title": "B.S. Computer Science", "organization": "State University",
+                     "location": "City, ST", "start": "2018", "end": "2022", "text": "GPA: 3.7/4.0"},
+                ]},
+                {"type": "skills", "heading": "Technical Skills", "items": [
+                    "Python", "JavaScript", "React", "Node.js", "PostgreSQL", "Docker", "AWS", "Git"
+                ]},
+                {"type": "experience", "heading": "Experience", "items": [
+                    {"title": "Software Engineer", "organization": "TechCorp", "location": "SF, CA",
+                     "start": "2022", "end": "Present", "text": "Full-stack development",
+                     "bullets": ["Built REST APIs with FastAPI", "Improved test coverage to 85%"]},
+                    {"title": "Junior Developer", "organization": "StartupXYZ", "location": "Remote",
+                     "start": "2021", "end": "2022", "text": "Frontend development",
+                     "bullets": ["Built React components", "Wrote unit tests with Jest"]},
+                ]},
+                {"type": "projects", "heading": "Projects", "items": [
+                    {"title": "Task Manager", "text": "Personal productivity app",
+                     "bullets": ["React + Node.js", "Deployed on AWS"]},
+                    {"title": "API Wrapper", "text": "Python library for third-party API",
+                     "bullets": ["Published on PyPI", "100+ downloads"]},
+                ]},
+                {"type": "certifications", "heading": "Certifications", "items": [
+                    {"title": "AWS Cloud Practitioner", "organization": "Amazon", "start": "2023"},
+                ]},
+            ],
+        },
+    }
+    pdf_bytes = build_resume_pdf(resume)
+    reader = PdfReader(BytesIO(pdf_bytes))
+    # Should fit on one page with adaptive layout
+    assert len(reader.pages) == 1, f"Expected 1 page for moderate resume, got {len(reader.pages)}"
+    # All content present
+    text = _extract_pdf_text(pdf_bytes)
+    assert "Jane Developer" in text
+    assert "Software Engineer" in text
+    assert "Task Manager" in text
+    assert "AWS Cloud Practitioner" in text
+
+
+def test_no_nearly_empty_trailing_page():
+    """Short and medium resumes should not produce a trailing page with minimal content.
+
+    A trailing page with only a few lines (e.g., just certifications or a single
+    project) indicates poor pagination. This test ensures the last page has
+    substantial content or the resume fits on fewer pages.
+    """
+    # Test 1: Student resume (compact) - should be 1 page
+    student_resume = {
+        "title": "Student Resume",
+        "content": {
+            "contact": {"full_name": "Student", "email": "s@u.edu", "location": "City"},
+            "summary": "Student seeking internship.",
+            "sections": [
+                {"type": "education", "heading": "Education", "items": [
+                    {"title": "B.S. CS", "organization": "Uni", "start": "2022", "end": "2026"}
+                ]},
+                {"type": "skills", "heading": "Skills", "items": ["Python", "Java", "Git"]},
+                {"type": "projects", "heading": "Projects", "items": [
+                    {"title": "Project 1", "bullets": ["Bullet 1", "Bullet 2"]},
+                ]},
+                {"type": "certifications", "heading": "Certs", "items": [
+                    {"title": "Cert 1", "organization": "Org", "start": "2024"}
+                ]},
+            ],
+        },
+    }
+    pdf_bytes = build_resume_pdf(student_resume)
+    reader = PdfReader(BytesIO(pdf_bytes))
+    assert len(reader.pages) == 1, f"Student resume should be 1 page, got {len(reader.pages)}"
+
+    # Test 2: Medium resume - last page should have substantial content if 2 pages
+    medium_resume = {
+        "title": "Medium Resume",
+        "content": {
+            "contact": {"full_name": "Dev", "email": "d@e.com"},
+            "summary": "Summary. " * 10,
+            "sections": [
+                {"type": "education", "heading": "Education", "items": [
+                    {"title": "M.S. CS", "organization": "Uni", "start": "2020", "end": "2022", "text": "GPA 3.8"}
+                ]},
+                {"type": "skills", "heading": "Skills", "items": ["Python", "Java", "React", "AWS", "Docker"]},
+                {"type": "experience", "heading": "Experience", "items": [
+                    {"title": "Engineer", "organization": "Corp", "text": "Work. " * 20, "bullets": ["B1", "B2"]}
+                ]},
+                {"type": "projects", "heading": "Projects", "items": [
+                    {"title": "Project", "text": "Desc", "bullets": ["B1", "B2", "B3"]}
+                ]},
+                {"type": "certifications", "heading": "Certs", "items": [
+                    {"title": "Cert 1", "organization": "Org", "start": "2023"},
+                    {"title": "Cert 2", "organization": "Org", "start": "2022"}
+                ]},
+            ],
+        },
+    }
+    pdf_bytes = build_resume_pdf(medium_resume)
+    reader = PdfReader(BytesIO(pdf_bytes))
+    # If 2 pages, last page should have substantial content (>200 chars extracted)
+    if len(reader.pages) == 2:
+        last_page_text = reader.pages[1].extract_text() or ""
+        assert len(last_page_text.strip()) > 200, (
+            f"Last page has minimal content ({len(last_page_text.strip())} chars), "
+            "indicating poor pagination"
+        )
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

@@ -5315,7 +5315,7 @@ document.addEventListener(
             ],
             projects: [
                 { name: "title", label: "Project", placeholder: "Project Name" },
-                { name: "organization", label: "Context", placeholder: "Personal, internship, coursework" },
+                { name: "organization", label: "Organization / Context", placeholder: "Company, internship, coursework" },
                 { name: "text", label: "Description", placeholder: "What you built and why", textarea: true },
                 { name: "url", label: "URL", placeholder: "https://github.com/..." },
             ],

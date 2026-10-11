@@ -44,7 +44,7 @@ PISTACHIO = HexColor("#C6D8A7")
 WHITE = HexColor("#FFFFFF")
 
 
-def _heading_style(name: str, font_size: int, space_after: int = 4, space_before: int = 10, color: HexColor = REF_GREEN_DARK) -> ParagraphStyle:
+def _heading_style(name: str, font_size: int, space_after: int = 4, space_before: int = 6, color: HexColor = REF_GREEN_DARK) -> ParagraphStyle:
     """Create a heading style."""
     return ParagraphStyle(
         name,
@@ -102,7 +102,7 @@ def _bullet_style(name: str, font_size: int = 9, leading: int = 11) -> Paragraph
     )
 
 
-def _skill_category_style(name: str, font_size: int = 9, leading: int = 11) -> ParagraphStyle:
+def _skill_category_style(name: str, font_size: int = 9, leading: int = 10) -> ParagraphStyle:
     """Create a skill category label style."""
     return ParagraphStyle(
         name,
@@ -110,13 +110,13 @@ def _skill_category_style(name: str, font_size: int = 9, leading: int = 11) -> P
         fontSize=font_size,
         leading=leading,
         textColor=OLIVE_SOFT,
-        spaceAfter=0,
-        spaceBefore=3,
+        spaceAfter=1,
+        spaceBefore=2,
         alignment=TA_LEFT,
     )
 
 
-def _skill_list_style(name: str, font_size: int = 9, leading: int = 11) -> ParagraphStyle:
+def _skill_list_style(name: str, font_size: int = 9, leading: int = 10) -> ParagraphStyle:
     """Create a skill list style."""
     return ParagraphStyle(
         name,
@@ -124,7 +124,7 @@ def _skill_list_style(name: str, font_size: int = 9, leading: int = 11) -> Parag
         fontSize=font_size,
         leading=leading,
         textColor=OLIVE_DARK,
-        spaceAfter=0,
+        spaceAfter=2,
         spaceBefore=0,
         alignment=TA_LEFT,
     )
@@ -162,7 +162,7 @@ def _section_divider():
         style=TableStyle([
             ("LINEBELOW", (0, 0), (-1, -1), 0.5, REF_GREEN_BORDER),
             ("TOPPADDING", (0, 0), (-1, -1), 0),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
         ])
     )
 
@@ -218,6 +218,16 @@ _SKILL_CATEGORIES = {
     "linux": "Cloud & DevOps", "github actions": "Cloud & DevOps",
     "terraform": "Cloud & DevOps", "ansible": "Cloud & DevOps",
     "ci/cd": "Cloud & DevOps", "jenkins": "Cloud & DevOps",
+    # Security / Cybersecurity
+    "vulnerability assessment": "Security", "vulnerability management": "Security",
+    "security automation": "Security", "threat analysis": "Security",
+    "security operations": "Security", "owasp top 10": "Security",
+    "trivy": "Security", "burp suite": "Security", "nmap": "Security",
+    "sast/dast fundamentals": "Security", "sast": "Security", "dast": "Security",
+    # AI / Agentic Engineering
+    "llm tool use": "AI Engineering", "structured outputs": "AI Engineering",
+    "agent workflows": "AI Engineering", "agentic workflows": "AI Engineering",
+    "llm tools": "AI Engineering", "function calling": "AI Engineering",
     # Data / ML
     "pandas": "Data & ML", "numpy": "Data & ML",
     "scikit-learn": "Data & ML", "machine learning": "Data & ML",
@@ -232,7 +242,8 @@ _SKILL_CATEGORIES = {
 
 _SKILL_CATEGORY_ORDER = [
     "Languages", "Frontend", "Backend & APIs", "Databases",
-    "Tools & Version Control", "Testing", "Cloud & DevOps", "Data & ML", "Core CS", "Other"
+    "Tools & Version Control", "Testing", "Cloud & DevOps", "Security",
+    "AI Engineering", "Data & ML", "Core CS", "Other"
 ]
 
 
@@ -256,23 +267,73 @@ def _group_skills_by_category(skills: list[str]) -> list[tuple[str, list[str]]]:
     return result
 
 
-def _skills_categorized(skills: list[str]) -> list:
-    """Render skills as categorized, comma-separated text rows."""
+def _skills_categorized(skills: list[str], available_width: float = None) -> list:
+    """Render skills as a two-column table of categorized, comma-separated rows."""
     cleaned = [skill for skill in skills if skill and skill.strip()]
     if not cleaned:
         return []
 
     groups = _group_skills_by_category(cleaned)
-    flowables = []
+    
+    # Split categories into two roughly balanced columns
+    # Simple approach: alternate categories between columns
+    col1_categories = []
+    col2_categories = []
+    for i, (cat, cat_skills) in enumerate(groups):
+        if i % 2 == 0:
+            col1_categories.append((cat, cat_skills))
+        else:
+            col2_categories.append((cat, cat_skills))
 
-    for cat, cat_skills in groups:
-        # Category label
-        flowables.append(Paragraph(_escape_markup(cat.upper()), STYLES["skill_category"]))
-        # Comma-separated skills
-        skills_text = ", ".join(_escape_markup(s) for s in cat_skills)
-        flowables.append(Paragraph(skills_text, STYLES["skill_list"]))
+    def _build_column(categories):
+        """Build flowables for a single column."""
+        flowables = []
+        for cat, cat_skills in categories:
+            # Category label in bold, followed by skills list
+            # Combine into a single Paragraph with line break to keep together
+            cat_label = _escape_markup(cat.upper())
+            skills_text = ", ".join(_escape_markup(s) for s in cat_skills)
+            combined_text = f"<b>{cat_label}</b><br/>{skills_text}"
+            # Use skill_list style but with bold support via markup
+            flowables.append(Paragraph(combined_text, STYLES["skill_list"]))
+        return flowables
 
-    return flowables
+    col1_flowables = _build_column(col1_categories)
+    col2_flowables = _build_column(col2_categories)
+
+    # Create a two-column table
+    # Default available_width is based on standard margins (0.6" each side on letter)
+    if available_width is None:
+        available_width = 7.5 * inch  # letter width - 1.2 inch margins
+    
+    col_width = available_width / 2 - 6  # 3pt padding on each side
+
+    # Build table data - each row has two cells
+    max_rows = max(len(col1_flowables), len(col2_flowables))
+    
+    table_data = []
+    for i in range(max_rows):
+        cell1 = col1_flowables[i] if i < len(col1_flowables) else ""
+        cell2 = col2_flowables[i] if i < len(col2_flowables) else ""
+        table_data.append([cell1, cell2])
+
+    # If no data, return empty list
+    if not table_data:
+        return []
+
+    skills_table = Table(
+        table_data,
+        colWidths=[col_width, col_width],
+        style=TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 3),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ])
+    )
+    
+    return [skills_table]
 
 
 def _render_item(item: dict, sec_type: str) -> list:
@@ -346,8 +407,8 @@ def _heading_block(heading_text: str, content: list) -> list:
     """Return story fragments for a section heading and its content.
 
     The heading is bound to the first content block with
-    KeepTogether so a heading is never orphaned at the
-    bottom of a page while its content starts the next one.
+    KeepTogether so a heading is never orphaned at the bottom of a page
+    while its content starts the next one.
     """
     heading_paragraph = Paragraph(_escape_markup(heading_text), STYLES["section_heading"])
     if content:
@@ -380,10 +441,10 @@ def build_resume_pdf(resume_data: dict[str, Any]) -> bytes:
     doc = BaseDocTemplate(
         buffer,
         pagesize=letter,
-        leftMargin=0.65 * inch,
-        rightMargin=0.65 * inch,
-        topMargin=0.65 * inch,
-        bottomMargin=0.65 * inch,
+        leftMargin=0.6 * inch,
+        rightMargin=0.6 * inch,
+        topMargin=0.6 * inch,
+        bottomMargin=0.6 * inch,
         title=title,
         author=contact.get("full_name", ""),
     )
@@ -471,25 +532,40 @@ def build_resume_pdf(resume_data: dict[str, Any]) -> bytes:
         # Section items
         if sec_type == "skills":
             # Skills are a flat list of strings, rendered as categorized rows
-            section_flowables.extend(_skills_categorized(items))
-        elif sec_type == "certifications":
-            # Keep each certification entry together to avoid splitting across pages
+            skill_flowables = _skills_categorized(items, available_width=doc.width)
+            if skill_flowables:
+                story.extend(_heading_block(display_heading, skill_flowables))
+            else:
+                story.append(Paragraph(_escape_markup(display_heading), STYLES["section_heading"]))
+        else:
+            # Dictionary-style items (education, experience, projects, etc.)
+            # Use KeepTogether for short entries (except first item, which is bound to heading)
+            first_item = True
             for item in items:
                 if not isinstance(item, dict):
                     continue
                 item_flowables = _render_item(item, sec_type)
-                if item_flowables:
-                    section_flowables.extend(item_flowables)  # No KeepTogether - let flow naturally
-        else:
-            # Dictionary-style items (education, experience, projects, etc.)
-            for item in items:
-                if not isinstance(item, dict):
+                if not item_flowables:
                     continue
-                section_flowables.extend(_render_item(item, sec_type))
 
-        # Bind the heading to its first content block so a
-        # heading is never orphaned at the bottom of a page.
-        story.extend(_heading_block(display_heading, section_flowables))
+                bullets = item.get("bullets", [])
+                text_len = len(item.get("text", ""))
+                is_short_entry = len(bullets) <= 8 and text_len <= 2000
+
+                if first_item:
+                    # First item is bound to heading via _heading_block
+                    section_flowables.extend(item_flowables)
+                    first_item = False
+                elif is_short_entry:
+                    # Short entries stay together on the page
+                    section_flowables.append(KeepTogether(item_flowables))
+                else:
+                    # Long entries flow naturally across pages
+                    section_flowables.extend(item_flowables)
+
+            # Bind the heading to its first content block so a
+            # heading is never orphaned at the bottom of a page.
+            story.extend(_heading_block(display_heading, section_flowables))
 
     # Build PDF
     doc.build(story)
