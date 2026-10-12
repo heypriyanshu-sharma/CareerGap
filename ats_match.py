@@ -658,3 +658,600 @@ def extract_job_keywords(
         deduplicated.append(item)
 
     return deduplicated[:limit]
+
+
+# ============================================================
+# ATS RESUME SCORECARD
+# ============================================================
+#
+# The ATS scorecard provides a deterministic, explainable score (0-100)
+# assessing resume readiness for applicant tracking systems.
+#
+# Scoring dimensions (weights total 100):
+#   1. Resume Completeness      - 25 pts  | Recognizable sections, contact info
+#   2. Keyword Alignment        - 35 pts  | Match with job description keywords
+#   3. Project & Impact Evidence - 25 pts | Projects, accomplishments, metrics
+#   4. Clarity & Signal Quality - 15 pts  | No stuffing, clear structure
+#
+# Design rules:
+# - Pure and deterministic: no I/O, no clock, no randomness, no network.
+# - Reuses existing CareerGap and ATS keyword extraction logic.
+# - Never rewards length, repetition, or keyword stuffing.
+# - Does not penalize students lacking professional employment when
+#   relevant project evidence exists.
+# - Does not infer visual PDF formatting from plain text.
+# - Identical inputs always produce identical results.
+# ============================================================
+
+# Score band labels
+ATS_SCORE_BANDS = [
+    (90, "Excellent"),
+    (75, "Strong"),
+    (60, "Fair"),
+    (40, "Needs Improvement"),
+    (0, "Weak"),
+]
+
+
+def _score_label(score: int) -> str:
+    """Map a numeric score to its descriptive label."""
+    for threshold, label in ATS_SCORE_BANDS:
+        if score >= threshold:
+            return label
+    return "Weak"
+
+
+def _extract_resume_skills(resume_text: str) -> set[str]:
+    """Extract canonical skills from resume text using existing logic."""
+    if not isinstance(resume_text, str) or not resume_text.strip():
+        return set()
+    return set(extract_skills(resume_text))
+
+
+def _extract_job_keywords_set(job_text: str) -> set[str]:
+    """Extract canonical job keywords from job description."""
+    if not isinstance(job_text, str) or not job_text.strip():
+        return set()
+    keywords = extract_job_keywords(job_text, limit=50)
+    return {kw["term"] for kw in keywords}
+
+
+def _count_resume_sections(resume_text: str) -> dict[str, bool]:
+    """
+    Detect recognizable resume sections in the text.
+    Returns a dict of section names to presence boolean.
+    """
+    if not isinstance(resume_text, str) or not resume_text.strip():
+        return {}
+
+    text_lower = resume_text.lower()
+    sections = {
+        "contact": _has_contact_info(text_lower),
+        "summary": _has_summary_section(text_lower),
+        "skills": _has_skills_section(text_lower),
+        "experience": _has_experience_section(text_lower),
+        "education": _has_education_section(text_lower),
+        "projects": _has_projects_section(text_lower),
+        "certifications": _has_certifications_section(text_lower),
+    }
+    return sections
+
+
+def _has_contact_info(text_lower: str) -> bool:
+    """Check for actual contact information in the header area, not project text."""
+    # Only check the first portion of the resume (first ~15 lines / ~500 chars) for contact info
+    header_lines = text_lower.split('\n')[:15]
+    header_text = '\n'.join(header_lines)
+    
+    # Look for email pattern
+    if re.search(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}", header_text):
+        return True
+    # Look for phone pattern
+    if re.search(r"(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", header_text):
+        return True
+    # Look for explicit LinkedIn/profile URLs (not just "github" in project text)
+    if re.search(r"linkedin\.com/in/[a-z0-9\-_]+", header_text):
+        return True
+    if re.search(r"github\.com/[a-z0-9\-_]+(?:/(?=[\s.,;!?]|$)|(?=[\s.,;!?]|$))", header_text):
+        return True
+    if re.search(r"portfolio\.[a-z]{2,}", header_text):
+        return True
+    return False
+
+
+def _has_summary_section(text_lower: str) -> bool:
+    """Check for explicit summary section header."""
+    lines = text_lower.split('\n')
+    for line in lines:
+        stripped = line.strip()
+        if stripped in ("summary", "objective", "profile", "about me", "professional summary",
+                        "summary:", "objective:", "profile:", "about me:", "professional summary:"):
+            return True
+        if stripped.startswith(("summary ", "objective ", "profile ", "about me ", "professional summary ")):
+            return True
+    return False
+
+
+def _has_skills_section(text_lower: str) -> bool:
+    """Check for explicit skills section header."""
+    lines = text_lower.split('\n')
+    for line in lines:
+        stripped = line.strip()
+        if stripped in ("skills", "technologies", "tech stack", "tools", "languages", "frameworks",
+                        "skills:", "technologies:", "tech stack:", "tools:", "languages:", "frameworks:"):
+            return True
+        if stripped.startswith(("skills ", "technologies ", "tech stack ", "tools ", "languages ", "frameworks ")):
+            return True
+    return False
+
+
+def _has_experience_section(text_lower: str) -> bool:
+    """Check for explicit experience section header."""
+    lines = text_lower.split('\n')
+    for line in lines:
+        stripped = line.strip()
+        if stripped in ("experience", "employment", "work history", "professional experience", "work experience",
+                        "experience:", "employment:", "work history:", "professional experience:", "work experience:"):
+            return True
+        if stripped.startswith(("experience ", "employment ", "work history ", "professional experience ", "work experience ")):
+            return True
+    return False
+
+
+def _has_education_section(text_lower: str) -> bool:
+    """Check for explicit education section header (not just the word 'degree')."""
+    lines = text_lower.split('\n')
+    for line in lines:
+        stripped = line.strip()
+        if stripped in ("education", "university", "college",
+                        "education:", "university:", "college:"):
+            return True
+        if stripped.startswith(("education ", "university ", "college ")):
+            return True
+    return False
+
+
+def _has_projects_section(text_lower: str) -> bool:
+    """Check for explicit projects section header."""
+    lines = text_lower.split('\n')
+    for line in lines:
+        stripped = line.strip()
+        if stripped in ("projects", "portfolio", "personal project", "side project",
+                        "projects:", "portfolio:", "personal project:", "side project:"):
+            return True
+        if stripped.startswith(("projects ", "portfolio ", "personal project ", "side project ")):
+            return True
+    return False
+
+
+def _has_certifications_section(text_lower: str) -> bool:
+    """Check for explicit certifications section header."""
+    lines = text_lower.split('\n')
+    for line in lines:
+        stripped = line.strip()
+        if stripped in ("certifications", "certification", "certificates", "certified", "license",
+                        "certifications:", "certification:", "certificates:", "certified:", "license:"):
+            return True
+        if stripped.startswith(("certifications ", "certification ", "certificates ", "certified ", "license ")):
+            return True
+    return False
+
+
+# Need access to the original text for section detection
+resume_text_lower = ""
+
+def _count_resume_sections(resume_text: str) -> dict[str, bool]:
+    """
+    Detect recognizable resume sections in the text.
+    Returns a dict of section names to presence boolean.
+    """
+    if not isinstance(resume_text, str) or not resume_text.strip():
+        return {}
+
+    global _resume_text_lower
+    _resume_text_lower = resume_text.lower()
+    
+    sections = {
+        "contact": _has_contact_info(_resume_text_lower),
+        "summary": _has_summary_section(_resume_text_lower),
+        "skills": _has_skills_section(_resume_text_lower),
+        "experience": _has_experience_section(_resume_text_lower),
+        "education": _has_education_section(_resume_text_lower),
+        "projects": _has_projects_section(_resume_text_lower),
+        "certifications": _has_certifications_section(_resume_text_lower),
+    }
+    return sections
+
+
+def _calculate_completeness_score(resume_text: str, projects: list[dict] | None = None) -> tuple[int, list[str], list[str]]:
+    """
+    Calculate resume completeness score (0-25).
+    Returns (score, strengths, weaknesses).
+    """
+    if not isinstance(resume_text, str) or not resume_text.strip():
+        return 0, [], ["Resume text is empty or missing"]
+
+    sections = _count_resume_sections(resume_text)
+    
+    # If projects are provided (structured data), consider projects section as present
+    has_projects = projects is not None and len(projects) > 0
+    if has_projects:
+        sections["projects"] = True
+    
+    # Weight essential sections higher (contact, skills, experience, education = 4 pts each)
+    # Optional sections (summary, projects, certifications) = 3 pts each
+    # But if projects provided, don't require experience section for students
+    has_projects_section = sections.get("projects", False)
+    
+    essential = {"contact", "skills", "education"}
+    # Experience is essential unless projects are present (student case)
+    if not has_projects_section:
+        essential.add("experience")
+    optional = {"summary", "projects", "certifications"}
+
+    essential_present = sum(1 for s in essential if sections.get(s))
+    optional_present = sum(1 for s in optional if sections.get(s))
+
+    score = essential_present * 4 + optional_present * 3
+
+    strengths = [name for name, v in sections.items() if v]
+    weaknesses = [name for name in essential if not sections.get(name)]
+
+    return min(score, 25), strengths, weaknesses
+
+
+def _calculate_keyword_alignment_score(
+    resume_text: str,
+    job_text: str,
+    job_keywords: list[dict]
+) -> tuple[int, list[str], list[str]]:
+    """
+    Calculate keyword alignment score (0-35).
+    Returns (score, strengths, weaknesses).
+    """
+    if not job_keywords:
+        return 0, [], ["No job keywords extracted"]
+
+    resume_skills = _extract_resume_skills(resume_text)
+    if not resume_skills:
+        return 0, [], ["No skills detected in resume"]
+
+    # Extract required/preferred keywords using both canonical importance
+    # and inline markers (Required:/Preferred:)
+    required_keywords = set()
+    preferred_keywords = set()
+    mentioned_keywords = set()
+
+    for kw in job_keywords:
+        term = kw["term"]
+        importance = kw.get("importance", "Mentioned")
+        if importance == "Required":
+            required_keywords.add(term)
+        elif importance == "Preferred":
+            preferred_keywords.add(term)
+        else:
+            mentioned_keywords.add(term)
+
+    # Also check for inline Required:/Preferred: markers in job text
+    if job_text:
+        job_lower = job_text.lower()
+        # Build lowercase sets for matching
+        mentioned_lower = {k.lower() for k in mentioned_keywords}
+        for kw in job_keywords:
+            term = kw["term"]
+            term_lower = term.lower()
+            if term_lower in mentioned_lower:
+                # Check for inline "Required: term" or "Preferred: term" patterns
+                required_pattern = rf"required\s*[:\-]\s*.*?\b{re.escape(term_lower)}\b"
+                preferred_pattern = rf"preferred\s*[:\-]\s*.*?\b{re.escape(term_lower)}\b"
+                if re.search(required_pattern, job_lower):
+                    required_keywords.add(term)
+                    mentioned_keywords.discard(term)
+                elif re.search(preferred_pattern, job_lower):
+                    preferred_keywords.add(term)
+                    mentioned_keywords.discard(term)
+
+    # Filter required/preferred keywords to only include known skills
+    # This prevents job description phrases from being treated as missing skills
+    from career_gap import extract_skills
+    known_skill_set = set(extract_skills(" ".join(list(required_keywords) + list(preferred_keywords) + list(mentioned_keywords))))
+    required_keywords = {k for k in required_keywords if k in known_skill_set}
+    preferred_keywords = {k for k in preferred_keywords if k in known_skill_set}
+    mentioned_keywords = {k for k in mentioned_keywords if k in known_skill_set}
+
+    all_important = required_keywords | preferred_keywords
+    if not all_important:
+        # No extractable required/preferred keywords - cannot assess alignment
+        return 0, [], ["No required or preferred keywords found in job description"]
+
+    matched_required = resume_skills & required_keywords
+    matched_preferred = resume_skills & preferred_keywords
+    matched_all = resume_skills & all_important
+
+    # Scoring: Required keywords worth more
+    required_weight = 0.7
+    preferred_weight = 0.3
+
+    required_score = len(matched_required) / len(required_keywords) if required_keywords else 1.0
+    preferred_score = len(matched_preferred) / len(preferred_keywords) if preferred_keywords else 1.0
+
+    combined = (required_weight * required_score + preferred_weight * preferred_score)
+    score = round(combined * 35)
+
+    strengths = []
+    weaknesses = []
+
+    if matched_required:
+        strengths.append(f"Covers {len(matched_required)}/{len(required_keywords)} required keywords")
+    else:
+        weaknesses.append("Missing all required keywords from job description")
+
+    if matched_preferred:
+        strengths.append(f"Covers {len(matched_preferred)}/{len(preferred_keywords)} preferred keywords")
+    elif preferred_keywords:
+        weaknesses.append(f"Missing {len(preferred_keywords)} preferred keywords")
+
+    missing_critical = required_keywords - resume_skills
+    if missing_critical:
+        weaknesses.append(f"Missing critical required skills: {', '.join(sorted(missing_critical)[:5])}")
+
+    return min(score, 35), strengths, weaknesses
+
+
+def _calculate_impact_score(
+    resume_text: str,
+    projects: list[dict] | None
+) -> tuple[int, list[str], list[str]]:
+    """
+    Calculate project & impact evidence score (0-25).
+    Returns (score, strengths, weaknesses).
+    """
+    if not isinstance(resume_text, str) or not resume_text.strip():
+        return 0, [], ["Resume text is empty"]
+
+    strengths = []
+    weaknesses = []
+
+    # Check for projects in resume text
+    has_projects_section = _has_projects_section(resume_text.lower())
+    # Check for actual GitHub/portfolio URLs (not just "git" word)
+    has_github = _has_github_link(resume_text.lower())
+
+    # Check for measurable impact signals - only credible quantitative evidence
+    metric_signals = [
+        r"\d+%", r"\d+\s*percent", r"increased by \d+", "decreased by \d+", "reduced by \d+", "improved by \d+",
+        r"\$\d+", r"\d+\s*k\b", r"\d+\s*m\b", r"\d+\s*x\b", "scaled", "optimized",
+        "accelerated", "delivered", "launched", "built", "designed", "architected"
+    ]
+    text_lower = resume_text.lower()
+    # Only count as metrics if there's a number/quantity involved
+    metric_patterns = [
+        r"\d+%", r"\d+\s*percent", 
+        r"increased by \d+", r"decreased by \d+", r"reduced by \d+", r"improved by \d+",
+        r"\$\d+", r"\d+\s*k\b", r"\d+\s*m\b", r"\d+\s*x\b",
+        r"scaled (?:to|by|from|up)", r"optimized (?:by|to) \d+",
+    ]
+    has_metrics = any(re.search(pattern, text_lower) for pattern in metric_patterns)
+
+    # Projects from structured data
+    project_count = len(projects) if projects else 0
+    project_bullets = 0
+    if projects:
+        for p in projects:
+            bullets = p.get("bullets", [])
+            project_bullets += len(bullets) if bullets else 0
+
+    # Check if resume demonstrates relevant technical skills (even without projects section)
+    resume_skills = _extract_resume_skills(resume_text)
+    has_technical_skills = len(resume_skills) >= 3
+
+    score = 0
+
+    # Base points for having projects
+    if has_projects_section or project_count > 0:
+        score += 8
+        strengths.append("Projects section present")
+
+    # Award GitHub/portfolio points only for actual links
+    has_github_link = _has_github_link(resume_text.lower())
+    if has_github_link:
+        score += 4
+        strengths.append("GitHub/portfolio link present")
+
+    if project_count >= 2:
+        score += 5
+        strengths.append(f"{project_count} projects documented")
+    elif project_count == 1:
+        score += 3
+        strengths.append("1 project documented")
+    else:
+        weaknesses.append("No projects documented")
+
+    # Only award metrics points for credible quantitative evidence
+    if has_metrics:
+        score += 5
+        strengths.append("Measurable impact metrics present")
+    else:
+        weaknesses.append("No measurable impact metrics (%, $, scale, time/cost improvements) found")
+
+    if project_bullets >= 4:
+        score += 3
+        strengths.append(f"{project_bullets} project bullet points")
+    elif project_bullets > 0:
+        score += 1
+
+    # Give some credit for demonstrated technical skills even without projects section
+    if has_technical_skills and not (has_projects_section or project_count > 0):
+        score += 5
+        strengths.append("Demonstrated relevant technical skills")
+
+    return min(score, 25), strengths, weaknesses
+
+
+def _has_github_link(text_lower: str) -> bool:
+    """Check for actual GitHub/portfolio profile URLs in the header area, not project URLs."""
+    # Only check the header area (first ~15 lines)
+    header_lines = text_lower.split('\n')[:15]
+    header_text = '\n'.join(header_lines)
+    
+    # Match profile URLs: github.com/username (not github.com/username/project)
+    if re.search(r"github\.com/[a-z0-9\-_]+(?:/(?=[\s.,;!?]|$)|(?=[\s.,;!?]|$))", header_text):
+        return True
+    if re.search(r"gitlab\.com/[a-z0-9\-_]+(?:/(?=[\s.,;!?]|$)|(?=[\s.,;!?]|$))", header_text):
+        return True
+    if re.search(r"portfolio\.[a-z]{2,}", header_text):
+        return True
+    return False
+
+
+def _calculate_clarity_score(resume_text: str) -> tuple[int, list[str], list[str]]:
+    """
+    Calculate clarity & signal quality score (0-15).
+    Penalizes keyword stuffing, rewards clear structure.
+    Returns (score, strengths, weaknesses).
+    """
+    if not isinstance(resume_text, str) or not resume_text.strip():
+        return 0, [], ["Resume text is empty"]
+
+    strengths = []
+    weaknesses = []
+    score = 15  # Start with full points, deduct for issues
+
+    text_lower = resume_text.lower()
+    word_count = len(resume_text.split())
+
+    # Check for keyword stuffing: repeated same skill excessively
+    # Use word-boundary matching to avoid false positives like "Git" in "GitHub"
+    skill_mentions = {}
+    for skill in extract_skills(resume_text):
+        # Use word-boundary regex to count whole-word occurrences
+        pattern = rf"(?<![a-z0-9+#./-]){re.escape(skill.lower())}(?![a-z0-9+#./-])"
+        count = len(re.findall(pattern, text_lower))
+        if count > 3:
+            skill_mentions[skill] = count
+
+    if skill_mentions:
+        # Deduct for stuffing (max -5)
+        stuffing_count = sum(v - 3 for v in skill_mentions.values())
+        deduction = min(5, stuffing_count)
+        score -= deduction
+        if deduction > 0:
+            weaknesses.append(f"Possible keyword stuffing: {', '.join(skill_mentions.keys())}")
+
+    # Check for very short resume
+    if word_count < 100:
+        score -= 3
+        weaknesses.append("Resume appears very short (<100 words)")
+
+    # Check for excessive length (potential padding)
+    if word_count > 1500:
+        score -= 2
+        weaknesses.append("Resume is very long (>1500 words), may contain padding")
+
+    # Check for section structure - use the improved section detection
+    sections = _count_resume_sections(resume_text)
+    sections_found = sum(1 for v in sections.values() if v)
+    if sections_found >= 4:
+        strengths.append("Well-structured with multiple sections")
+    elif sections_found < 3:  # Only penalize if fewer than 3 sections
+        score -= 2
+        weaknesses.append("Few recognizable sections")
+
+    # Check for contact info - use improved detection
+    if _has_contact_info(resume_text.lower()):
+        strengths.append("Contact information present")
+    else:
+        score -= 2
+        weaknesses.append("Missing contact information (email, phone, LinkedIn, portfolio)")
+
+    return max(0, score), strengths, weaknesses
+
+
+def _has_github_link(text_lower: str) -> bool:
+    """Check for actual GitHub/portfolio URLs, not just the word 'git'."""
+    if re.search(r"github\.com/[a-z0-9\-_]+", text_lower):
+        return True
+    if re.search(r"gitlab\.com/[a-z0-9\-_]+", text_lower):
+        return True
+    if re.search(r"portfolio\.[a-z]{2,}", text_lower):
+        return True
+    return False
+
+
+def calculate_ats_scorecard(
+    resume_text: str,
+    job_text: str,
+    job_keywords: list[dict],
+    projects: list[dict] | None = None
+) -> dict:
+    """
+    Calculate the ATS Resume Scorecard.
+
+    Returns a dict with:
+    - score: int (0-100)
+    - label: str (score band label)
+    - breakdown: list of dimension dicts with awarded/max points
+    - reasons: list of 2-4 evidence-based deduction reasons
+    - improvements: list of up to 3 prioritized actionable improvements
+    - disclaimer: str
+    """
+    # Calculate each dimension
+    completeness_score, c_str, c_weak = _calculate_completeness_score(resume_text, projects)
+    keyword_score, k_str, k_weak = _calculate_keyword_alignment_score(resume_text, job_text, job_keywords)
+    impact_score, i_str, i_weak = _calculate_impact_score(resume_text, projects)
+    clarity_score, cl_str, cl_weak = _calculate_clarity_score(resume_text)
+
+    total_score = completeness_score + keyword_score + impact_score + clarity_score
+    total_score = max(0, min(100, total_score))
+
+    # Prioritize weaknesses: keyword alignment and clarity are most actionable
+    # Order: keyword alignment > clarity > impact > completeness
+    priority_weaknesses = k_weak + cl_weak + i_weak + c_weak
+    reasons = priority_weaknesses[:4]  # Top 4 deductions
+
+    # Generate improvements based on weaknesses
+    improvements = []
+    if any("required keyword" in w.lower() or "required skill" in w.lower() for w in priority_weaknesses):
+        improvements.append("Add missing required skills from the job description to your skills section or experience bullets.")
+    if any("preferred keyword" in w.lower() or "preferred skill" in w.lower() for w in priority_weaknesses):
+        improvements.append("Incorporate preferred skills from the job description into your experience or projects.")
+    if any("metric" in w.lower() or "impact" in w.lower() for w in priority_weaknesses):
+        improvements.append("Add measurable outcomes to your projects and experience (%, $, scale, time saved).")
+    if any("project" in w.lower() for w in priority_weaknesses):
+        improvements.append("Document relevant projects with clear descriptions, your role, and technologies used.")
+    if any("contact" in w.lower() for w in priority_weaknesses):
+        improvements.append("Add email, phone, LinkedIn, and/or GitHub to your contact section.")
+    if any("section" in w.lower() for w in priority_weaknesses):
+        improvements.append("Organize resume into clear sections: Summary, Skills, Experience, Education, Projects.")
+    if any("stuffing" in w.lower() for w in priority_weaknesses):
+        improvements.append("Avoid repeating the same skill excessively; focus on varied, relevant keywords.")
+
+    # Ensure we have at least 1 and at most 3 improvements
+    improvements = improvements[:3] if improvements else ["Review the job description and tailor your resume to its required and preferred skills."]
+
+    # Build breakdown
+    breakdown = [
+        {"dimension": "Resume Completeness", "awarded": completeness_score, "max": 25, "description": "Presence of standard resume sections (contact, summary, skills, experience, education, projects, certifications)"},
+        {"dimension": "Keyword Alignment", "awarded": keyword_score, "max": 35, "description": "Match between resume skills and job description required/preferred keywords"},
+        {"dimension": "Project & Impact Evidence", "awarded": impact_score, "max": 25, "description": "Projects documented with measurable outcomes and technical details"},
+        {"dimension": "Clarity & Signal Quality", "awarded": clarity_score, "max": 15, "description": "Clear structure, no keyword stuffing, contact info present"},
+    ]
+
+    return {
+        "score": total_score,
+        "label": _score_label(total_score),
+        "breakdown": breakdown,
+        "reasons": reasons,
+        "improvements": improvements,
+        "disclaimer": "This is a heuristic assessment based on observable text signals, not an official ATS vendor score. A high score does not guarantee an interview."
+    }
+
+
+# Re-export for backward compatibility
+__all__ = [
+    "extract_job_keywords",
+    "calculate_ats_scorecard",
+    "ATS_SCORE_BANDS",
+]
+
+import re

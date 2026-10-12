@@ -394,3 +394,70 @@ def test_analyze_preserves_curated_resources(monkeypatch):
     data = response.json()
     assert "curated_resources" in data
     assert data["curated_resources"] == curated_data
+
+
+def test_analyze_passes_job_keywords_to_ats_scorecard(monkeypatch):
+    """Regression test: /analyze should extract job keywords and pass them to ATS scorecard."""
+    expected_result = {
+        "resume_skills": ["Python"],
+        "job_skills": ["Python", "FastAPI"],
+        "matched_skills": ["Python"],
+        "missing_skills": ["FastAPI"],
+        "score": 50.0,
+    }
+
+    captured_keywords = {}
+
+    def mock_run_careergap(resume, job_description, projects):
+        return expected_result
+
+    def mock_calculate_ats_scorecard(resume_text, job_text, job_keywords, projects):
+        captured_keywords["job_keywords"] = job_keywords
+        captured_keywords["resume_text"] = resume_text
+        captured_keywords["job_text"] = job_text
+        captured_keywords["projects"] = projects
+        return {
+            "score": 75,
+            "label": "Strong",
+            "breakdown": [],
+            "reasons": [],
+            "improvements": [],
+            "disclaimer": "Test disclaimer",
+        }
+
+    monkeypatch.setattr(backend, "run_careergap", mock_run_careergap)
+    monkeypatch.setattr(backend, "calculate_ats_scorecard", mock_calculate_ats_scorecard)
+    monkeypatch.setattr(backend, "generate_career_advice", lambda x: None)
+
+    backend.limiter._storage.reset()
+
+    payload = {
+        "resume": "Python developer with FastAPI experience.",
+        "job_description": "Required: Python, FastAPI. Preferred: React.",
+        "projects": [
+            {"name": "Test Project", "description": "A Python API project."}
+        ],
+    }
+
+    response = client.post("/analyze", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "ats_scorecard" in data
+    assert data["ats_scorecard"]["score"] == 75
+
+    # Verify job keywords were extracted and passed to calculate_ats_scorecard
+    assert "job_keywords" in captured_keywords
+    keywords = captured_keywords["job_keywords"]
+    assert isinstance(keywords, list)
+    assert len(keywords) > 0
+
+    # Verify keywords contain expected terms from job description
+    keyword_terms = [kw["term"] for kw in keywords]
+    assert "Python" in keyword_terms
+    assert "FastAPI" in keyword_terms
+
+    # Verify the resume and job description were passed through
+    assert captured_keywords["resume_text"] == payload["resume"]
+    assert captured_keywords["job_text"] == payload["job_description"]
+    assert captured_keywords["projects"] == payload["projects"]

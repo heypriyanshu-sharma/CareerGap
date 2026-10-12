@@ -1877,6 +1877,166 @@ document.addEventListener(
         }
 
         // =================================================
+        // ATS RESUME SCORECARD
+        // =================================================
+
+        function createAtsScoreCard(
+            result
+        ) {
+
+            const scorecard =
+                result.ats_scorecard;
+
+            if (
+                !scorecard ||
+                typeof scorecard !== "object"
+            ) {
+                return "";
+            }
+
+            const score =
+                Number(scorecard.score || 0);
+
+            const label =
+                String(scorecard.label || "Unknown");
+
+            const breakdown =
+                Array.isArray(scorecard.breakdown)
+                    ? scorecard.breakdown
+                    : [];
+
+            const reasons =
+                Array.isArray(scorecard.reasons)
+                    ? scorecard.reasons
+                    : [];
+
+            const improvements =
+                Array.isArray(scorecard.improvements)
+                    ? scorecard.improvements
+                    : [];
+
+            const disclaimer =
+                String(scorecard.disclaimer || "");
+
+            // Score ring
+            const radius = 68;
+            const circumference = 2 * Math.PI * radius;
+            const offset = circumference - (score / 100) * circumference;
+
+            // Gauge color based on score
+            let gaugeColor = "var(--ref-green-dark)";
+            if (score < 60) gaugeColor = "var(--warning-amber)";
+            if (score < 40) gaugeColor = "var(--error-red)";
+
+            return `
+                <article
+                    id="ats-scorecard-section"
+                    class="dashboard-card ats-score-card"
+                >
+
+                    <div class="card-title">
+
+                        <span class="card-icon">
+                            &#128270;
+                        </span>
+
+                        <div class="ats-title-group">
+                            <h3>ATS Resume Score</h3>
+                            <p class="ats-subtitle">Resume screening readiness</p>
+                        </div>
+
+                        <span class="ats-job-badge">Job-specific</span>
+
+                    </div>
+
+                    <div class="ats-score-row">
+
+                        <div class="ats-gauge" style="--gauge-color: ${gaugeColor}; --score: ${score};">
+                            <svg viewBox="0 0 160 160">
+                                <circle
+                                    class="ats-gauge-track"
+                                    cx="80"
+                                    cy="80"
+                                    r="${72}"
+                                ></circle>
+                                <circle
+                                    class="ats-gauge-progress"
+                                    cx="80"
+                                    cy="80"
+                                    r="${72}"
+                                    stroke-dasharray="${2 * Math.PI * 72}"
+                                    stroke-dashoffset="${(2 * Math.PI * 72) - (score / 100) * (2 * Math.PI * 72)}"
+                                ></circle>
+                            </svg>
+                            <div class="ats-gauge-center">
+                                <span class="ats-score-number">${score}</span>
+                                <span class="ats-score-denominator">/ 100</span>
+                                <span class="ats-score-label">${escapeHTML(label)}</span>
+                            </div>
+                        </div>
+
+                        <div class="ats-keyword-metric">
+                            <span class="ats-metric-value">${result.ats_keywords?.length || 0}</span>
+                            <span class="ats-metric-label">Job Keywords</span>
+                            <p class="ats-metric-note">Extracted from job description</p>
+                        </div>
+
+                    </div>
+
+                    ${reasons.length > 0 ? `
+                        <div class="ats-weaknesses">
+                            <h4>
+                                <span class="ats-weakness-icon">&#9888;</span>
+                                What is lowering your score?
+                            </h4>
+                            <ul class="ats-weakness-list">
+                                ${reasons.map(r => `<li><strong>${escapeHTML(r.split(':')[0])}:</strong> ${escapeHTML(r.includes(':') ? r.split(':').slice(1).join(':').trim() : r)}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+
+                    ${improvements.length > 0 ? `
+                        <div class="ats-improvements">
+                            <h4>
+                                <span class="ats-improve-icon">&#8680;</span>
+                                Priority improvements
+                            </h4>
+                            <ol class="ats-improvement-list">
+                                ${improvements.map((imp, i) => `<li><span class="improvement-number">${i + 1}</span>${escapeHTML(imp)}</li>`).join('')}
+                            </ol>
+                        </div>
+                    ` : ''}
+
+                    <details class="ats-breakdown">
+                        <summary>How your score is calculated</summary>
+                        <table class="ats-breakdown-table">
+                            <thead>
+                                <tr>
+                                    <th>Dimension</th>
+                                    <th>Points</th>
+                                    <th>Max</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${breakdown.map(d => `
+                                    <tr>
+                                        <td><strong>${escapeHTML(d.dimension)}</strong></td>
+                                        <td class="ats-points-awarded">${d.awarded}</td>
+                                        <td class="ats-points-max">${d.max}</td>
+                                        <td>${escapeHTML(d.description)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        <p class="ats-disclaimer">${escapeHTML(disclaimer)}</p>
+                    </details>
+
+                </article>
+            `;
+        }
+
+        // =================================================
         // SKILL BREAKDOWN
         // =================================================
 
@@ -3611,6 +3771,10 @@ document.addEventListener(
                 >
 
                     ${createScoreCard(
+                        result
+                    )}
+
+                    ${createAtsScoreCard(
                         result
                     )}
 
@@ -6023,6 +6187,6 @@ document.addEventListener(
             loadResumes();
         }
 
-        initResumeBuilder();
+initResumeBuilder();
     }
 );

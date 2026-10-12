@@ -15,7 +15,7 @@ from supabase import create_client
 from auth import get_current_user, security
 from career_gap import run_careergap
 from ai_advisor import generate_career_advice, safe_error_detail
-from ats_match import extract_job_keywords
+from ats_match import extract_job_keywords, calculate_ats_scorecard
 from database import (
     get_analysis_history,
     save_analysis,
@@ -1062,14 +1062,31 @@ def analyze(
                 "Your CareerGap analysis is complete and unaffected."
             )
 
+        # Calculate ATS scorecard
+        job_keywords = extract_job_keywords(career_gap_request.job_description)
+        try:
+            results["ats_scorecard"] = calculate_ats_scorecard(
+                resume_text=career_gap_request.resume,
+                job_text=career_gap_request.job_description,
+                job_keywords=job_keywords,
+                projects=projects,
+            )
+        except Exception as error:
+            print(
+                "ATS SCORECARD ERROR:",
+                type(error).__name__,
+                safe_error_detail(error),
+            )
+            results["ats_scorecard"] = None
+
         save_analysis(
-    access_token=credentials.credentials,
-    user_id=claims["sub"],
-    resume=career_gap_request.resume,
-    job_description=career_gap_request.job_description,
-    projects=projects,
-    analysis=results,
-)
+            access_token=credentials.credentials,
+            user_id=claims["sub"],
+            resume=career_gap_request.resume,
+            job_description=career_gap_request.job_description,
+            projects=projects,
+            analysis=results,
+        )
 
         return results
 

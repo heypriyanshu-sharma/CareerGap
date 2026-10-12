@@ -5050,9 +5050,337 @@ textarea:focus,
 
 
 /* =========================================================
+   ATS RESUME SCORECARD
+   ========================================================= */
 
+.ats-score-card {
+    padding: 32px;
+}
+
+.ats-score-card .card-title {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.ats-title-group {
+    flex: 1;
+    min-width: 180px;
+}
+
+.ats-title-group h3 {
+    margin: 0 0 4px;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--olive-dark);
+}
+
+.ats-subtitle {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--olive-soft);
+    font-weight: 500;
+}
+
+.ats-job-badge {
+    flex-shrink: 0;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--pistachio);
+    color: var(--olive-dark);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.ats-score-row {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+}
+
+.ats-gauge {
+    flex-shrink: 0;
+    width: 160px;
+    height: 160px;
+    position: relative;
+    --gauge-color: var(--ref-green-dark);
+    --score: 0;
+}
+
+.ats-gauge svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.ats-gauge-track {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 10;
+}
+
+.ats-gauge-progress {
+    fill: none;
+    stroke: var(--gauge-color);
+    stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.8s ease-out;
+}
+
+.ats-gauge-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+}
+
+.ats-score-number {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--olive-dark);
+    line-height: 1.1;
+}
+
+.ats-score-denominator {
+    display: block;
+    font-size: 1rem;
+    color: var(--olive-soft);
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+.ats-score-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--olive-soft);
+    margin-top: 4px;
+}
+
+.ats-keyword-metric {
+    flex: 1;
+    min-width: 180px;
+    padding: 16px 20px;
+    background: var(--pistachio-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.ats-metric-value {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--olive-dark);
+    line-height: 1.1;
+}
+
+.ats-metric-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--olive);
+    margin-top: 4px;
+}
+
+.ats-metric-note {
+    margin: 6px 0 0;
+    font-size: 0.75rem;
+    color: var(--olive-soft);
+}
+
+.ats-weaknesses,
+.ats-improvements {
+    margin-top: 20px;
+    padding: 16px 20px;
+    background: var(--pistachio-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+.ats-weaknesses h4,
+.ats-improvements h4 {
+    margin: 0 0 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--olive-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ats-weakness-icon,
+.ats-improve-icon {
+    font-size: 1rem;
+}
+
+.ats-weakness-list,
+.ats-improvement-list {
+    margin: 0;
+    padding: 0 0 0 20px;
+    list-style: none;
+}
+
+.ats-weakness-list li,
+.ats-improvement-list li {
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--olive);
+    position: relative;
+    padding-left: 4px;
+}
+
+.ats-weakness-list li strong {
+    color: var(--olive-dark);
+}
+
+.improvement-number {
+    display: inline-flex;
+    width: 22px;
+    height: 22px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--olive);
+    color: var(--cream);
+    font-size: 0.7rem;
+    font-weight: 800;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+.ats-breakdown {
+    margin-top: 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--cream);
+}
+
+.ats-breakdown summary {
+    padding: 14px 20px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--olive-dark);
+    cursor: pointer;
+    list-style: none;
+    background: var(--pistachio-soft);
+    border-bottom: 1px solid var(--border);
+}
+
+.ats-breakdown summary::-webkit-details-marker {
+    display: none;
+}
+
+.ats-breakdown summary::before {
+    content: "▸ ";
+    display: inline-block;
+    transition: transform 0.2s ease;
+    font-size: 0.7rem;
+}
+
+.ats-breakdown[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.ats-breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+.ats-breakdown-table th,
+.ats-breakdown-table td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.ats-breakdown-table th {
+    background: var(--pistachio-soft);
+    font-weight: 700;
+    color: var(--olive-dark);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.ats-breakdown-table td {
+    color: var(--olive);
+}
+
+.ats-breakdown-table tr:last-child td {
+    border-bottom: none;
+}
+
+.ats-points-awarded {
+    font-weight: 800;
+    color: var(--ref-green-dark);
+}
+
+.ats-points-max {
+    color: var(--olive-soft);
+    font-size: 0.75rem;
+}
+
+.ats-disclaimer {
+    margin: 16px 20px 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--olive-soft);
+    line-height: 1.5;
+}
+
+.ats-job-badge {
+    flex-shrink: 0;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--pistachio);
+    color: var(--olive-dark);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+@media (max-width: 768px) {
+    .ats-score-row {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ats-gauge {
+        width: 140px;
+        height: 140px;
+    }
+
+    .ats-keyword-metric {
+        width: 100%;
+    }
+
+    .ats-breakdown-table th,
+    .ats-breakdown-table td {
+        padding: 8px 10px;
+        font-size: 0.75rem;
+    }
+}
+
+
+/* =========================================================
    DASHBOARD NAVIGATION SHELL
-
 ========================================================= */
 
 .primary-nav {
