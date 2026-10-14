@@ -140,6 +140,19 @@ JOB_BOILERPLATE = frozenset({
     "today", "tomorrow", "yesterday", "soon", "later", "now",
     "then", "week", "weeks", "month", "months", "year", "time",
     "times", "people", "person", "someone", "something",
+    # Section header words that should never be keywords
+    "required", "requirements", "must", "must-have", "must-haves",
+    "must have", "must haves", "mandatory", "essential",
+    "qualifications", "preferred", "preferred skills", "nice to have",
+    "nice-to-have", "nice to haves", "nice-to-have",
+    "desired", "bonus", "good to have",
+    "preferred qualifications", "desired qualifications",
+    "qualifications", "must have", "must haves", "must-have", "must-haves",
+    "must-have", "must-haves", "mandatory", "essential",
+    "preferred", "preferred skills", "nice to have", "nice-to-have",
+    "nice to haves", "nice-to-haves", "desired", "bonus",
+    "good to have", "preferred qualifications", "desired qualifications",
+    "qualifications", "must have", "must haves", "must-have", "must-haves",
 })
 
 
@@ -764,10 +777,10 @@ def _has_summary_section(text_lower: str) -> bool:
     lines = text_lower.split('\n')
     for line in lines:
         stripped = line.strip()
-        if stripped in ("summary", "objective", "profile", "about me", "professional summary",
-                        "summary:", "objective:", "profile:", "about me:", "professional summary:"):
+        if stripped in ("summary", "professional summary", "objective", "profile", "about me", "career summary",
+                        "summary:", "professional summary:", "objective:", "profile:", "about me:", "career summary:"):
             return True
-        if stripped.startswith(("summary ", "objective ", "profile ", "about me ", "professional summary ")):
+        if stripped.startswith(("summary ", "professional summary ", "objective ", "profile ", "about me ", "career summary ")):
             return True
     return False
 
@@ -777,10 +790,10 @@ def _has_skills_section(text_lower: str) -> bool:
     lines = text_lower.split('\n')
     for line in lines:
         stripped = line.strip()
-        if stripped in ("skills", "technologies", "tech stack", "tools", "languages", "frameworks",
-                        "skills:", "technologies:", "tech stack:", "tools:", "languages:", "frameworks:"):
+        if stripped in ("skills", "technical skills", "technologies", "tech stack", "tools", "languages", "frameworks",
+                        "skills:", "technical skills:", "technologies:", "tech stack:", "tools:", "languages:", "frameworks:"):
             return True
-        if stripped.startswith(("skills ", "technologies ", "tech stack ", "tools ", "languages ", "frameworks ")):
+        if stripped.startswith(("skills ", "technical skills ", "technologies ", "tech stack ", "tools ", "languages ", "frameworks ")):
             return True
     return False
 
@@ -790,10 +803,10 @@ def _has_experience_section(text_lower: str) -> bool:
     lines = text_lower.split('\n')
     for line in lines:
         stripped = line.strip()
-        if stripped in ("experience", "employment", "work history", "professional experience", "work experience",
-                        "experience:", "employment:", "work history:", "professional experience:", "work experience:"):
+        if stripped in ("experience", "work experience", "professional experience", "work history", "employment",
+                        "experience:", "work experience:", "professional experience:", "work history:", "employment:"):
             return True
-        if stripped.startswith(("experience ", "employment ", "work history ", "professional experience ", "work experience ")):
+        if stripped.startswith(("experience ", "work experience ", "professional experience ", "work history ", "employment ")):
             return True
     return False
 
@@ -803,10 +816,13 @@ def _has_education_section(text_lower: str) -> bool:
     lines = text_lower.split('\n')
     for line in lines:
         stripped = line.strip()
-        if stripped in ("education", "university", "college",
-                        "education:", "university:", "college:"):
+        # Check for exact matches or prefix with space/colon
+        if stripped in ("education", "education & certifications", "education & training", "academic background",
+                        "education:", "education & certifications:", "education & training:", "academic background:",
+                        "university", "college", "university:", "college:"):
             return True
-        if stripped.startswith(("education ", "university ", "college ")):
+        if stripped.startswith(("education ", "education & certifications ", "education & training ", "academic background ",
+                                "education:", "university ", "college ", "university:", "college:")):
             return True
     return False
 
@@ -816,10 +832,14 @@ def _has_projects_section(text_lower: str) -> bool:
     lines = text_lower.split('\n')
     for line in lines:
         stripped = line.strip()
-        if stripped in ("projects", "portfolio", "personal project", "side project",
-                        "projects:", "portfolio:", "personal project:", "side project:"):
+        if stripped in ("projects", "project", "personal projects", "selected projects", "key projects", "notable projects",
+                        "projects:", "project:", "personal projects:", "selected projects:", "key projects:", "notable projects:",
+                        "portfolio", "personal project", "side project",
+                        "portfolio:", "personal project:", "side project:"):
             return True
-        if stripped.startswith(("projects ", "portfolio ", "personal project ", "side project ")):
+        if stripped.startswith(("projects ", "project ", "personal projects ", "selected projects ", "key projects ", "notable projects ",
+                                "portfolio ", "personal project ", "side project ",
+                                "portfolio:", "personal project:", "side project:")):
             return True
     return False
 
@@ -829,10 +849,10 @@ def _has_certifications_section(text_lower: str) -> bool:
     lines = text_lower.split('\n')
     for line in lines:
         stripped = line.strip()
-        if stripped in ("certifications", "certification", "certificates", "certified", "license",
-                        "certifications:", "certification:", "certificates:", "certified:", "license:"):
+        if stripped in ("certifications", "certification", "certificates", "certified", "license", "certifications & licenses",
+                        "certifications:", "certification:", "certificates:", "certified:", "license:", "certifications & licenses:"):
             return True
-        if stripped.startswith(("certifications ", "certification ", "certificates ", "certified ", "license ")):
+        if stripped.startswith(("certifications ", "certification ", "certificates ", "certified ", "license ", "certifications & licenses ")):
             return True
     return False
 
@@ -1122,17 +1142,33 @@ def _calculate_clarity_score(resume_text: str) -> tuple[int, list[str], list[str
 
     # Check for keyword stuffing: repeated same skill excessively
     # Use word-boundary matching to avoid false positives like "Git" in "GitHub"
+    # Common tech skills have higher threshold since they naturally appear often
+    COMMON_TECH_SKILLS = {
+        "python", "sql", "java", "javascript", "typescript", "c", "c++", "c#", 
+        "go", "rust", "ruby", "php", "swift", "kotlin", "scala", "r",
+        "html", "css", "react", "vue", "angular", "node.js", "nodejs", "express",
+        "sql", "postgresql", "mysql", "mongodb", "redis", "sqlite", "oracle",
+        "aws", "azure", "gcp", "google cloud", "docker", "kubernetes", "k8s",
+        "git", "github", "gitlab", "bitbucket", "jenkins", "gitlab ci", "github actions",
+        "linux", "unix", "bash", "shell", "powershell",
+        "git", "github", "gitlab", "jira", "confluence", "slack", "trello",
+        "rest api", "graphql", "grpc", "api", "microservices", "ci/cd", "ci cd"
+    }
+    
     skill_mentions = {}
     for skill in extract_skills(resume_text):
         # Use word-boundary regex to count whole-word occurrences
         pattern = rf"(?<![a-z0-9+#./-]){re.escape(skill.lower())}(?![a-z0-9+#./-])"
         count = len(re.findall(pattern, text_lower))
-        if count > 3:
+        # Higher threshold for common tech skills (threshold = 6 instead of 3)
+        threshold = 6 if skill.lower() in COMMON_TECH_SKILLS else 3
+        if count > threshold:
             skill_mentions[skill] = count
 
     if skill_mentions:
         # Deduct for stuffing (max -5)
-        stuffing_count = sum(v - 3 for v in skill_mentions.values())
+        stuffing_count = sum(v - (6 if skill.lower() in COMMON_TECH_SKILLS else 3) 
+                             for skill, v in skill_mentions.items())
         deduction = min(5, stuffing_count)
         score -= deduction
         if deduction > 0:
@@ -1168,12 +1204,17 @@ def _calculate_clarity_score(resume_text: str) -> tuple[int, list[str], list[str
 
 
 def _has_github_link(text_lower: str) -> bool:
-    """Check for actual GitHub/portfolio URLs, not just the word 'git'."""
-    if re.search(r"github\.com/[a-z0-9\-_]+", text_lower):
+    """Check for actual GitHub/portfolio profile URLs in the header area, not project URLs."""
+    # Only check the header area (first ~15 lines)
+    header_lines = text_lower.split('\n')[:15]
+    header_text = '\n'.join(header_lines)
+    
+    # Match profile URLs: github.com/username (not github.com/username/project)
+    if re.search(r"github\.com/[a-z0-9\-_]+(?:/(?=[\s.,;!?]|$)|(?=[\s.,;!?]|$))", header_text):
         return True
-    if re.search(r"gitlab\.com/[a-z0-9\-_]+", text_lower):
+    if re.search(r"gitlab\.com/[a-z0-9\-_]+(?:/(?=[\s.,;!?]|$)|(?=[\s.,;!?]|$))", header_text):
         return True
-    if re.search(r"portfolio\.[a-z]{2,}", text_lower):
+    if re.search(r"portfolio\.[a-z]{2,}", header_text):
         return True
     return False
 

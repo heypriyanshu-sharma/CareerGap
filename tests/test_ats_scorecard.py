@@ -250,6 +250,329 @@ def test_ats_scorecard_score_bands():
     assert scorecard["label"] in ["Needs Improvement", "Weak"]
 
 
+def test_deterministic_output():
+    """Identical inputs should produce identical results."""
+    resume = "John Doe\njohn@example.com\nSKILLS\nPython, FastAPI\nEXPERIENCE\nDeveloper"
+    job = "Required: Python, FastAPI"
+    projects = [{"name": "Project", "description": "Desc", "bullets": ["bullet"]}]
+    job_keywords = extract_job_keywords("Required: Python, FastAPI")
+    
+    scorecard1 = calculate_ats_scorecard(resume, "Required: Python, FastAPI", extract_job_keywords("Required: Python, FastAPI"), projects)
+    scorecard2 = calculate_ats_scorecard(resume, "Required: Python, FastAPI", extract_job_keywords("Required: Python, FastAPI"), projects)
+    
+    assert scorecard1["score"] == scorecard2["score"]
+    assert scorecard1["label"] == scorecard2["label"]
+    assert scorecard1["reasons"] == scorecard2["reasons"]
+    assert scorecard1["improvements"] == scorecard2["improvements"]
+    assert scorecard1["breakdown"] == scorecard2["breakdown"]
+
+
+# ============================================================
+# REGRESSION TESTS FOR NEW FIXES
+# ============================================================
+
+def test_job_keywords_varied_required_headings():
+    """Job descriptions with varied required heading formats should be recognized."""
+    job_descriptions = [
+        "Required: Python, FastAPI",
+        "Requirements: Python, FastAPI",
+        "Required Skills: Python, FastAPI",
+        "Must Have: Python, FastAPI",
+        "Must-Haves: Python, FastAPI",
+        "Mandatory: Python, FastAPI",
+        "Essential: Python, FastAPI",
+        "Qualifications: Python, FastAPI",
+        "Required: Python, FastAPI\nPreferred: React",
+    ]
+    
+    for job in job_descriptions:
+        job_keywords = extract_job_keywords(job)
+        required_terms = {kw["term"] for kw in job_keywords if kw["importance"] == "Required"}
+        assert "Python" in required_terms, f"Failed for job: {job}"
+        assert "FastAPI" in required_terms, f"Failed for job: {job}"
+
+
+def test_job_keywords_varied_preferred_headings():
+    """Job descriptions with varied preferred heading formats should be recognized."""
+    job_descriptions = [
+        "Preferred: React, TypeScript",
+        "Preferred Skills: React, TypeScript",
+        "Nice to Have: React, TypeScript",
+        "Nice-to-Have: React, TypeScript",
+        "Desired: React, TypeScript",
+        "Bonus: React, TypeScript",
+        "Good to Have: React, TypeScript",
+        "Preferred Qualifications: React, TypeScript",
+        "Desired Qualifications: React, TypeScript",
+    ]
+    
+    for job in job_descriptions:
+        job_keywords = extract_job_keywords(job)
+        preferred_terms = {kw["term"] for kw in job_keywords if kw["importance"] == "Preferred"}
+        assert "React" in preferred_terms, f"Failed for job: {job}"
+        assert "TypeScript" in preferred_terms, f"Failed for job: {job}"
+
+
+def test_job_keywords_inline_required_preferred():
+    """Inline Required:/Preferred: markers in job text should be recognized."""
+    job = """
+    We are looking for a Senior Backend Engineer with strong Python and FastAPI skills.
+    Required: Python, FastAPI, PostgreSQL, Docker, AWS
+    Preferred: React, TypeScript, Kubernetes, GraphQL
+    Experience with CI/CD pipelines and mentoring junior engineers is a plus.
+    """
+    job_keywords = extract_job_keywords(job)
+    
+    required_terms = {kw["term"] for kw in job_keywords if kw["importance"] == "Required"}
+    preferred_terms = {kw["term"] for kw in job_keywords if kw["importance"] == "Preferred"}
+    
+    # Required skills from inline markers should be detected
+    assert "Python" in required_terms
+    assert "FastAPI" in required_terms
+    assert "PostgreSQL" in required_terms
+    assert "Docker" in required_terms
+    assert "AWS" in required_terms
+    
+    # Preferred skills from inline markers should be detected
+    assert "React" in preferred_terms
+    assert "TypeScript" in preferred_terms
+    assert "Kubernetes" in preferred_terms
+    assert "GraphQL" in preferred_terms
+
+
+def test_section_detection_variants():
+    """Resume section detection should recognize common variants."""
+    from ats_match import (
+        _has_skills_section, _has_summary_section, _has_experience_section,
+        _has_education_section, _has_projects_section, _has_certifications_section,
+        _count_resume_sections
+    )
+    
+    resume = """
+    John Doe
+    john@example.com | +1-555-123-4567 | linkedin.com/in/johndoe | github.com/johndoe
+
+    PROFESSIONAL SUMMARY
+    Experienced Python developer with 5 years building scalable web applications.
+
+    TECHNICAL SKILLS
+    Python, FastAPI, PostgreSQL, Docker, AWS, React, TypeScript, SQL, Git
+
+    WORK EXPERIENCE
+    Senior Software Engineer at TechCorp (2021-Present)
+    - Built REST APIs with FastAPI handling 1M+ requests/day
+    - Improved API latency by 40%
+    - Mentored 3 junior engineers
+
+    EDUCATION & CERTIFICATIONS
+    B.S. Computer Science, Stanford University (2015-2019)
+
+    SELECTED PROJECTS
+    Open Source API Tool - CLI tool for API testing with 500+ GitHub stars
+    Personal Website - Portfolio site built with Next.js and Tailwind, deployed on Vercel
+
+    CERTIFICATIONS & LICENSES
+    AWS Solutions Architect (2022)
+    Kubernetes Administrator (2021)
+    """
+    
+    sections = _count_resume_sections(resume)
+    
+    # All sections should be detected
+    assert sections["summary"], "Professional Summary not detected"
+    assert sections["skills"], "Technical Skills not detected"
+    assert sections["experience"], "Work Experience not detected"
+    assert sections["education"], "Education & Certifications not detected"
+    assert sections["projects"], "Selected Projects not detected"
+    assert sections["certifications"], "Certifications & Licenses not detected"
+    assert sections["contact"], "Contact not detected"
+    
+    # All 7 sections should be found
+    assert sum(1 for v in sections.values() if v) == 7, "Not all sections detected"
+
+
+def test_keyword_stuffing_common_tech_skills_not_flagged():
+    """Common tech skills appearing many times should not be flagged as stuffing."""
+    resume = """
+    John Doe
+    john@example.com | +1-555-123-4567 | linkedin.com/in/johndoe | github.com/johndoe
+
+    SUMMARY
+    Experienced Python developer with 5 years building scalable web applications using Python, SQL, and React.
+
+    SKILLS
+    Python, SQL, React, Docker, AWS, Git, GitHub, Linux, JavaScript, TypeScript
+
+    EXPERIENCE
+    Senior Software Engineer at TechCorp (2021-Present)
+    - Built REST APIs with Python and FastAPI handling 1M+ requests/day
+    - Improved API latency by 40% using Python and SQL optimizations
+    - Mentored 3 junior engineers in Python and React best practices
+    - Designed SQL schemas and optimized React components
+
+    EDUCATION
+    B.S. Computer Science, Stanford University (2015-2019)
+
+    PROJECTS
+    Open Source API Tool - CLI tool for API testing with 500+ GitHub stars
+    Personal Website - Portfolio site built with Next.js and Tailwind, deployed on Vercel
+
+    CERTIFICATIONS
+    AWS Solutions Architect (2022)
+    Kubernetes Administrator (2021)
+    """
+    
+    job = "Required: Python, SQL, React, Docker, AWS"
+    job_keywords = extract_job_keywords(job)
+    projects = [
+        {'name': 'Project A', 'description': 'Desc', 'bullets': ['Built with Python']},
+    ]
+    
+    scorecard = calculate_ats_scorecard(
+        "John Doe\njohn@example.com | +1-555-123-4567 | linkedin.com/in/johndoe | github.com/johndoe\n\nSUMMARY\nExperienced Python developer.\n\nSKILLS\nPython, SQL, React, Docker, AWS, Git, GitHub\n\nEXPERIENCE\nSenior Engineer at TechCorp (2021-Present)\n- Built REST APIs with Python and FastAPI\n- Used SQL for database optimization\n- Worked with React and TypeScript\n\nEDUCATION\nB.S. CS, Stanford\n\nPROJECTS\nProject A\n\nCERTIFICATIONS\nAWS Cert (2022)",
+        "Required: Python, SQL, React, Docker, AWS",
+        extract_job_keywords("Required: Python, SQL, React, Docker, AWS"),
+        projects
+    )
+    
+    # Should not have stuffing warning for common tech skills
+    stuffing_reasons = [r for r in scorecard["reasons"] if "stuffing" in r.lower()]
+    assert not stuffing_reasons, f"Common tech skills flagged as stuffing: {stuffing_reasons}"
+
+
+def test_common_tech_skills_not_stuffed_in_github():
+    """GitHub URL should not cause Git to be flagged as stuffed."""
+    resume = """
+    Jane Doe
+    jane@example.com | github.com/janedoe
+    SKILLS
+    Python, Git
+    EXPERIENCE
+    Developer at Corp
+    """
+    
+    job = "Required: Python, Git"
+    job_keywords = extract_job_keywords(job)
+    scorecard = calculate_ats_scorecard(resume, job, job_keywords, None)
+    
+    assert not any("stuffing" in r.lower() for r in scorecard["reasons"])
+    assert "Git" not in " ".join(scorecard["reasons"]) or "stuffing" not in " ".join(scorecard["reasons"])
+
+
+def test_section_detection_student_resume():
+    """Student resume with projects but no work experience should not be penalized for missing experience section."""
+    resume = """
+    Alex Student
+    alex@university.edu | github.com/alexstudent
+    SUMMARY
+    Computer Science student seeking internship.
+    EDUCATION
+    B.S. Computer Science, University (2022-2026), GPA: 3.8
+    SKILLS
+    Python, Java, JavaScript, SQL, Git
+    PROJECTS
+    Task Manager - Full-stack app with React and Node.js, deployed on AWS
+    Data Visualizer - Python backend with D3.js frontend
+    CERTIFICATIONS
+    AWS Cloud Practitioner (2024)
+    Python Certification (2023)
+    """
+    
+    # Experience is not required when projects are present
+    # The completeness score should not penalize missing experience when projects exist
+    from ats_match import _count_resume_sections
+    sections = _count_resume_sections(resume)
+    assert not sections["experience"], "Experience section should not be detected"
+    assert sections["projects"], "Projects section should be detected"
+    
+    # Verify the scorecard doesn't penalize for missing experience
+    job = "Required: Python, JavaScript"
+    job_keywords = extract_job_keywords(job)
+    projects = [
+{"name": "Task Manager", "description": "Full-stack app", "bullets": ["React + Node.js", "Deployed on AWS"]},
+        {"name": "Data Visualizer", "description": "Python backend", "bullets": ["Python backend", "React frontend"]}
+    ]
+    scorecard = calculate_ats_scorecard(resume, "Required: Python, JavaScript", extract_job_keywords("Required: Python, JavaScript"), projects)
+    # Should not have "experience" as a weakness
+    assert not any("experience" in r.lower() for r in scorecard["reasons"])
+
+
+# ============================================================
+# REGRESSION TESTS FOR RESTORED SECTION HEADINGS
+# ============================================================
+
+def test_education_section_restored_headings():
+    """Test that restored education section headings (university, college) are recognized."""
+    from ats_match import _has_education_section
+    
+    # Test old headings that should still work
+    resume = "Education: B.S. Computer Science, University of Technology (2022-2026)"
+    assert _has_education_section(resume.lower()), "Failed for 'Education:'"
+    
+    resume = "University: B.S. Computer Science, Stanford (2020-2024)"
+    assert _has_education_section(resume.lower()), "Failed for 'University:'"
+    
+    resume = "College: B.A. English, Harvard (2018-2022)"
+    assert _has_education_section(resume.lower()), "Failed for 'College:'"
+    
+    # Test prefix variants
+    resume = "University of California, Berkeley - B.S. CS"
+    assert _has_education_section(resume.lower()), "Failed for 'University ' prefix"
+    
+    resume = "College of Engineering - B.S. CS"
+    assert _has_education_section(resume.lower()), "Failed for 'College ' prefix"
+
+
+def test_education_section_colon_variants():
+    """Test colon variants of restored education headings."""
+    from ats_match import _has_education_section
+    
+    resume = "University: B.S. Computer Science"
+    assert _has_education_section(resume.lower()), "Failed for 'University:'"
+    
+    resume = "College: B.A. English"
+    assert _has_education_section(resume.lower()), "Failed for 'College:'"
+
+
+def test_projects_section_restored_headings():
+    """Test that restored projects section headings are recognized."""
+    from ats_match import _has_projects_section
+    
+    # Test restored headings
+    resume = "Portfolio: github.com/user"
+    assert _has_projects_section(resume.lower()), "Failed for 'Portfolio:'"
+    
+    resume = "Personal Project: Open source library"
+    assert _has_projects_section(resume.lower()), "Failed for 'Personal Project:'"
+    
+    resume = "Side Project: Mobile app"
+    assert _has_projects_section(resume.lower()), "Failed for 'Side Project:'"
+    
+    # Test prefix variants
+    resume = "Portfolio website at github.com/user"
+    assert _has_projects_section(resume.lower()), "Failed for 'Portfolio ' prefix"
+    
+    resume = "Personal project: Open source library"
+    assert _has_projects_section(resume.lower()), "Failed for 'Personal project ' prefix"
+    
+    resume = "Side project: Mobile app"
+    assert _has_projects_section(resume.lower()), "Failed for 'Side project ' prefix"
+
+
+def test_projects_section_colon_variants():
+    """Test colon variants of restored project headings."""
+    from ats_match import _has_projects_section
+    
+    resume = "Portfolio: github.com/user"
+    assert _has_projects_section(resume.lower()), "Failed for 'Portfolio:'"
+    
+    resume = "Personal project: Open source library"
+    assert _has_projects_section(resume.lower()), "Failed for 'Personal project:'"
+    
+    resume = "Side project: Mobile app"
+    assert _has_projects_section(resume.lower()), "Failed for 'Side project:'"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 
