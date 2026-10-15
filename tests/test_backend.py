@@ -56,6 +56,7 @@ def test_analyze_accepts_valid_request(monkeypatch):
         "matched_skills": ["Python"],
         "missing_skills": ["FastAPI"],
         "score": 50.0,
+        "github_recommendations": [],
     }
 
     monkeypatch.setattr(
@@ -89,6 +90,54 @@ def test_analyze_accepts_valid_request(monkeypatch):
         **expected_result,
         "ai_advice": "Test AI career advice.",
     }
+
+
+def test_analyze_returns_github_recommendations(monkeypatch):
+    """Regression test: /analyze should include github_recommendations in response."""
+    expected_result = {
+        "resume_skills": ["Python"],
+        "job_skills": ["Python", "FastAPI"],
+        "matched_skills": ["Python"],
+        "missing_skills": ["FastAPI"],
+        "score": 50.0,
+        "github_recommendations": [
+            {"repo": {"full_name": "test/repo"}, "score": 90}
+        ],
+    }
+
+    monkeypatch.setattr(
+        backend,
+        "run_careergap",
+        lambda resume, job_description, projects: expected_result,
+    )
+
+    monkeypatch.setattr(
+        backend,
+        "generate_career_advice",
+        lambda career_gap_data: "Test AI career advice.",
+    )
+
+    payload = {
+        "resume": "I know Python.",
+        "job_description": "Required: Python FastAPI.",
+        "projects": [
+            {
+                "name": "Test API",
+                "description": "A Python API project.",
+            }
+        ],
+    }
+
+    response = client.post("/analyze", json=payload)
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "github_recommendations" in data
+    assert isinstance(data["github_recommendations"], list)
+    assert data["github_recommendations"] == expected_result["github_recommendations"]
+    assert data["github_recommendations"][0]["repo"]["full_name"] == "test/repo"
+    assert data["github_recommendations"][0]["score"] == 90
 
 
 def test_analyze_rejects_empty_resume():

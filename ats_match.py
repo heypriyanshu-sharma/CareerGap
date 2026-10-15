@@ -971,14 +971,6 @@ def _calculate_keyword_alignment_score(
                     preferred_keywords.add(term)
                     mentioned_keywords.discard(term)
 
-    # Filter required/preferred keywords to only include known skills
-    # This prevents job description phrases from being treated as missing skills
-    from career_gap import extract_skills
-    known_skill_set = set(extract_skills(" ".join(list(required_keywords) + list(preferred_keywords) + list(mentioned_keywords))))
-    required_keywords = {k for k in required_keywords if k in known_skill_set}
-    preferred_keywords = {k for k in preferred_keywords if k in known_skill_set}
-    mentioned_keywords = {k for k in mentioned_keywords if k in known_skill_set}
-
     all_important = required_keywords | preferred_keywords
     if not all_important:
         # No extractable required/preferred keywords - cannot assess alignment
