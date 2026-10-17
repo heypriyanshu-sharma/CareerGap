@@ -984,10 +984,17 @@ def _calculate_keyword_alignment_score(
     required_weight = 0.7
     preferred_weight = 0.3
 
-    required_score = len(matched_required) / len(required_keywords) if required_keywords else 1.0
-    preferred_score = len(matched_preferred) / len(preferred_keywords) if preferred_keywords else 1.0
+    if required_keywords and preferred_keywords:
+        required_score = len(matched_required) / len(required_keywords)
+        preferred_score = len(matched_preferred) / len(preferred_keywords)
+        combined = required_weight * required_score + preferred_weight * preferred_score
+    elif required_keywords:
+        combined = len(matched_required) / len(required_keywords)
+    elif preferred_keywords:
+        combined = len(matched_preferred) / len(preferred_keywords)
+    else:
+        combined = 0.0
 
-    combined = (required_weight * required_score + preferred_weight * preferred_score)
     score = round(combined * 35)
 
     strengths = []

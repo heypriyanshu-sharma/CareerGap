@@ -636,6 +636,24 @@ def test_job_only_required_keywords():
     # Keyword alignment should work with only required keywords
     kw_dim = next(d for d in scorecard["breakdown"] if d["dimension"] == "Keyword Alignment")
     assert kw_dim["awarded"] <= kw_dim["max"]
+    assert kw_dim["awarded"] == 35
+
+
+def test_job_only_required_keywords_partial_match():
+    """Missing one of two required keywords should score 18/35."""
+    resume = "John Doe\njohn@example.com\nSKILLS\nPython\nEXPERIENCE\nDeveloper"
+    job = "Required: Python, FastAPI"
+    job_keywords = extract_job_keywords(job)
+
+    scorecard = calculate_ats_scorecard(resume, job, job_keywords, None)
+    kw_dim = next(
+        d for d in scorecard["breakdown"]
+        if d["dimension"] == "Keyword Alignment"
+    )
+
+    assert kw_dim["awarded"] == 18
+    assert kw_dim["max"] == 35
+
 
 
 def test_job_only_preferred_keywords():
