@@ -482,58 +482,75 @@ def determine_importance(
     """Determine job-skill importance using section-aware parsing."""
     if not isinstance(job_text, str) or not isinstance(skill, str):
         return "Mentioned"
-    
+
     # Extended header patterns for required/preferred sections
     # Using prefix matching to handle variations like "Required Skills:", "Must-Haves:", etc.
     required_header_prefixes = (
-        "required", "requirements", "required skills", "must have", 
-        "must-have", "must haves", "must-haves", "mandatory", 
+        "required", "required skills", "requirements:",
+        "must have", "must-have", "must haves", "must-haves", "mandatory",
         "essential", "requirements:", "required skills:", "must haves:",
         "must-haves:", "required:", "must have:", "must-have:",
         "qualifications:", "qualifications"
     )
     preferred_header_prefixes = (
         "preferred", "preferred skills", "nice to have", "nice-to-have",
-        "nice to haves", "nice-to-haves", "desired", "bonus", 
+        "nice to haves", "nice-to-haves", "desired", "bonus",
         "good to have", "preferred:", "preferred skills:", "nice to have:",
         "nice-to-have:", "desired:", "bonus:", "good to have:",
         "preferred qualifications:", "desired qualifications:"
     )
-    
+
     skill_lower = skill.lower()
-    
+
     # First pass: identify section headers and their line numbers
     section_boundaries = []  # list of (line_idx, section_type)
     current_section = "Mentioned"
-    
+
     for line_idx, raw_line in enumerate(job_text.splitlines()):
         line = raw_line.strip()
         if not line:
             continue
-        normalized = re.sub(r"^[\s*\-•]+", "", line).strip().lower()
+
+        normalized = re.sub(r"^[\s*\-â€¢]+", "", line).strip().lower()
         normalized = re.sub(r"\s*:+\s*$", "", normalized)
-        
-        # Check if line starts with any required header prefix
-        is_required = any(normalized.startswith(prefix) for prefix in required_header_prefixes)
-        is_preferred = any(normalized.startswith(prefix) for prefix in preferred_header_prefixes)
-        
+
+        is_required = any(
+            normalized == prefix.rstrip(":").strip()
+            or normalized.startswith(prefix.rstrip(":").strip() + ":")
+            or (
+                not prefix.endswith(":")
+                and normalized.startswith(prefix + " ")
+            )
+            for prefix in required_header_prefixes
+        )
+
+        is_preferred = any(
+            normalized == prefix.rstrip(":").strip()
+            or normalized.startswith(prefix.rstrip(":").strip() + ":")
+            or (
+                not prefix.endswith(":")
+                and normalized.startswith(prefix + " ")
+            )
+            for prefix in preferred_header_prefixes
+        )
+
         if is_required:
             current_section = "Required"
         elif is_preferred:
             current_section = "Preferred"
-        
-        # Record section boundary at this line
+
         section_boundaries.append((line_idx, current_section))
-    
+
+
     # If no explicit sections found, everything is "Mentioned"
     if not any(s[1] != "Mentioned" for s in section_boundaries):
         return "Mentioned"
-    
+
     # Find all occurrences of the skill and track the highest priority section
     found_required = False
     found_preferred = False
     found_mentioned = False
-    
+
     for line_idx, raw_line in enumerate(job_text.splitlines()):
         line = raw_line.strip()
         if not line:
@@ -546,20 +563,20 @@ def determine_importance(
                     applicable_section = section_type
                 else:
                     break
-            
+
             if applicable_section == "Required":
                 return "Required"  # Highest priority, return immediately
             elif applicable_section == "Preferred":
                 found_preferred = True
             else:
                 found_mentioned = True
-    
+
     # Return highest priority found
     if found_preferred:
         return "Preferred"
     if found_mentioned:
         return "Mentioned"
-    
+
     # Fallback: check inline "Required: skill" / "Preferred: skill" patterns in sentences
     sentences = re.split(r"[.!?]", job_text)
     for sentence in sentences:

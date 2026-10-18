@@ -679,6 +679,16 @@ def test_job_no_extractable_keywords():
     kw_dim = next(d for d in scorecard["breakdown"] if d["dimension"] == "Keyword Alignment")
     assert kw_dim["awarded"] == 0
 
+def test_determine_importance_does_not_misclassify_similar_headings():
+    """Ordinary headings that start similarly should not change skill importance."""
+    from career_gap import determine_importance
+
+    job = (
+        "Requirements Engineering\n"
+        "Python is used for backend development."
+    )
+
+    assert determine_importance(job, "Python") == "Mentioned"
 
 def test_breakdown_points_sum_to_score():
     """Breakdown awarded points should sum exactly to total score."""
