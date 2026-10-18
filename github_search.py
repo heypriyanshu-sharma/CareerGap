@@ -235,6 +235,8 @@ def search_github(skill, user_skills):
     skill = str(skill).strip()
     skill_lower = skill.lower()
 
+    print(f"[GitHub] Searching for skill: {skill}")
+
     # Avoid broad queries such as "skill python" because they return
     # popular generic repositories that only mention the skill incidentally.
     query_map = {
@@ -290,6 +292,8 @@ def search_github(skill, user_skills):
         [f'"{skill}" in:name,description,readme']
     )
 
+    print(f"[GitHub] Queries for {skill}: {queries}")
+
     repositories = []
     seen = set()
 
@@ -306,28 +310,36 @@ def search_github(skill, user_skills):
                 headers=HEADERS,
                 timeout=10
             )
-        except requests.RequestException:
+        except requests.RequestException as error:
+            print(f"[GitHub] Request failed for {skill} (query: {query}): {type(error).__name__}")
             continue
 
         if response.status_code != 200:
+            print(f"[GitHub] HTTP {response.status_code} for {skill} (query: {query})")
             continue
 
         try:
             data = response.json()
         except ValueError:
+            print(f"[GitHub] Invalid JSON response for {skill} (query: {query})")
             continue
 
-        for repo in data.get('items', []):
+        items = data.get('items', [])
+        print(f"[GitHub] API returned {len(items)} repositories for {skill} (query: {query})")
+        for repo in items:
             full_name = repo.get('full_name')
             if full_name and full_name not in seen:
                 repositories.append(repo)
                 seen.add(full_name)
 
     # Remove obvious non-project resources before expensive README/tree calls.
+    before_classify = len(repositories)
     repositories = [
         repo for repo in repositories
         if classify_repository(repo) == 'project'
     ]
+    after_classify = len(repositories)
+    print(f"[GitHub] After classification filter for {skill}: {before_classify} -> {after_classify} repositories")
 
     # Keep GitHub's best-match order. Popularity is only a later ranking
     # signal; it must never decide whether a repository is relevant.
@@ -1167,6 +1179,7 @@ def rank_repositories(
     Expensive API calls are capped to the top 5 candidates. This keeps
     CareerGap responsive while preserving repository evidence analysis.
     """
+    print(f"[GitHub] Ranking repositories for skill: {skill} (candidates: {len(repositories)})")
     ranked = []
 
     # Discovery returns best-match candidates. Inspect enough candidates
@@ -1174,9 +1187,20 @@ def rank_repositories(
     # resources. This avoids expensive README/tree calls for the whole search.
     candidates = repositories[:20]
 
+    stats = {
+        'total_candidates': len(candidates),
+        'classified_out': 0,
+        'non_resource_filtered': 0,
+        'skill_relevance_failed': 0,
+        'resource_intent_failed': 0,
+        'meaningful_evidence_failed': 0,
+        'ranked': 0
+    }
+
     for repo in candidates:
 
         if classify_repository(repo) in {'profile', 'collection'}:
+            stats['classified_out'] += 1
             continue
 
         readme = get_readme(repo)
@@ -1198,6 +1222,7 @@ def rank_repositories(
 
         if _contains_any(candidate_text, NON_RESOURCE_SIGNALS):
 
+            stats['non_resource_filtered'] += 1
             continue
 
         analysis = analyze_repository(
@@ -1210,9 +1235,11 @@ def rank_repositories(
         file_analysis = analyze_project_files(files)
 
         if not has_skill_relevance(repo, readme, analysis, file_analysis, skill):
+            stats['skill_relevance_failed'] += 1
             continue
 
         if not has_resource_intent(repo, readme, analysis, file_analysis, skill):
+            stats['resource_intent_failed'] += 1
             continue
 
         if not has_meaningful_project_evidence(
@@ -1221,6 +1248,7 @@ def rank_repositories(
             analysis,
             file_analysis
         ):
+            stats['meaningful_evidence_failed'] += 1
             continue
 
         repo_for_scoring = dict(repo)
@@ -1309,8 +1337,12 @@ def rank_repositories(
             'url': repo.get('html_url')
         })
 
+        stats['ranked'] += 1
+
         if len(ranked) >= 3:
             break
+
+    print(f"[GitHub] Ranking stats for {skill}: {stats}")
 
     def ranking_key(item):
         matched_count = len(

@@ -1572,12 +1572,14 @@ def get_github_recommendations(
         try:
             print(f"\nGitHub: finding relevant resources for {missing_skill}...")
             repositories = search_github(missing_skill, resume_skills)
+            print(f"[GitHub] Found {len(repositories)} repositories for {missing_skill} after search")
             ranked_repositories = rank_repositories(
                 repositories,
                 missing_skill,
                 resume_skills=resume_skills,
                 project_context=project_context
             )
+            print(f"[GitHub] Ranked {len(ranked_repositories)} repositories for {missing_skill}")
             for item in ranked_repositories[:3]:
                 recommendation = normalize_github_recommendation(item, missing_skill)
                 repo = recommendation.get("repo") or {}
@@ -1591,6 +1593,7 @@ def get_github_recommendations(
                 all_recommendations.append(recommendation)
         except Exception as error:
             print(f"\nGitHub search failed for {missing_skill}: {error}")
+    print(f"[GitHub] Total recommendations before deduplication: {len(all_recommendations)}")
     ranked_all = sorted(all_recommendations, key=lambda item: item.get("score", 0), reverse=True)
     selected = []
     selected_skills = set()
@@ -1601,13 +1604,14 @@ def get_github_recommendations(
         selected.append(recommendation)
         selected_skills.add(skill)
         if len(selected) >= limit:
-            return selected
+            break
     for recommendation in ranked_all:
         if recommendation in selected:
             continue
         selected.append(recommendation)
         if len(selected) >= limit:
             break
+    print(f"[GitHub] Final selected recommendations: {len(selected)} (skills: {sorted(selected_skills)})")
     return selected
 
 
