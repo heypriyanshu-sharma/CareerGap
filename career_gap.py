@@ -1563,25 +1563,43 @@ def get_github_recommendations(
     missing_skills,
     resume_skills,
     project_context=None,
-    limit=5
+    limit=5,
+    fallback_skills=None
 ):
-    """Search, rank, deduplicate, and select GitHub resources."""
+    """Search, rank, deduplicate, and select GitHub resources.
+
+    If missing_skills is empty and fallback_skills is provided, uses fallback_skills
+    to find advanced learning resources for skill strengthening.
+    """
     all_recommendations = []
     seen_repositories = set()
-    for missing_skill in missing_skills:
+
+    # Determine which skills to search for
+    search_skills = list(missing_skills) if missing_skills else []
+    is_fallback = False
+
+    if not search_skills and fallback_skills:
+        # Use a small, bounded fallback: first 3 fallback skills in list order
+        # to limit GitHub API calls.
+        search_skills = list(fallback_skills)[:3]
+        is_fallback = True
+
+    for skill in search_skills:
         try:
-            print(f"\nGitHub: finding relevant resources for {missing_skill}...")
-            repositories = search_github(missing_skill, resume_skills)
-            print(f"[GitHub] Found {len(repositories)} repositories for {missing_skill} after search")
+            label = "Strengthen" if is_fallback else "Learn"
+            print(f"\nGitHub: finding relevant resources for {skill} ({label})...")
+            repositories = search_github(skill, resume_skills)
+            print(f"[GitHub] Found {len(repositories)} repositories for {skill} after search")
             ranked_repositories = rank_repositories(
                 repositories,
-                missing_skill,
+                skill,
                 resume_skills=resume_skills,
                 project_context=project_context
             )
-            print(f"[GitHub] Ranked {len(ranked_repositories)} repositories for {missing_skill}")
+            print(f"[GitHub] Ranked {len(ranked_repositories)} repositories for {skill}")
             for item in ranked_repositories[:3]:
-                recommendation = normalize_github_recommendation(item, missing_skill)
+                recommendation = normalize_github_recommendation(item, skill)
+                recommendation["is_fallback"] = is_fallback
                 repo = recommendation.get("repo") or {}
                 repository_name = repo.get("full_name") or repo.get("name")
                 if not repository_name:
@@ -1592,7 +1610,7 @@ def get_github_recommendations(
                 seen_repositories.add(repository_key)
                 all_recommendations.append(recommendation)
         except Exception as error:
-            print(f"\nGitHub search failed for {missing_skill}: {error}")
+            print(f"\nGitHub search failed for {skill}: {error}")
     print(f"[GitHub] Total recommendations before deduplication: {len(all_recommendations)}")
     ranked_all = sorted(all_recommendations, key=lambda item: item.get("score", 0), reverse=True)
     selected = []
@@ -1714,7 +1732,8 @@ def run_careergap(resume_text, job_text, projects):
     github_recommendations = get_github_recommendations(
         missing_skills,
         resume_skills,
-        project_context=github_project_context
+        project_context=github_project_context,
+        fallback_skills=matched_skills if not missing_skills else None
     )
 
     curated_resources = get_curated_resources(missing_skills)

@@ -388,3 +388,332 @@ def test_get_curated_resources_resolves_aliases():
     resources = career_gap.get_curated_resources(["sklearn"])
     assert len(resources) == 3
     assert all(item["skill"] == "Scikit-learn" for item in resources)
+
+
+def test_github_fallback_on_100_percent_match(monkeypatch):
+    """When missing_skills is empty, fallback to matched skills for GitHub recommendations."""
+    # Mock external services
+    monkeypatch.setattr(
+        career_gap,
+        "get_market_data",
+        lambda: {"python": 66, "fastapi": 50}
+    )
+    called_skills = []
+    def mock_get_github_recommendations(missing_skills, resume_skills, project_context=None, limit=5, fallback_skills=None):
+        called_skills.extend(missing_skills if missing_skills else (fallback_skills or []))
+        # Return a mock recommendation
+        if fallback_skills:
+            return [{"skill": fallback_skills[0], "is_fallback": True, "repo": {"full_name": "test/repo", "description": "Test repo", "stargazers_count": 10, "html_url": "https://github.com/test/repo"}}]
+        return []
+
+    monkeypatch.setattr(
+        career_gap,
+        "get_github_recommendations",
+        mock_get_github_recommendations
+    )
+
+    # Resume and job have 100% match - both have Python and FastAPI
+    resume = "I know Python and FastAPI."
+    job = """
+    Backend Developer
+
+    Required:
+    Python
+    FastAPI
+    """
+    projects = [
+        {
+            "name": "API Project",
+            "description": (
+                "A Python backend using FastAPI and PostgreSQL."
+            )
+        }
+    ]
+
+    result = career_gap.run_careergap(resume, job, projects)
+
+    # Should have 100% score
+    assert result["score"] == 100.0
+    assert result["missing_skills"] == []
+    assert "Python" in result["matched_skills"]
+    assert "FastAPI" in result["matched_skills"]
+
+    # Should have called get_github_recommendations with fallback_skills
+    assert len(called_skills) > 0
+    assert called_skills[0] in ["Python", "FastAPI"]
+
+    # Should have fallback recommendations
+    assert len(result["github_recommendations"]) > 0
+    assert result["github_recommendations"][0].get("is_fallback") is True
+    assert result["github_recommendations"][0]["skill"] in ["Python", "FastAPI"]
+
+
+def test_github_fallback_limits_to_three_skills(monkeypatch):
+    """Fallback should only use top 3 matched skills to limit API calls."""
+    monkeypatch.setattr(
+        career_gap,
+        "get_market_data",
+        lambda: {}
+    )
+    search_count = 0
+    def mock_search_github(skill, resume_skills):
+        nonlocal search_count
+        search_count += 1
+        return []
+
+    monkeypatch.setattr(
+        career_gap,
+        "search_github",
+        mock_search_github
+    )
+    # Also mock rank_repositories to return empty
+    monkeypatch.setattr(
+        career_gap,
+        "rank_repositories",
+        lambda *args, **kwargs: []
+    )
+
+    # Many matched skills
+    resume = "I know Python, FastAPI, Docker, PostgreSQL, SQL, Git, Docker, AWS."
+    job = """
+    Backend Developer
+
+    Required:
+    Python
+    FastAPI
+    Docker
+    PostgreSQL
+    SQL
+    Git
+    AWS
+    """
+    projects = [
+        {
+            "name": "API Project",
+            "description": (
+                "A Python backend using FastAPI and PostgreSQL."
+            )
+        }
+    ]
+
+    career_gap.run_careergap(resume, job, projects)
+
+    # Should only search for first 3 fallback skills
+    assert search_count <= 3
+
+
+def test_github_missing_skills_still_works(monkeypatch):
+    """Existing behavior for missing skills should be preserved."""
+    monkeypatch.setattr(
+        career_gap,
+        "get_market_data",
+        lambda: {"python": 66, "docker": 3}
+    )
+    called_skills = []
+    def mock_get_github_recommendations(missing_skills, resume_skills, project_context=None, limit=5, fallback_skills=None):
+        called_skills.extend(missing_skills)
+        return []
+
+    monkeypatch.setattr(
+        career_gap,
+        "get_github_recommendations",
+        mock_get_github_recommendations
+    )
+
+    resume = "I know Python."
+    job = """
+    Backend Developer
+
+    Required:
+    Python
+    FastAPI
+
+    Preferred:
+    Docker
+    """
+    projects = [
+        {
+            "name": "API Project",
+            "description": (
+                "A Python backend using FastAPI and PostgreSQL."
+            )
+        }
+    ]
+
+    career_gap.run_careergap(resume, job, projects)
+
+    # Should only search for missing skills, not fallback
+    assert "FastAPI" in called_skills
+    assert "Docker" in called_skills
+    assert "Python" not in called_skills  # Python is matched, not missing
+
+
+def test_github_empty_results_handled_gracefully(monkeypatch):
+    """Empty GitHub results should not cause errors."""
+    monkeypatch.setattr(
+        career_gap,
+        "get_market_data",
+        lambda: {}
+    )
+    monkeypatch.setattr(
+        career_gap,
+        "get_github_recommendations",
+        lambda *args, **kwargs: []
+    )
+
+    resume = "I know Python and FastAPI."
+    job = """
+    Backend Developer
+
+    Required:
+    Python
+    FastAPI
+    """
+    projects = [
+        {
+            "name": "API Project",
+            "description": (
+                "A Python backend using FastAPI and PostgreSQL."
+            )
+        }
+    ]
+
+    result = career_gap.run_careergap(resume, job, projects)
+
+    assert result["github_recommendations"] == []
+    assert "curated_resources" in result  # Curated resources should still work
+
+
+def test_get_github_recommendations_fallback_unit(monkeypatch):
+    """Unit test for get_github_recommendations with fallback_skills."""
+    searched_skills = []
+    ranked_results = {}
+
+    def mock_search_github(skill, resume_skills):
+        searched_skills.append(skill)
+        # Return mock repos for each skill
+        return [
+            {"full_name": f"user/{skill}-repo", "name": f"{skill}-repo", "description": f"A {skill} repo", "owner": {"login": "user"}}
+        ]
+
+    def mock_rank_repositories(repos, skill, resume_skills=None, project_context=None):
+        ranked_results[skill] = len(repos)
+        # Return mock ranked items
+        return [
+            {
+                "name": f"user/{skill}-repo",
+                "score": 80,
+                "description": f"A {skill} repo",
+                "stars": 100,
+                "skill_mentions": 5,
+                "readme_length": 1000,
+                "total_files": 10,
+                "dockerfile": False,
+                "docker_compose": False,
+                "requirements": True,
+                "python_file_count": 5,
+                "python_files": ["main.py"],
+                "api_files": [],
+                "database_files": [],
+                "deployment_files": [],
+                "aws_files": [],
+                "context_fit": 5,
+                "matched_domains": ["web_development"],
+                "unrelated_domains": [],
+                "resource_intent_fit": 8,
+                "updated_at": "2024-01-01T00:00:00Z",
+                "url": f"https://github.com/user/{skill}-repo",
+            }
+        ]
+
+    monkeypatch.setattr(career_gap, "search_github", mock_search_github)
+    monkeypatch.setattr(career_gap, "rank_repositories", mock_rank_repositories)
+
+    # Call with empty missing_skills and 4 fallback skills
+    result = career_gap.get_github_recommendations(
+        missing_skills=[],
+        resume_skills=["Python", "FastAPI", "Docker", "PostgreSQL"],
+        fallback_skills=["Python", "FastAPI", "Docker", "PostgreSQL"],
+        limit=5
+    )
+
+    # Exactly first 3 fallback skills should be searched
+    assert searched_skills == ["Python", "FastAPI", "Docker"]
+    assert len(searched_skills) == 3
+
+    # Should have 3 recommendations (one per searched skill)
+    assert len(result) == 3
+
+    # All recommendations should have is_fallback=True
+    for rec in result:
+        assert rec.get("is_fallback") is True
+
+    # Skills should match searched skills
+    result_skills = {rec["skill"] for rec in result}
+    assert result_skills == {"Python", "FastAPI", "Docker"}
+
+
+def test_get_github_recommendations_missing_skills_ignores_fallback(monkeypatch):
+    """When missing_skills is non-empty, fallback_skills should be ignored."""
+    searched_skills = []
+
+    def mock_search_github(skill, resume_skills):
+        searched_skills.append(skill)
+        return [
+            {"full_name": f"user/{skill}-repo", "name": f"{skill}-repo", "description": f"A {skill} repo", "owner": {"login": "user"}}
+        ]
+
+    def mock_rank_repositories(repos, skill, resume_skills=None, project_context=None):
+        return [
+            {
+                "name": f"user/{skill}-repo",
+                "score": 80,
+                "description": f"A {skill} repo",
+                "stars": 100,
+                "skill_mentions": 5,
+                "readme_length": 1000,
+                "total_files": 10,
+                "dockerfile": False,
+                "docker_compose": False,
+                "requirements": True,
+                "python_file_count": 5,
+                "python_files": ["main.py"],
+                "api_files": [],
+                "database_files": [],
+                "deployment_files": [],
+                "aws_files": [],
+                "context_fit": 5,
+                "matched_domains": ["web_development"],
+                "unrelated_domains": [],
+                "resource_intent_fit": 8,
+                "updated_at": "2024-01-01T00:00:00Z",
+                "url": f"https://github.com/user/{skill}-repo",
+            }
+        ]
+
+    monkeypatch.setattr(career_gap, "search_github", mock_search_github)
+    monkeypatch.setattr(career_gap, "rank_repositories", mock_rank_repositories)
+
+    # Call with non-empty missing_skills AND fallback_skills
+    result = career_gap.get_github_recommendations(
+        missing_skills=["FastAPI", "Docker"],
+        resume_skills=["Python", "FastAPI", "Docker", "PostgreSQL"],
+        fallback_skills=["Python", "PostgreSQL"],  # Should be ignored
+        limit=5
+    )
+
+    # Only missing skills should be searched
+    assert searched_skills == ["FastAPI", "Docker"]
+    assert "Python" not in searched_skills
+    assert "PostgreSQL" not in searched_skills
+
+    # Should have 2 recommendations (one per missing skill)
+    assert len(result) == 2
+
+    # Recommendations should have is_fallback=False
+    for rec in result:
+        assert rec.get("is_fallback") is False
+
+    # Skills should match missing skills
+    result_skills = {rec["skill"] for rec in result}
+    assert result_skills == {"FastAPI", "Docker"}

@@ -2768,6 +2768,9 @@ document.addEventListener(
                 resource.skill ||
                 "Resource";
 
+            const isFallback =
+                resource.is_fallback === true;
+
             const name =
                 repo.full_name ||
                 "GitHub Repository";
@@ -2787,6 +2790,10 @@ document.addEventListener(
                     repo.html_url
                 );
 
+            const skillLabel = isFallback
+                ? `Strengthen ${escapeHTML(skill)}`
+                : escapeHTML(skill);
+
             return `
                 <article
                     class="resource-card"
@@ -2799,9 +2806,7 @@ document.addEventListener(
                         <span
                             class="resource-skill"
                         >
-                            ${escapeHTML(
-                                skill
-                            )}
+                            ${skillLabel}
                         </span>
 
                         <span
