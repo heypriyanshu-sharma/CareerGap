@@ -256,10 +256,10 @@ def test_deterministic_output():
     job = "Required: Python, FastAPI"
     projects = [{"name": "Project", "description": "Desc", "bullets": ["bullet"]}]
     job_keywords = extract_job_keywords("Required: Python, FastAPI")
-    
+
     scorecard1 = calculate_ats_scorecard(resume, "Required: Python, FastAPI", extract_job_keywords("Required: Python, FastAPI"), projects)
     scorecard2 = calculate_ats_scorecard(resume, "Required: Python, FastAPI", extract_job_keywords("Required: Python, FastAPI"), projects)
-    
+
     assert scorecard1["score"] == scorecard2["score"]
     assert scorecard1["label"] == scorecard2["label"]
     assert scorecard1["reasons"] == scorecard2["reasons"]
@@ -284,7 +284,7 @@ def test_job_keywords_varied_required_headings():
         "Qualifications: Python, FastAPI",
         "Required: Python, FastAPI\nPreferred: React",
     ]
-    
+
     for job in job_descriptions:
         job_keywords = extract_job_keywords(job)
         required_terms = {kw["term"] for kw in job_keywords if kw["importance"] == "Required"}
@@ -305,7 +305,7 @@ def test_job_keywords_varied_preferred_headings():
         "Preferred Qualifications: React, TypeScript",
         "Desired Qualifications: React, TypeScript",
     ]
-    
+
     for job in job_descriptions:
         job_keywords = extract_job_keywords(job)
         preferred_terms = {kw["term"] for kw in job_keywords if kw["importance"] == "Preferred"}
@@ -322,17 +322,17 @@ def test_job_keywords_inline_required_preferred():
     Experience with CI/CD pipelines and mentoring junior engineers is a plus.
     """
     job_keywords = extract_job_keywords(job)
-    
+
     required_terms = {kw["term"] for kw in job_keywords if kw["importance"] == "Required"}
     preferred_terms = {kw["term"] for kw in job_keywords if kw["importance"] == "Preferred"}
-    
+
     # Required skills from inline markers should be detected
     assert "Python" in required_terms
     assert "FastAPI" in required_terms
     assert "PostgreSQL" in required_terms
     assert "Docker" in required_terms
     assert "AWS" in required_terms
-    
+
     # Preferred skills from inline markers should be detected
     assert "React" in preferred_terms
     assert "TypeScript" in preferred_terms
@@ -347,7 +347,7 @@ def test_section_detection_variants():
         _has_education_section, _has_projects_section, _has_certifications_section,
         _count_resume_sections
     )
-    
+
     resume = """
     John Doe
     john@example.com | +1-555-123-4567 | linkedin.com/in/johndoe | github.com/johndoe
@@ -375,9 +375,9 @@ def test_section_detection_variants():
     AWS Solutions Architect (2022)
     Kubernetes Administrator (2021)
     """
-    
+
     sections = _count_resume_sections(resume)
-    
+
     # All sections should be detected
     assert sections["summary"], "Professional Summary not detected"
     assert sections["skills"], "Technical Skills not detected"
@@ -386,7 +386,7 @@ def test_section_detection_variants():
     assert sections["projects"], "Selected Projects not detected"
     assert sections["certifications"], "Certifications & Licenses not detected"
     assert sections["contact"], "Contact not detected"
-    
+
     # All 7 sections should be found
     assert sum(1 for v in sections.values() if v) == 7, "Not all sections detected"
 
@@ -421,20 +421,20 @@ def test_keyword_stuffing_common_tech_skills_not_flagged():
     AWS Solutions Architect (2022)
     Kubernetes Administrator (2021)
     """
-    
+
     job = "Required: Python, SQL, React, Docker, AWS"
     job_keywords = extract_job_keywords(job)
     projects = [
         {'name': 'Project A', 'description': 'Desc', 'bullets': ['Built with Python']},
     ]
-    
+
     scorecard = calculate_ats_scorecard(
         "John Doe\njohn@example.com | +1-555-123-4567 | linkedin.com/in/johndoe | github.com/johndoe\n\nSUMMARY\nExperienced Python developer.\n\nSKILLS\nPython, SQL, React, Docker, AWS, Git, GitHub\n\nEXPERIENCE\nSenior Engineer at TechCorp (2021-Present)\n- Built REST APIs with Python and FastAPI\n- Used SQL for database optimization\n- Worked with React and TypeScript\n\nEDUCATION\nB.S. CS, Stanford\n\nPROJECTS\nProject A\n\nCERTIFICATIONS\nAWS Cert (2022)",
         "Required: Python, SQL, React, Docker, AWS",
         extract_job_keywords("Required: Python, SQL, React, Docker, AWS"),
         projects
     )
-    
+
     # Should not have stuffing warning for common tech skills
     stuffing_reasons = [r for r in scorecard["reasons"] if "stuffing" in r.lower()]
     assert not stuffing_reasons, f"Common tech skills flagged as stuffing: {stuffing_reasons}"
@@ -450,11 +450,11 @@ def test_common_tech_skills_not_stuffed_in_github():
     EXPERIENCE
     Developer at Corp
     """
-    
+
     job = "Required: Python, Git"
     job_keywords = extract_job_keywords(job)
     scorecard = calculate_ats_scorecard(resume, job, job_keywords, None)
-    
+
     assert not any("stuffing" in r.lower() for r in scorecard["reasons"])
     assert "Git" not in " ".join(scorecard["reasons"]) or "stuffing" not in " ".join(scorecard["reasons"])
 
@@ -477,14 +477,14 @@ def test_section_detection_student_resume():
     AWS Cloud Practitioner (2024)
     Python Certification (2023)
     """
-    
+
     # Experience is not required when projects are present
     # The completeness score should not penalize missing experience when projects exist
     from ats_match import _count_resume_sections
     sections = _count_resume_sections(resume)
     assert not sections["experience"], "Experience section should not be detected"
     assert sections["projects"], "Projects section should be detected"
-    
+
     # Verify the scorecard doesn't penalize for missing experience
     job = "Required: Python, JavaScript"
     job_keywords = extract_job_keywords(job)
@@ -504,21 +504,21 @@ def test_section_detection_student_resume():
 def test_education_section_restored_headings():
     """Test that restored education section headings (university, college) are recognized."""
     from ats_match import _has_education_section
-    
+
     # Test old headings that should still work
     resume = "Education: B.S. Computer Science, University of Technology (2022-2026)"
     assert _has_education_section(resume.lower()), "Failed for 'Education:'"
-    
+
     resume = "University: B.S. Computer Science, Stanford (2020-2024)"
     assert _has_education_section(resume.lower()), "Failed for 'University:'"
-    
+
     resume = "College: B.A. English, Harvard (2018-2022)"
     assert _has_education_section(resume.lower()), "Failed for 'College:'"
-    
+
     # Test prefix variants
     resume = "University of California, Berkeley - B.S. CS"
     assert _has_education_section(resume.lower()), "Failed for 'University ' prefix"
-    
+
     resume = "College of Engineering - B.S. CS"
     assert _has_education_section(resume.lower()), "Failed for 'College ' prefix"
 
@@ -526,10 +526,10 @@ def test_education_section_restored_headings():
 def test_education_section_colon_variants():
     """Test colon variants of restored education headings."""
     from ats_match import _has_education_section
-    
+
     resume = "University: B.S. Computer Science"
     assert _has_education_section(resume.lower()), "Failed for 'University:'"
-    
+
     resume = "College: B.A. English"
     assert _has_education_section(resume.lower()), "Failed for 'College:'"
 
@@ -537,24 +537,24 @@ def test_education_section_colon_variants():
 def test_projects_section_restored_headings():
     """Test that restored projects section headings are recognized."""
     from ats_match import _has_projects_section
-    
+
     # Test restored headings
     resume = "Portfolio: github.com/user"
     assert _has_projects_section(resume.lower()), "Failed for 'Portfolio:'"
-    
+
     resume = "Personal Project: Open source library"
     assert _has_projects_section(resume.lower()), "Failed for 'Personal Project:'"
-    
+
     resume = "Side Project: Mobile app"
     assert _has_projects_section(resume.lower()), "Failed for 'Side Project:'"
-    
+
     # Test prefix variants
     resume = "Portfolio website at github.com/user"
     assert _has_projects_section(resume.lower()), "Failed for 'Portfolio ' prefix"
-    
+
     resume = "Personal project: Open source library"
     assert _has_projects_section(resume.lower()), "Failed for 'Personal project ' prefix"
-    
+
     resume = "Side project: Mobile app"
     assert _has_projects_section(resume.lower()), "Failed for 'Side project ' prefix"
 
@@ -562,13 +562,13 @@ def test_projects_section_restored_headings():
 def test_projects_section_colon_variants():
     """Test colon variants of restored project headings."""
     from ats_match import _has_projects_section
-    
+
     resume = "Portfolio: github.com/user"
     assert _has_projects_section(resume.lower()), "Failed for 'Portfolio:'"
-    
+
     resume = "Personal project: Open source library"
     assert _has_projects_section(resume.lower()), "Failed for 'Personal project:'"
-    
+
     resume = "Side project: Mobile app"
     assert _has_projects_section(resume.lower()), "Failed for 'Side project:'"
 
@@ -710,7 +710,7 @@ def test_breakdown_points_sum_to_score():
     projects = [{"name": "Project", "description": "Desc", "bullets": ["Built with Python"]}]
     job_keywords = extract_job_keywords(job)
     scorecard = calculate_ats_scorecard(resume, job, job_keywords, projects)
-    
+
     total_awarded = sum(d["awarded"] for d in scorecard["breakdown"])
     assert total_awarded == scorecard["score"], f"Breakdown sum {total_awarded} != score {scorecard['score']}"
     total_max = sum(d["max"] for d in scorecard["breakdown"])
@@ -723,7 +723,7 @@ def test_dimension_scores_within_maxima():
     job = "Required: Python"
     job_keywords = extract_job_keywords(job)
     scorecard = calculate_ats_scorecard(resume, job, job_keywords, None)
-    
+
     for dim in scorecard["breakdown"]:
         assert dim["awarded"] <= dim["max"], f"{dim['dimension']}: {dim['awarded']} > {dim['max']}"
         assert dim["awarded"] >= 0, f"{dim['dimension']}: negative score"
@@ -735,14 +735,14 @@ def test_reasons_and_improvements_relevant():
     job = "Required: Python, FastAPI, PostgreSQL, Docker\nPreferred: React, AWS"
     job_keywords = extract_job_keywords(job)
     scorecard = calculate_ats_scorecard(resume, job, job_keywords, None)
-    
+
     # Reasons should be based on actual deductions
     for reason in scorecard["reasons"]:
         assert len(reason) > 0
         # Should not contain fabricated skills
         assert "Java" not in reason  # Not in job or resume
         assert "Ruby" not in reason
-    
+
     # Improvements should be relevant
     for imp in scorecard["improvements"]:
         assert len(imp) > 0
@@ -756,12 +756,345 @@ def test_deterministic_output():
     job = "Required: Python, FastAPI"
     projects = [{"name": "Project", "description": "Desc", "bullets": ["bullet"]}]
     job_keywords = extract_job_keywords("Required: Python, FastAPI")
-    
+
     scorecard1 = calculate_ats_scorecard(resume, "Required: Python, FastAPI", extract_job_keywords("Required: Python, FastAPI"), projects)
     scorecard2 = calculate_ats_scorecard(resume, "Required: Python, FastAPI", extract_job_keywords("Required: Python, FastAPI"), projects)
-    
+
     assert scorecard1["score"] == scorecard2["score"]
     assert scorecard1["label"] == scorecard2["label"]
     assert scorecard1["reasons"] == scorecard2["reasons"]
     assert scorecard1["improvements"] == scorecard2["improvements"]
     assert scorecard1["breakdown"] == scorecard2["breakdown"]
+
+
+# ============================================================
+# PDF RESUME ANALYSIS TESTS
+# ============================================================
+
+def test_analyze_resume_pdf_valid_pdf(monkeypatch):
+    """Valid PDF should be analyzed and return dimension scores."""
+    import ats_match
+    import io
+    from pypdf import PdfWriter
+
+    # Create a minimal PDF for byte content
+    writer = PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    pdf_bytes_io = io.BytesIO()
+    writer.write(pdf_bytes_io)
+    pdf_bytes = pdf_bytes_io.getvalue()
+
+    # Mock PdfReader to return extracted text
+    class MockReader:
+        def __init__(self, stream):
+            self.pages = [MockPage()]
+
+    class MockPage:
+        def extract_text(self):
+            return """
+            John Doe
+            john@example.com | +1-555-123-4567 | linkedin.com/in/johndoe | github.com/johndoe
+
+            SUMMARY
+            Experienced Python developer with 5 years building scalable web applications.
+
+            SKILLS
+            Python, FastAPI, PostgreSQL, Docker, AWS, React, TypeScript, SQL, Git
+
+            EXPERIENCE
+            Senior Software Engineer at TechCorp (2021-Present)
+            - Built REST APIs with FastAPI handling 1M+ requests/day
+            - Improved API latency by 40%
+
+            EDUCATION
+            B.S. Computer Science, Stanford University (2015-2019)
+
+            PROJECTS
+            Open Source API Tool - CLI tool for API testing with 500+ GitHub stars
+
+            CERTIFICATIONS
+            AWS Solutions Architect (2022)
+            """
+
+    monkeypatch.setattr("pypdf.PdfReader", MockReader)
+
+    job = "Required: Python, FastAPI, PostgreSQL, Docker, AWS"
+
+    result = ats_match.analyze_resume_pdf(
+        pdf_bytes=pdf_bytes,
+        job_text=job,
+        projects=None
+    )
+
+    assert "overall_score" in result
+    assert "overall_label" in result
+    assert "dimensions" in result
+    assert len(result["dimensions"]) == 4
+    assert result["job_description_provided"] is True
+    assert result["page_count"] >= 1
+    assert result["word_count"] > 0
+
+    # Check all four dimensions present
+    dim_ids = {d["id"] for d in result["dimensions"]}
+    assert dim_ids == {"pdf_parsing", "job_alignment", "section_completeness", "visual_layout"}
+
+    # Each dimension should have awarded/max
+    for d in result["dimensions"]:
+        assert "awarded" in d
+        assert "max" in d
+        assert 0 <= d["awarded"] <= d["max"]
+
+    # Should have improvements
+    assert "improvements" in result
+    assert len(result["improvements"]) > 0
+
+
+def test_analyze_resume_pdf_no_job_description(monkeypatch):
+    """Analysis without job description should skip job alignment."""
+    import ats_match
+
+    class MockReader:
+        def __init__(self, stream):
+            self.pages = [MockPage()]
+
+    class MockPage:
+        def extract_text(self):
+            return "John Doe\njohn@example.com\nSKILLS\nPython, FastAPI\nEXPERIENCE\nDeveloper"
+
+    monkeypatch.setattr("pypdf.PdfReader", MockReader)
+
+    result = ats_match.analyze_resume_pdf(
+        pdf_bytes=b"%PDF-1.4 fake pdf content",
+        job_text=None,
+        projects=None
+    )
+
+    assert "overall_score" in result
+    assert result["job_description_provided"] is False
+
+    # Job alignment dimension should be marked as not assessed
+    job_dim = next(d for d in result["dimensions"] if d["id"] == "job_alignment")
+    assert job_dim["awarded"] is None
+    assert job_dim["not_assessed"] is True
+    assert "Not assessed" in " ".join(job_dim["weaknesses"])
+
+    # Overall score should be calculated from remaining dimensions (max 70)
+    assert result["overall_max"] == 70
+    assert "overall_label" in result
+
+    # Disclaimer should mention general analysis
+    assert "General" in result["disclaimer"] or "general" in result["disclaimer"].lower()
+
+
+def test_analyze_resume_pdf_empty_extraction(monkeypatch):
+    """PDF with no extractable text should return low scores, not error."""
+    import ats_match
+
+    class MockReader:
+        def __init__(self, stream):
+            self.pages = [MockPage()]
+
+    class MockPage:
+        def extract_text(self):
+            return ""
+
+    monkeypatch.setattr("pypdf.PdfReader", MockReader)
+
+    result = ats_match.analyze_resume_pdf(
+        pdf_bytes=b"%PDF-1.4 fake pdf content",
+        job_text="Required: Python",
+        projects=None
+    )
+
+    # Should return a result with low scores, not an error
+    assert "overall_score" in result
+    assert result["overall_score"] == 0
+    assert result["overall_label"] == "Weak"
+    # All dimensions should have 0 awarded
+    for d in result["dimensions"]:
+        assert d["awarded"] == 0
+
+
+def test_analyze_resume_pdf_malformed(monkeypatch):
+    """Malformed PDF should return error."""
+    import ats_match
+
+    def mock_reader(stream):
+        raise ValueError("Invalid PDF")
+
+    monkeypatch.setattr("pypdf.PdfReader", mock_reader)
+
+    result = ats_match.analyze_resume_pdf(
+        pdf_bytes=b"not a pdf",
+        job_text="Required: Python",
+        projects=None
+    )
+
+    assert "error" in result
+    assert "parse" in result["error"].lower() or "pdf" in result["error"].lower()
+
+
+def test_pdf_parsing_quality_scored(monkeypatch):
+    """PDF parsing quality should be scored based on text quality."""
+    import ats_match
+
+    # Test with good quality text
+    class GoodReader:
+        def __init__(self, stream):
+            self.pages = [GoodPage()]
+
+    class GoodPage:
+        def extract_text(self):
+            return "John Doe\njohn@example.com\nSKILLS\nPython, FastAPI\nEXPERIENCE\nDeveloper at Corp\nEDUCATION\nBS CS\nPROJECTS\nProject A\n\n" * 10  # Good volume
+
+    monkeypatch.setattr("pypdf.PdfReader", GoodReader)
+
+    result = ats_match.analyze_resume_pdf(
+        pdf_bytes=b"%PDF-1.4 fake",
+        job_text=None,
+        projects=None
+    )
+
+    parsing_dim = next(d for d in result["dimensions"] if d["id"] == "pdf_parsing")
+    assert parsing_dim["awarded"] > 10  # Should score reasonably well
+
+
+def test_pdf_parsing_quality_poor(monkeypatch):
+    """Poor quality extraction (short text) should score low."""
+    import ats_match
+
+    class PoorReader:
+        def __init__(self, stream):
+            self.pages = [PoorPage()]
+
+    class PoorPage:
+        def extract_text(self):
+            return "John Doe"
+
+    monkeypatch.setattr("pypdf.PdfReader", PoorReader)
+
+    result = ats_match.analyze_resume_pdf(
+        pdf_bytes=b"%PDF-1.4 fake",
+        job_text=None,
+        projects=None
+    )
+
+    parsing_dim = next(d for d in result["dimensions"] if d["id"] == "pdf_parsing")
+    assert parsing_dim["awarded"] < 15  # Should be penalized for low word count
+
+
+def test_visual_layout_risks_detected(monkeypatch):
+    """Visual layout risks should be detected from text patterns."""
+    import ats_match
+
+    class MultiColumnReader:
+        def __init__(self, stream):
+            self.pages = [MultiColumnPage()]
+
+    class MultiColumnPage:
+        def extract_text(self):
+            # Simulate multi-column bleeding: many short lines
+            lines = ["a b c"] * 50
+            return "\n".join(lines)
+
+    monkeypatch.setattr("pypdf.PdfReader", MultiColumnReader)
+
+    result = ats_match.analyze_resume_pdf(
+        pdf_bytes=b"%PDF-1.4 fake",
+        job_text=None,
+        projects=None
+    )
+
+    visual_dim = next(d for d in result["dimensions"] if d["id"] == "visual_layout")
+    # Should detect layout issues
+    assert any("column" in w.lower() or "short" in w.lower() for w in visual_dim["weaknesses"])
+
+
+def test_section_completeness_from_pdf(monkeypatch):
+    """Section completeness should work from PDF extracted text."""
+    import ats_match
+
+    class CompleteReader:
+        def __init__(self, stream):
+            self.pages = [CompletePage()]
+
+    class CompletePage:
+        def extract_text(self):
+            return """
+            John Doe
+            john@example.com | +1-555-123-4567 | linkedin.com/in/johndoe | github.com/johndoe
+
+            SUMMARY
+            Experienced developer.
+
+            SKILLS
+            Python, FastAPI, PostgreSQL
+
+            EXPERIENCE
+            Senior Engineer at Corp (2021-Present)
+            - Built APIs
+
+            EDUCATION
+            B.S. CS, University (2015-2019)
+
+            PROJECTS
+            Project A - Description
+
+            CERTIFICATIONS
+            AWS Cert (2022)
+            """
+
+    monkeypatch.setattr("pypdf.PdfReader", CompleteReader)
+
+    result = ats_match.analyze_resume_pdf(
+        pdf_bytes=b"%PDF-1.4 fake",
+        job_text="Required: Python",
+        projects=None
+    )
+
+    section_dim = next(d for d in result["dimensions"] if d["id"] == "section_completeness")
+    # Should detect most sections
+    assert section_dim["awarded"] > 15
+
+
+def test_ats_analyze_resume_endpoint_requires_auth():
+    """ATS analyze-resume endpoint should require authentication."""
+    from tests.test_backend import client
+
+    # Without auth
+    response = client.post("/ats/analyze-resume", data={"resume_id": "00000000-0000-0000-0000-000000000000"})
+    assert response.status_code in (401, 403, 422)  # Auth required
+
+
+def test_ats_analyze_resume_pdf_general_only(monkeypatch):
+    """When no job provided, analysis should be general only."""
+    import ats_match
+
+    class MockReader:
+        def __init__(self, stream):
+            self.pages = [MockPage()]
+
+    class MockPage:
+        def extract_text(self):
+            return "John Doe\njohn@example.com\nSKILLS\nPython\nEXPERIENCE\nDeveloper"
+
+    monkeypatch.setattr("pypdf.PdfReader", MockReader)
+
+    result = ats_match.analyze_resume_pdf(
+        pdf_bytes=b"%PDF-1.4 fake",
+        job_text=None,
+        projects=None
+    )
+
+    assert result["job_description_provided"] is False
+    # Job alignment should be not assessed
+    job_dim = next(d for d in result["dimensions"] if d["id"] == "job_alignment")
+    assert job_dim["awarded"] is None
+    assert job_dim["not_assessed"] is True
+    # Other dimensions should still work
+    for d in result["dimensions"]:
+        if d["id"] != "job_alignment":
+            assert d["awarded"] is not None
+            assert d["awarded"] >= 0
+    # Overall max should be 70
+    assert result["overall_max"] == 70

@@ -952,6 +952,15 @@
                         </button>
                         <button
                             type="button"
+                            id="resume-ats-check-btn"
+                            class="resume-action-btn secondary"
+                            aria-label="Run ATS check on this resume"
+                        >
+                            <span aria-hidden="true">⚙</span>
+                            ATS Check
+                        </button>
+                        <button
+                            type="button"
                             id="resume-set-default-btn"
                             class="resume-action-btn secondary"
                             aria-pressed="false"
@@ -978,6 +987,13 @@
                 <div
                     id="resume-preview"
                     class="resume-preview"
+                ></div>
+
+                <!-- ATS Check Results Container -->
+                <div
+                    id="resume-ats-results"
+                    class="resume-ats-results hidden"
+                    aria-live="polite"
                 ></div>
             </div>
 

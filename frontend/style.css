@@ -5356,6 +5356,195 @@ textarea:focus,
     text-transform: uppercase;
 }
 
+.ats-job-badge.general {
+    background: var(--butter);
+    color: var(--olive-dark);
+}
+
+/* =========================================================
+   ATS CHECK REPORT (Resume Builder)
+   ========================================================= */
+
+.ats-check-report {
+    padding: 24px;
+}
+
+.ats-check-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.ats-check-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--olive-dark);
+}
+
+.ats-dimensions {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.ats-dimension-card {
+    padding: 20px;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+.ats-dimension-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ats-dimension-header strong {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--olive-dark);
+}
+
+.ats-dimension-score {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--ref-green-dark);
+    background: var(--pistachio);
+    padding: 4px 12px;
+    border-radius: 999px;
+}
+
+.ats-dimension-desc {
+    margin: 0 0 12px;
+    font-size: 0.85rem;
+    color: var(--olive-soft);
+    line-height: 1.5;
+}
+
+.ats-dimension-strengths,
+.ats-dimension-weaknesses {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.ats-dimension-strengths strong {
+    color: var(--ref-green-dark);
+}
+
+.ats-dimension-weaknesses strong {
+    color: var(--error-red);
+}
+
+.ats-dimension-strengths ul,
+.ats-dimension-weaknesses ul {
+    margin: 8px 0 0 18px;
+    padding: 0;
+}
+
+.ats-dimension-strengths li,
+.ats-dimension-weaknesses li {
+    margin: 4px 0;
+}
+
+.ats-improvements {
+    margin-top: 24px;
+    padding: 20px;
+    background: var(--pistachio-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+.ats-improvements h4 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--olive-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ats-improve-icon {
+    font-size: 1.1em;
+}
+
+.ats-improvement-list {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.ats-improvement-list li {
+    margin: 8px 0;
+    line-height: 1.5;
+    font-size: 0.9rem;
+    color: var(--olive);
+}
+
+.improvement-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-right: 8px;
+    background: var(--ref-green-dark);
+    color: var(--white);
+    border-radius: 50%;
+    font-size: 0.7rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.ats-disclaimer {
+    margin-top: 24px;
+}
+
+.ats-disclaimer summary {
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--olive-soft);
+    padding: 8px 0;
+}
+
+.ats-disclaimer p {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: var(--olive-soft);
+    line-height: 1.5;
+}
+
+.ats-check-error {
+    padding: 20px;
+    background: var(--error-red);
+    color: var(--white);
+    border-radius: var(--radius-md);
+    font-weight: 500;
+}
+
+.ats-dimension-not-assessed {
+    color: var(--olive-soft);
+    font-style: italic;
+    font-weight: 500;
+}
+
+.ats-dimension-not-assessed-card {
+    opacity: 0.7;
+    background: var(--butter-deep);
+}
+
 @media (max-width: 768px) {
     .ats-score-row {
         flex-direction: column;

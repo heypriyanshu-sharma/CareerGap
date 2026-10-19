@@ -15,7 +15,7 @@ from supabase import create_client
 from auth import get_current_user, security
 from career_gap import run_careergap
 from ai_advisor import generate_career_advice, safe_error_detail
-from ats_match import extract_job_keywords, calculate_ats_scorecard
+from ats_match import extract_job_keywords, calculate_ats_scorecard, analyze_resume_pdf
 from database import (
     get_analysis_history,
     save_analysis,
@@ -1101,7 +1101,6 @@ def analyze(
             status_code=500,
             detail="CareerGap analysis failed unexpectedly.",
         )
-
 @app.post("/ats/keywords")
 def ats_keywords(
     career_gap_request: CareerGapRequest,
@@ -1119,6 +1118,131 @@ def ats_keywords(
             career_gap_request.job_description
         )
     }
+
+
+class ATSResumeAnalyzeRequest(BaseModel):
+    """Request model for PDF resume analysis."""
+    job_description: Optional[str] = Field(default=None, max_length=20_000)
+    # Optional resume_id to analyze a saved resume's PDF
+    resume_id: Optional[UUID] = None
+
+
+@app.post("/ats/analyze-resume")
+@limiter.limit("10/minute")
+async def ats_analyze_resume(
+    request: Request,
+    claims: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    Analyze a resume PDF for ATS readiness.
+
+    Accepts either:
+    - A file upload (multipart/form-data with 'file' field)
+    - A resume_id to analyze an existing saved resume (generates PDF server-side)
+
+    Optional job_description for job-specific alignment scoring.
+    """
+    validate_upload_request_size(request)
+
+    try:
+        form = await request.form(max_files=1, max_fields=2, max_part_size=MAX_FILE_SIZE)
+    except Exception as error:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid multipart upload.",
+        ) from error
+
+    uploaded_file = form.get("file")
+    job_description = form.get("job_description")
+    resume_id_str = form.get("resume_id")
+
+    pdf_bytes = None
+
+    if uploaded_file and hasattr(uploaded_file, "filename"):
+        # File upload path
+        if not uploaded_file.filename:
+            raise HTTPException(status_code=400, detail="Uploaded file must have a filename.")
+
+        try:
+            file_data = await uploaded_file.read(MAX_FILE_SIZE + 1)
+            # Reuse existing file validation and extraction
+            from file_upload import (
+                validate_extension,
+                validate_file_size,
+                validate_file_signature,
+                extract_text,
+            )
+            from pathlib import Path
+            import tempfile
+
+            extension = Path(uploaded_file.filename).suffix.lower()
+            validate_extension(uploaded_file.filename)
+            validate_file_size(len(file_data))
+
+            with tempfile.TemporaryDirectory() as temp_directory:
+                temp_path = Path(temp_directory) / "uploaded_file"
+                temp_path.write_bytes(file_data)
+                validate_file_signature(temp_path, extension)
+
+                if extension != ".pdf":
+                    raise HTTPException(
+                        status_code=400,
+                        detail="ATS resume analysis currently only supports PDF files. Please upload a PDF."
+                    )
+
+                pdf_bytes = file_data
+
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error))
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=400, detail="Unable to process the uploaded PDF file.")
+
+    elif resume_id_str:
+        # Saved resume path - generate PDF from stored resume
+        try:
+            from uuid import UUID
+            resume_id = UUID(resume_id_str)
+            resume = get_resume(credentials.credentials, claims["sub"], str(resume_id))
+        except Exception as error:
+            raise HTTPException(status_code=404, detail="Resume not found.")
+
+        if resume is None:
+            raise HTTPException(status_code=404, detail="Resume not found.")
+
+        try:
+            pdf_bytes = generate_resume_pdf(resume)
+        except Exception as error:
+            print("PDF GENERATION ERROR:", error)
+            raise HTTPException(status_code=500, detail="Failed to generate PDF from saved resume.")
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Either 'file' (PDF upload) or 'resume_id' must be provided."
+        )
+
+    if not pdf_bytes:
+        raise HTTPException(status_code=400, detail="No PDF data available for analysis.")
+
+    # Analyze the PDF
+    try:
+        result = analyze_resume_pdf(
+            pdf_bytes=pdf_bytes,
+            job_text=job_description if job_description else None,
+            projects=None,  # Could be extended to accept projects
+        )
+    except Exception as error:
+        print("ATS PDF ANALYSIS ERROR:", type(error).__name__, safe_error_detail(error))
+        raise HTTPException(status_code=500, detail="ATS analysis failed.")
+
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+
+    return result
+
 
 @app.delete(
     "/analyses/{analysis_id}",

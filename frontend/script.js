@@ -62,7 +62,7 @@ document.addEventListener(
 
         const historyTab =
             document.getElementById("history-tab");
-        
+
         const savedAnalysisTab =
             document.getElementById(
                 "saved-analysis-tab"
@@ -3779,10 +3779,6 @@ document.addEventListener(
                         result
                     )}
 
-                    ${createAtsScoreCard(
-                        result
-                    )}
-
                     ${createSkillBreakdown(
                         result
                     )}
@@ -4540,6 +4536,7 @@ document.addEventListener(
             editBtn: document.getElementById("resume-edit-btn"),
             deleteBtn: document.getElementById("resume-delete-btn"),
             exportBtn: document.getElementById("resume-export-btn"),
+            atsCheckBtn: document.getElementById("resume-ats-check-btn"),
             editor: document.getElementById("resume-editor"),
             editorEmpty: document.getElementById("resume-editor-empty"),
             cancelBtn: document.getElementById("resume-cancel-btn"),
@@ -5304,6 +5301,159 @@ document.addEventListener(
             }
         }
 
+        // =================================================
+        // RESUME BUILDER — ATS CHECK
+        // =================================================
+
+        async function runAtsCheck() {
+            if (!resumeBuilderState.selectedResumeId) {
+                return;
+            }
+
+            const atsBtn = resumeElements.atsCheckBtn;
+            const resultsContainer = document.getElementById("resume-ats-results");
+            const originalText = atsBtn.textContent;
+            atsBtn.disabled = true;
+            atsBtn.textContent = "Analyzing...";
+            resultsContainer.classList.add("hidden");
+            resultsContainer.innerHTML = "";
+
+            try {
+                const resumeId = resumeBuilderState.selectedResumeId;
+                const formData = new FormData();
+                formData.append("resume_id", resumeId);
+
+                // Optional: get job description from a new input field if we add one
+                // For now, run general analysis only
+                // formData.append("job_description", "");
+
+                const response = await fetch(`${API_BASE_URL}/ats/analyze-resume`, {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${await getAccessToken()}`,
+                    },
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    let message = "ATS analysis failed.";
+                    try {
+                        const error = await response.json();
+                        message = error.detail || message;
+                    } catch (_) {}
+                    throw new Error(message);
+                }
+
+                const result = await response.json();
+
+                // Display results
+                resultsContainer.innerHTML = createAtsCheckReport(result);
+                resultsContainer.classList.remove("hidden");
+
+            } catch (error) {
+                console.error("ATS check error:", error);
+                resultsContainer.innerHTML = `
+                    <div class="ats-check-error">
+                        <strong>ATS Check Failed:</strong> ${escapeHTML(error.message || "Unknown error")}
+                    </div>
+                `;
+                resultsContainer.classList.remove("hidden");
+            } finally {
+                atsBtn.disabled = false;
+                atsBtn.textContent = originalText;
+            }
+        }
+
+        function createAtsCheckReport(result) {
+            if (result.error) {
+                return `<div class="ats-check-error"><strong>Error:</strong> ${escapeHTML(result.error)}</div>`;
+            }
+
+            const score = Number(result.overall_score || 0);
+            const label = String(result.overall_label || "Unknown");
+            const overallMax = Number(result.overall_max || 100);
+            const scorePct = Number(result.score_percentage || 0);
+            const dimensions = Array.isArray(result.dimensions) ? result.dimensions : [];
+            const improvements = Array.isArray(result.improvements) ? result.improvements : [];
+            const disclaimer = String(result.disclaimer || "");
+            const jobProvided = result.job_description_provided === true;
+
+            // Gauge color based on percentage
+            let gaugeColor = "var(--ref-green-dark)";
+            if (scorePct < 60) gaugeColor = "var(--warning-amber)";
+            if (scorePct < 40) gaugeColor = "var(--error-red)";
+
+            // Gauge progress based on percentage (not raw score)
+            const circumference = 2 * Math.PI * 72;
+            const dashOffset = circumference - (scorePct / 100) * circumference;
+
+            return `
+                <article class="ats-check-report">
+                    <div class="ats-check-header">
+                        <h3>ATS Resume Check Results</h3>
+                        ${jobProvided ? '<span class="ats-job-badge">Job-specific</span>' : '<span class="ats-job-badge general">General Analysis</span>'}
+                    </div>
+
+                    <div class="ats-score-row">
+                        <div class="ats-gauge" style="--gauge-color: ${gaugeColor};">
+                            <svg viewBox="0 0 160 160">
+                                <circle class="ats-gauge-track" cx="80" cy="80" r="72"></circle>
+                                <circle class="ats-gauge-progress" cx="80" cy="80" r="72" stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}"></circle>
+                            </svg>
+                            <div class="ats-gauge-center">
+                                <span class="ats-score-number">${score}</span>
+                                <span class="ats-score-denominator">/ ${overallMax}</span>
+                                <span class="ats-score-label">${escapeHTML(label)} (${scorePct}%)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ats-dimensions">
+                        ${dimensions.map(d => {
+                            const isNotAssessed = d.not_assessed === true;
+                            const scoreDisplay = isNotAssessed
+                                ? '<span class="ats-dimension-not-assessed">Not assessed</span>'
+                                : `${Number(d.awarded || 0)}/${d.max}`;
+                            return `
+                            <div class="ats-dimension-card${isNotAssessed ? ' ats-dimension-not-assessed-card' : ''}">
+                                <div class="ats-dimension-header">
+                                    <strong>${escapeHTML(d.name)}</strong>
+                                    <span class="ats-dimension-score">${scoreDisplay}</span>
+                                </div>
+                                <p class="ats-dimension-desc">${escapeHTML(d.description)}</p>
+                                ${d.strengths && d.strengths.length > 0 ? `
+                                    <div class="ats-dimension-strengths">
+                                        <strong>Strengths:</strong>
+                                        <ul>${d.strengths.map(s => `<li>${escapeHTML(s)}</li>`).join('')}</ul>
+                                    </div>
+                                ` : ''}
+                                ${d.weaknesses && d.weaknesses.length > 0 ? `
+                                    <div class="ats-dimension-weaknesses">
+                                        <strong>Areas for Improvement:</strong>
+                                        <ul>${d.weaknesses.map(w => `<li>${escapeHTML(w)}</li>`).join('')}</ul>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `}).join('')}
+                    </div>
+
+                    ${improvements.length > 0 ? `
+                        <div class="ats-improvements">
+                            <h4><span class="ats-improve-icon">&#8680;</span> Priority Improvements</h4>
+                            <ol class="ats-improvement-list">
+                                ${improvements.map((imp, i) => `<li><span class="improvement-number">${i + 1}</span>${escapeHTML(imp)}</li>`).join('')}
+                            </ol>
+                        </div>
+                    ` : ''}
+
+                    <details class="ats-disclaimer">
+                        <summary>Disclaimer</summary>
+                        <p>${escapeHTML(disclaimer)}</p>
+                    </details>
+                </article>
+            `;
+        }
+
         function addLinkRow(label = "", url = "") {
             const row = document.createElement("div");
             row.className = "resume-link-row";
@@ -6042,6 +6192,10 @@ document.addEventListener(
             resumeElements.deleteBtn.addEventListener("click", deleteResume);
             resumeElements.setDefaultBtn.addEventListener("click", setDefaultResume);
             resumeElements.exportBtn.addEventListener("click", exportResume);
+
+            if (resumeElements.atsCheckBtn) {
+                resumeElements.atsCheckBtn.addEventListener("click", runAtsCheck);
+            }
 
             sectionTypeSelect = setupSectionTypeSelect(
                 updateAddSectionButton
