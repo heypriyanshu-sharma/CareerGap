@@ -920,6 +920,23 @@ def _skill_subject_evidence(skill, text, name, description):
             "react guide", "react fundamentals", "react lessons",
             "react workshop", "react training", "react course material"
         ),
+        "postgresql": (
+            "postgresql tutorial", "postgresql course", "learn postgresql",
+            "learning postgresql", "postgresql exercises", "postgresql practice",
+            "postgresql guide", "postgresql fundamentals", "postgresql lessons",
+            "postgresql examples", "postgresql workshop", "postgresql training",
+            "postgres tutorial", "postgres course", "learn postgres",
+            "learning postgres", "postgres exercises", "postgres practice",
+            "postgres guide", "postgres fundamentals", "postgres basics",
+            "django postgresql", "fastapi postgresql", "sqlalchemy postgresql",
+            "spring postgresql", "hibernate postgresql", "orm postgresql",
+            "jpa postgresql", "postgresql orm", "postgresql jpa",
+        ),
+        "sql": (
+            "sql tutorial", "sql course", "learn sql", "learning sql",
+            "sql exercises", "sql practice", "sql guide", "sql fundamentals",
+            "sql lessons", "sql examples", "sql workshop", "sql training"
+        ),
     }
 
     phrases = subject_phrases.get(skill, ())
@@ -986,6 +1003,13 @@ def _is_real_learning_resource(skill, repo, readme, analysis, file_analysis):
 
     if skill == "react" and _contains_any(text, {
         "component library", "ui library", "admin framework"
+    }) and not _skill_subject_evidence(skill, text, name, description):
+        return False
+
+    if skill == "postgresql" and _contains_any(text, {
+        "postgresql compatible", "postgresql wire protocol", "postgres compatible",
+        "compatible with postgresql", "postgresql-compatible", "postgres-compatible",
+        "cockroachdb", "cockroach", "distributed sql", "newsql"
     }) and not _skill_subject_evidence(skill, text, name, description):
         return False
 
@@ -1139,7 +1163,24 @@ def has_skill_relevance(repo, readme, analysis, file_analysis, skill):
     if skill_lower == "python":
         return language == "python" or any(path.endswith(".py") for path in files) or (direct_identity and mentions >= 2)
 
-    if skill_lower in {"sql", "postgresql", "mysql", "sqlite", "mongodb"}:
+    if skill_lower == "postgresql":
+        # Require PostgreSQL-specific evidence, not just any SQL database.
+        # Check for PostgreSQL-specific file paths (not just any .sql file)
+        pg_specific_files = any(
+            "postgres" in path.lower() or "postgresql" in path.lower()
+            for path in file_analysis.get("files", [])
+        )
+        pg_specific_db_files = any(
+            "postgres" in path.lower() or "postgresql" in path.lower()
+            for path in file_analysis.get("database_files", [])
+        )
+        pg_specific_content = (
+            direct_identity
+            or (mentions >= 3 and ("postgres" in text or "postgresql" in text))
+        )
+        return meaningful and (pg_specific_files or pg_specific_db_files or pg_specific_content)
+
+    if skill_lower in {"sql", "mysql", "sqlite", "mongodb"}:
         return (
             any(path.endswith(".sql") for path in files)
             or bool(file_analysis.get("database_files"))

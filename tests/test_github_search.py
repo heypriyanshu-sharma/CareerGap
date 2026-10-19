@@ -277,5 +277,149 @@ class TestRankRepositoriesBehavior:
         assert len(result) <= 3
 
 
+class TestPostgreSQLRelevance:
+    """Regression tests for PostgreSQL-specific relevance filtering."""
+
+    def _make_repo(self, name, description, readme, files):
+        """Create a mock repo with analysis and file_analysis."""
+        repo = {
+            "full_name": f"user/{name}",
+            "name": name,
+            "description": description,
+            "owner": {"login": "user"},
+            "stargazers_count": 100,
+            "language": "Python",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "html_url": f"https://github.com/user/{name}",
+        }
+        # Use actual analysis functions
+        analysis = github_search.analyze_repository(repo, readme, "PostgreSQL")
+        file_analysis = github_search.analyze_project_files(files)
+        return repo, readme, analysis, file_analysis
+
+    def test_postgresql_tutorial_passes(self):
+        """A genuine PostgreSQL tutorial should pass all gates."""
+        repo, readme, analysis, file_analysis = self._make_repo(
+            name="postgresql-tutorial",
+            description="PostgreSQL tutorial for beginners",
+            readme="PostgreSQL tutorial. Learn PostgreSQL step by step. PostgreSQL exercises included. PostgreSQL guide for beginners.",
+            files=["postgresql/schema.sql", "postgresql/setup.sql", "README.md"]
+        )
+        assert github_search.has_skill_relevance(repo, readme, analysis, file_analysis, "PostgreSQL") is True
+        assert github_search.has_resource_intent(repo, readme, analysis, file_analysis, "PostgreSQL") is True
+        assert github_search.has_meaningful_project_evidence(repo, readme, analysis, file_analysis) is True
+
+    def test_postgres_abbreviation_passes(self):
+        """A PostgreSQL tutorial using 'Postgres' abbreviation should pass."""
+        repo, readme, analysis, file_analysis = self._make_repo(
+            name="postgres-guide",
+            description="Postgres guide for developers",
+            readme="Postgres tutorial. Learn Postgres step by step. Postgres exercises and examples.",
+            files=["postgres/schema.sql", "postgres/setup.sql", "README.md"]
+        )
+        assert github_search.has_skill_relevance(repo, readme, analysis, file_analysis, "PostgreSQL") is True
+        assert github_search.has_resource_intent(repo, readme, analysis, file_analysis, "PostgreSQL") is True
+
+    def test_cockroachdb_only_fails_postgresql(self):
+        """A CockroachDB-only project mentioning PostgreSQL compatibility should fail."""
+        repo, readme, analysis, file_analysis = self._make_repo(
+            name="cockroach",
+            description="CockroachDB distributed SQL database",
+            readme="CockroachDB is a distributed SQL database. Compatible with PostgreSQL wire protocol. PostgreSQL compatible.",
+            files=["pkg/sql/driver.go", "pkg/sql/parser.go", "README.md"]
+        )
+        # Should fail has_skill_relevance for PostgreSQL (no pg-specific files, no direct_identity)
+        assert github_search.has_skill_relevance(repo, readme, analysis, file_analysis, "PostgreSQL") is False
+
+    def test_spring_boot_only_fails_postgresql(self):
+        """A Spring Boot project using H2 and generic SQL migrations should not qualify."""
+        repo, readme, analysis, file_analysis = self._make_repo(
+            name="spring-boot-tutorial",
+            description="Spring Boot tutorial for beginners",
+            readme="Spring Boot tutorial. Learn Spring Boot with JPA and H2 database. Spring Boot example.",
+            files=["src/main/resources/db/migration/V1__init.sql", "pom.xml", "README.md"]
+        )
+        # Generic SQL migration file should not count as PostgreSQL-specific
+        assert github_search.has_skill_relevance(repo, readme, analysis, file_analysis, "PostgreSQL") is False
+
+    def test_hibernate_orm_fails_postgresql(self):
+        """A Hibernate repository with PostgreSQL dialect but no learning content should fail resource intent."""
+        repo, readme, analysis, file_analysis = self._make_repo(
+            name="hibernate-orm",
+            description="Hibernate ORM framework",
+            readme="Hibernate ORM documentation. Object-relational mapping for Java. PostgreSQL dialect support.",
+            files=["hibernate-core/src/main/java/org/hibernate/dialect/PostgreSQLDialect.java", "README.md"]
+        )
+        # Single dialect file should not pass resource intent without teaching content
+        # The file path contains 'postgresql' so skill_relevance passes, but resource_intent should fail
+        assert github_search.has_skill_relevance(repo, readme, analysis, file_analysis, "PostgreSQL") is True
+        assert github_search.has_resource_intent(repo, readme, analysis, file_analysis, "PostgreSQL") is False
+
+    def test_fastapi_postgresql_project_passes(self):
+        """A genuine FastAPI/PostgreSQL project should remain eligible."""
+        repo, readme, analysis, file_analysis = self._make_repo(
+            name="fastapi-postgresql-example",
+            description="FastAPI with PostgreSQL example",
+            readme="FastAPI PostgreSQL tutorial. Learn to build APIs with PostgreSQL. PostgreSQL examples included.",
+            files=["app/main.py", "app/database.py", "migrations/postgresql/001_init.sql", "requirements.txt"]
+        )
+        assert github_search.has_skill_relevance(repo, readme, analysis, file_analysis, "PostgreSQL") is True
+        assert github_search.has_resource_intent(repo, readme, analysis, file_analysis, "PostgreSQL") is True
+
+    def test_postgresql_tutorial_comparing_databases_passes(self):
+        """A PostgreSQL tutorial comparing PostgreSQL with CockroachDB should pass."""
+        repo, readme, analysis, file_analysis = self._make_repo(
+            name="postgresql-vs-cockroachdb",
+            description="PostgreSQL vs CockroachDB comparison tutorial",
+            readme="PostgreSQL tutorial comparing PostgreSQL and CockroachDB. Learn PostgreSQL features. PostgreSQL vs CockroachDB differences explained. PostgreSQL exercises included.",
+            files=["postgresql/schema.sql", "postgresql/comparison.sql", "README.md"]
+        )
+        # Should pass - PostgreSQL is the main subject, CockroachDB is only mentioned for comparison
+        assert github_search.has_skill_relevance(repo, readme, analysis, file_analysis, "PostgreSQL") is True
+        assert github_search.has_resource_intent(repo, readme, analysis, file_analysis, "PostgreSQL") is True
+
+    def test_postgresql_hibernate_integration_passes(self):
+        """A PostgreSQL resource demonstrating Hibernate/JPA integration should pass."""
+        repo, readme, analysis, file_analysis = self._make_repo(
+            name="postgresql-hibernate-guide",
+            description="PostgreSQL with Hibernate ORM guide",
+            readme="PostgreSQL tutorial with Hibernate ORM. Learn PostgreSQL with JPA and Hibernate. PostgreSQL examples using Spring Data JPA.",
+            files=["src/main/java/com/example/PostgreSQLConfig.java", "src/main/resources/postgresql/schema.sql", "README.md"]
+        )
+        # Should pass - PostgreSQL is the subject, Hibernate/JPA are just the framework
+        assert github_search.has_skill_relevance(repo, readme, analysis, file_analysis, "PostgreSQL") is True
+        assert github_search.has_resource_intent(repo, readme, analysis, file_analysis, "PostgreSQL") is True
+
+    def test_incidental_postgresql_mentions_rejected(self):
+        """A repository with 3+ incidental PostgreSQL mentions but unrelated subject should be rejected."""
+        repo, readme, analysis, file_analysis = self._make_repo(
+            name="random-python-app",
+            description="A random Python application",
+            readme="PostgreSQL is a database. PostgreSQL is popular. PostgreSQL has many features. This app uses SQLite for storage.",
+            files=["app/main.py", "app/db.py", "requirements.txt"]
+        )
+        # 3+ mentions in README but no PostgreSQL-specific files or identity
+        # Should pass skill_relevance (mentions >= 3) but fail resource_intent
+        assert github_search.has_skill_relevance(repo, readme, analysis, file_analysis, "PostgreSQL") is True
+        assert github_search.has_resource_intent(repo, readme, analysis, file_analysis, "PostgreSQL") is False
+
+    def test_other_skills_unaffected(self):
+        """Other skills should not be affected by PostgreSQL changes."""
+        repo, readme, analysis, file_analysis = self._make_repo(
+            name="fastapi-tutorial",
+            description="FastAPI tutorial for beginners",
+            readme="FastAPI tutorial. Learn FastAPI step by step. FastAPI examples included.",
+            files=["main.py", "requirements.txt", "api.py"]
+        )
+        # FastAPI should still work
+        analysis_fastapi = github_search.analyze_repository(repo, readme, "FastAPI")
+        assert github_search.has_skill_relevance(repo, readme, analysis_fastapi, file_analysis, "FastAPI") is True
+
+        # Docker should still work
+        analysis_docker = github_search.analyze_repository(repo, readme, "Docker")
+        file_analysis_docker = github_search.analyze_project_files(["Dockerfile", "docker-compose.yml", "main.py"])
+        assert github_search.has_skill_relevance(repo, readme, analysis_docker, file_analysis_docker, "Docker") is True
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
