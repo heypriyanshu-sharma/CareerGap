@@ -828,18 +828,58 @@ def _has_education_section(text_lower: str) -> bool:
 
 
 def _has_projects_section(text_lower: str) -> bool:
-    """Check for explicit projects section header."""
+    """Check for explicit projects section header with actual project content.
+    A bare 'Projects' heading without any project entries does not count."""
     lines = text_lower.split('\n')
-    for line in lines:
+    for i, line in enumerate(lines):
         stripped = line.strip()
-        if stripped in ("projects", "project", "personal projects", "selected projects", "key projects", "notable projects",
-                        "projects:", "project:", "personal projects:", "selected projects:", "key projects:", "notable projects:",
-                        "portfolio", "personal project", "side project",
-                        "portfolio:", "personal project:", "side project:"):
+        # Check for exact header matches (bare headings)
+        is_bare_header = stripped in ("projects", "project", "personal projects", "selected projects", "key projects", "notable projects",
+                        "portfolio", "personal project", "side project")
+        # Check for header with colon (may have inline content)
+        has_colon = stripped in ("projects:", "project:", "personal projects:", "selected projects:", "key projects:", "notable projects:",
+                                 "portfolio:", "personal project:", "side project:")
+        # Check if header has inline content (e.g., "projects: My Project")
+        has_inline_content = any(stripped.startswith(prefix) for prefix in
+                                ("projects: ", "project: ", "personal projects: ", "selected projects: ", "key projects: ", "notable projects: ",
+                                 "portfolio: ", "personal project: ", "side project: "))
+
+        if is_bare_header:
+            # Found a bare projects header - check subsequent lines for actual content
+            for j in range(i + 1, min(i + 20, len(lines))):
+                next_stripped = lines[j].strip()
+                if not next_stripped:
+                    continue  # Skip empty lines
+                # Stop if we hit another section header
+                if next_stripped in ("experience", "education", "skills", "summary", "certifications", "contact",
+                                    "experience:", "education:", "skills:", "summary:", "certifications:", "contact:"):
+                    break
+                # Found non-empty content that's not another section header = has project content
+                if next_stripped:
+                    return True
+            return False  # Bare header found but no content
+
+        if has_colon:
+            # Header with colon but no inline content (e.g., "projects:") - check subsequent lines
+            for j in range(i + 1, min(i + 20, len(lines))):
+                next_stripped = lines[j].strip()
+                if not next_stripped:
+                    continue
+                if next_stripped in ("experience", "education", "skills", "summary", "certifications", "contact",
+                                    "experience:", "education:", "skills:", "summary:", "certifications:", "contact:"):
+                    break
+                if next_stripped:
+                    return True
+            return False
+
+        if has_inline_content:
+            # Header with inline content (e.g., "projects: My Project") = has content
             return True
-        if stripped.startswith(("projects ", "project ", "personal projects ", "selected projects ", "key projects ", "notable projects ",
-                                "portfolio ", "personal project ", "side project ",
-                                "portfolio:", "personal project:", "side project:")):
+
+        # Header with text after it (e.g., "Projects My Project" or "Projects My Project") = has content
+        if any(stripped.startswith(prefix) for prefix in
+               ("projects ", "project ", "personal projects ", "selected projects ", "key projects ", "notable projects ",
+                "portfolio ", "personal project ", "side project ")):
             return True
     return False
 
@@ -1052,7 +1092,7 @@ def _calculate_impact_score(
     ]
     has_metrics = any(re.search(pattern, text_lower) for pattern in metric_patterns)
 
-    # Projects from structured data
+    # Projects from structured data (Resume Builder)
     project_count = len(projects) if projects else 0
     project_bullets = 0
     if projects:
@@ -1077,12 +1117,19 @@ def _calculate_impact_score(
         score += 4
         strengths.append("GitHub/portfolio link present")
 
+    # Determine project evidence: structured data OR text-based projects section
+    has_project_evidence = project_count > 0 or has_projects_section
+
     if project_count >= 2:
         score += 5
         strengths.append(f"{project_count} projects documented")
     elif project_count == 1:
         score += 3
         strengths.append("1 project documented")
+    elif has_projects_section:
+        # Text-based projects section exists but no structured data
+        score += 2
+        strengths.append("Projects section detected in resume")
     else:
         weaknesses.append("No projects documented")
 
@@ -1493,7 +1540,9 @@ def _analyze_visual_layout_risks(extracted_text: str, page_count: int) -> tuple[
         strengths.append("Reasonable text density for single-page resume")
 
     # 5. Check for bullet points (structure indicator)
-    bullet_count = sum(1 for line in lines if re.match(r'^\s*[•\-\*]\s', line.strip()))
+    # PDF extraction produces various bullet characters
+    bullet_pattern = r'^\s*[•\-\*·▸►‣○●◆◇▪▫⁃﹣﹘﹙﹚]\s'
+    bullet_count = sum(1 for line in lines if re.match(bullet_pattern, line.strip()))
     if bullet_count >= 5:
         strengths.append(f"Bullet points detected ({bullet_count}) - good structure")
     elif bullet_count == 0:

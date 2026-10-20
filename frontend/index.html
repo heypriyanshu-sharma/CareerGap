@@ -995,6 +995,104 @@
                     class="resume-ats-results hidden"
                     aria-live="polite"
                 ></div>
+
+                <!-- ATS Check Modal -->
+                <div
+                    id="ats-check-modal"
+                    class="ats-check-modal hidden"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="ats-modal-title"
+                >
+                    <div class="ats-modal-backdrop"></div>
+                    <div class="ats-modal-content">
+                        <header class="ats-modal-header">
+                            <h3 id="ats-modal-title">ATS Resume Check</h3>
+                            <button
+                                type="button"
+                                id="ats-modal-close"
+                                class="ats-modal-close"
+                                aria-label="Close ATS check options"
+                            >
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </header>
+                        <div class="ats-modal-body">
+                            <p class="ats-modal-resume-info">
+                                Assessing: <strong id="ats-modal-resume-title"></strong>
+                            </p>
+
+                            <fieldset class="ats-mode-fieldset">
+                                <legend>Assessment Mode</legend>
+                                <div class="ats-mode-options">
+                                    <label class="ats-mode-option">
+                                        <input type="radio" name="ats-mode" value="general" checked>
+                                        <span class="ats-mode-label">
+                                            <strong>General Resume Check</strong>
+                                            <span class="ats-mode-desc">No job description. Scores PDF parsing, structure, and layout out of 70.</span>
+                                        </span>
+                                    </label>
+                                    <label class="ats-mode-option">
+                                        <input type="radio" name="ats-mode" value="job-specific">
+                                        <span class="ats-mode-label">
+                                            <strong>Job-Specific Check</strong>
+                                            <span class="ats-mode-desc">Requires job description. Adds job alignment scoring. Total out of 100.</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </fieldset>
+
+                            <div class="ats-job-description-field hidden">
+                                <label for="ats-job-description">Job Description</label>
+                                <textarea
+                                    id="ats-job-description"
+                                    placeholder="Paste the job description here..."
+                                    rows="6"
+                                    maxlength="20000"
+                                ></textarea>
+                                <div class="ats-field-hint"><span id="ats-job-desc-count">0</span>/20,000 characters</div>
+                            </div>
+
+                            <fieldset class="ats-source-fieldset">
+                                <legend>Resume Source</legend>
+                                <div class="ats-source-options">
+                                    <label class="ats-source-option">
+                                        <input type="radio" name="ats-source" value="saved" checked>
+                                        <span class="ats-source-label">
+                                            <strong>Selected Saved Resume</strong>
+                                            <span class="ats-source-desc">Uses the currently selected resume from your list.</span>
+                                        </span>
+                                    </label>
+                                    <label class="ats-source-option">
+                                        <input type="radio" name="ats-source" value="upload">
+                                        <span class="ats-source-label">
+                                            <strong>Upload New PDF</strong>
+                                            <span class="ats-source-desc">Analyze a PDF file without saving it to your account.</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </fieldset>
+
+                            <div class="ats-upload-field hidden">
+                                <label for="ats-file-upload">PDF File</label>
+                                <input
+                                    type="file"
+                                    id="ats-file-upload"
+                                    accept=".pdf,application/pdf"
+                                    aria-describedby="ats-file-hint"
+                                >
+                                <div class="ats-field-hint" id="ats-file-hint">PDF only, max 5 MB</div>
+                            </div>
+                        </div>
+                        <footer class="ats-modal-footer">
+                            <button type="button" id="ats-modal-cancel" class="ats-modal-btn secondary">Cancel</button>
+                            <button type="button" id="ats-modal-run" class="ats-modal-btn primary" disabled>
+                                <span class="ats-btn-text">Run ATS Check</span>
+                                <span class="ats-btn-loading hidden"><span class="loading-spinner"></span> Analyzing...</span>
+                            </button>
+                        </footer>
+                    </div>
+                </div>
             </div>
 
             <!-- Edit state: structured form -->

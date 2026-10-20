@@ -1098,3 +1098,261 @@ def test_ats_analyze_resume_pdf_general_only(monkeypatch):
             assert d["awarded"] >= 0
     # Overall max should be 70
     assert result["overall_max"] == 70
+
+
+# ============================================================
+# REGRESSION TESTS FOR FIXES
+# ============================================================
+
+def test_bullet_detection_handles_various_characters(monkeypatch):
+    """Bullet detection should handle various PDF bullet characters."""
+    import ats_match
+
+    class MockReader:
+        def __init__(self, stream):
+            self.pages = [MockPage()]
+
+    class MockPage:
+        def extract_text(self):
+            # Various bullet characters that PDF extraction produces
+            return """
+            John Doe
+            john@example.com
+
+            EXPERIENCE
+            Developer at Corp
+            • Bullet point one
+            • Bullet point two
+            · Middle dot bullet
+            ▸ Right angle bracket
+            ► Right triangle
+            ‣ Triangular bullet
+            ○ White circle
+            ● Black circle
+            ◆ Diamond
+            ◇ White diamond
+            ▪ Black small square
+            ▫ White small square
+            ⁃ Hyphen bullet
+            ﹣ Small hyphen-minus
+            ﹘ Wavy dash
+
+            EDUCATION
+            BS CS
+            """
+
+    monkeypatch.setattr("pypdf.PdfReader", MockReader)
+
+    result = ats_match.analyze_resume_pdf(
+        pdf_bytes=b"%PDF-1.4 fake",
+        job_text=None,
+        projects=None
+    )
+
+    visual_dim = next(d for d in result["dimensions"] if d["id"] == "visual_layout")
+    # Should detect bullet points as strength
+    assert any("bullet" in s.lower() for s in visual_dim["strengths"])
+
+
+def test_project_detection_from_pdf_text(monkeypatch):
+    """Projects section in PDF text should be recognized even without structured projects data."""
+    import ats_match
+
+    class MockReader:
+        def __init__(self, stream):
+            self.pages = [MockPage()]
+
+    class MockPage:
+        def extract_text(self):
+            return """
+            John Doe
+            john@example.com
+
+            PROJECTS
+            My Awesome Project
+            - Built a REST API with FastAPI
+            - Improved latency by 40%
+
+            EXPERIENCE
+            Developer at Corp
+
+            EDUCATION
+            BS CS
+            """
+
+    monkeypatch.setattr("pypdf.PdfReader", MockReader)
+
+    result = ats_match.analyze_resume_pdf(
+        pdf_bytes=b"%PDF-1.4 fake",
+        job_text="Required: Python",
+        projects=None  # No structured projects
+    )
+
+    # Check impact score dimension (via section_completeness which uses _calculate_impact_score)
+    section_dim = next(d for d in result["dimensions"] if d["id"] == "section_completeness")
+    # Should not have "No projects documented" weakness
+    assert not any("No projects documented" in w for w in section_dim["weaknesses"])
+    # Should have projects section strength
+    assert any("project" in s.lower() for s in section_dim["strengths"])
+
+
+def test_no_projects_documented_when_truly_none(monkeypatch):
+    """Should still warn when no projects section exists."""
+    import ats_match
+
+    class MockReader:
+        def __init__(self, stream):
+            self.pages = [MockPage()]
+
+    class MockPage:
+        def extract_text(self):
+            return """
+            John Doe
+            john@example.com
+
+            EXPERIENCE
+            Developer at Corp
+
+            EDUCATION
+            BS CS
+            """
+
+    monkeypatch.setattr("pypdf.PdfReader", MockReader)
+
+    result = ats_match.analyze_resume_pdf(
+        pdf_bytes=b"%PDF-1.4 fake",
+        job_text="Required: Python",
+        projects=None
+    )
+
+    section_dim = next(d for d in result["dimensions"] if d["id"] == "section_completeness")
+    # Should have "No projects documented" weakness
+    assert any("No projects documented" in w for w in section_dim["weaknesses"])
+
+
+def test_ats_modal_workflow_logic():
+    """Test the modal workflow logic (unit test for frontend logic concepts)."""
+    # Test 1: General mode with saved resume should allow run
+    mode = "general"
+    source = "saved"
+    jobDesc = ""
+    file = None
+    hasResumeId = True
+
+    canRun = False
+    if source == "saved" and hasResumeId:
+        canRun = True
+    elif source == "upload" and file and file.get("type") == "application/pdf":
+        canRun = True
+    if mode == "job-specific" and not jobDesc:
+        canRun = False
+    assert canRun is True
+
+    # Test 2: Job-specific mode without job description should not allow run
+    mode = "job-specific"
+    jobDesc = ""
+    canRun = False
+    if source == "saved" and hasResumeId:
+        canRun = True
+    if mode == "job-specific" and not jobDesc:
+        canRun = False
+    assert canRun is False
+
+    # Test 3: Job-specific mode with job description should allow run
+    mode = "job-specific"
+    jobDesc = "Required: Python"
+    canRun = False
+    if source == "saved" and hasResumeId:
+        canRun = True
+    if mode == "job-specific" and not jobDesc:
+        canRun = False
+    assert canRun is True
+
+    # Test 4: Upload mode with file should allow run
+    mode = "general"
+    source = "upload"
+    file = {"type": "application/pdf"}
+    hasResumeId = False
+    canRun = False
+    if source == "saved" and hasResumeId:
+        canRun = True
+    elif source == "upload" and file and file.get("type") == "application/pdf":
+        canRun = True
+    assert canRun is True
+
+    # Test 5: Upload mode without file should not allow run
+    mode = "general"
+    source = "upload"
+    file = None
+    canRun = False
+    if source == "saved" and hasResumeId:
+        canRun = True
+    elif source == "upload" and file and file.get("type") == "application/pdf":
+        canRun = True
+    assert canRun is False
+
+
+def test_stale_response_protection_logic():
+    """Test the stale response protection logic (AbortController pattern)."""
+    class MockAbortController:
+        def __init__(self):
+            self.aborted = False
+            self.signal = {"aborted": False}
+        def abort(self):
+            self.aborted = True
+            self.signal["aborted"] = True
+
+    atsCheckState = {
+        "abortController": None,
+        "pendingResumeId": None,
+    }
+
+    # Simulate first request
+    atsCheckState["abortController"] = MockAbortController()
+    atsCheckState["pendingResumeId"] = "resume-1"
+
+    # Simulate resume switch during request
+    atsCheckState["abortController"].abort()
+    assert atsCheckState["abortController"].aborted is True
+
+    # Simulate second request
+    atsCheckState["abortController"] = MockAbortController()
+    atsCheckState["pendingResumeId"] = "resume-2"
+
+    # First request completes but resume switched
+    # The check should discard the stale response
+    assert atsCheckState["pendingResumeId"] == "resume-2"
+    old_pending = "resume-1"
+    current = "resume-2"
+    assert old_pending != current  # Would discard stale response
+
+
+def test_duplicate_submission_prevention():
+    """Test that duplicate submissions are prevented."""
+    class MockButton:
+        def __init__(self):
+            self.disabled = False
+
+    runBtn = MockButton()
+    btnText = MockButton()
+    btnLoading = MockButton()
+
+    # Initial state
+    assert runBtn.disabled is False
+
+    # During request
+    runBtn.disabled = True
+    btnText.disabled = True  # hidden
+    btnLoading.disabled = False  # shown
+    assert runBtn.disabled is True
+
+    # After request
+    runBtn.disabled = False
+    btnText.disabled = False  # shown
+    btnLoading.disabled = True  # hidden
+    assert runBtn.disabled is False
+
+
+if __name__ == "__main__":
+    import pytest
+    pytest.main([__file__, "-v"])

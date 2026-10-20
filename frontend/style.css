@@ -5534,6 +5534,329 @@ textarea:focus,
     font-weight: 500;
 }
 
+.ats-retry-btn {
+    margin-top: 12px;
+    padding: 8px 16px;
+    background: var(--white);
+    color: var(--error-red);
+    border: 1px solid var(--error-red);
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.ats-retry-btn:hover {
+    background: var(--error-red);
+    color: var(--white);
+}
+
+/* =========================================================
+   ATS CHECK MODAL
+   ========================================================= */
+
+.ats-check-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.ats-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.ats-modal-content {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-pop);
+    overflow: hidden;
+    animation: ats-modal-slide-in 0.2s ease-out;
+}
+
+@keyframes ats-modal-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.ats-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.ats-modal-header h3 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--olive-dark);
+}
+
+.ats-modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: var(--olive-soft);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.ats-modal-close:hover {
+    background: var(--butter);
+    color: var(--olive-dark);
+}
+
+.ats-modal-body {
+    padding: 24px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.ats-modal-resume-info {
+    margin: 0 0 20px;
+    padding: 12px 16px;
+    background: var(--pistachio-soft);
+    border: 1px solid var(--pistachio);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    color: var(--olive-dark);
+}
+
+.ats-mode-fieldset,
+.ats-source-fieldset {
+    margin-bottom: 20px;
+    padding: 0;
+    border: none;
+}
+
+.ats-mode-fieldset legend,
+.ats-source-fieldset legend {
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--olive);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.ats-mode-options,
+.ats-source-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ats-mode-option,
+.ats-source-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.ats-mode-option:hover,
+.ats-source-option:hover {
+    border-color: var(--pistachio);
+    background: var(--pistachio-soft);
+}
+
+.ats-mode-option input,
+.ats-source-option input {
+    margin-top: 2px;
+    accent-color: var(--ref-green-dark);
+}
+
+.ats-mode-label,
+.ats-source-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.ats-mode-label strong,
+.ats-source-label strong {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--olive-dark);
+}
+
+.ats-mode-desc,
+.ats-source-desc {
+    font-size: 0.78rem;
+    color: var(--olive-soft);
+    line-height: 1.4;
+}
+
+.ats-job-description-field,
+.ats-upload-field {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    animation: ats-fade-in 0.2s ease-out;
+}
+
+@keyframes ats-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ats-job-description-field label,
+.ats-upload-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--olive);
+}
+
+.ats-job-description-field textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    resize: vertical;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ats-job-description-field textarea:focus {
+    outline: none;
+    border-color: var(--ref-green-dark);
+    box-shadow: 0 0 0 3px rgba(49, 93, 59, 0.15);
+}
+
+.ats-file-upload {
+    width: 100%;
+    padding: 12px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--olive);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.ats-file-upload:hover {
+    border-color: var(--pistachio);
+    background: var(--pistachio-soft);
+}
+
+.ats-field-hint {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--olive-soft);
+    text-align: right;
+}
+
+.ats-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--pistachio-soft);
+}
+
+.ats-modal-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ats-modal-btn.secondary {
+    border: 1px solid var(--border);
+    background: var(--white);
+    color: var(--olive);
+}
+
+.ats-modal-btn.secondary:hover:not(:disabled) {
+    border-color: var(--pistachio);
+    background: var(--pistachio-soft);
+    color: var(--olive-dark);
+}
+
+.ats-modal-btn.primary {
+    border: none;
+    background: var(--ref-green-dark);
+    color: var(--white);
+}
+
+.ats-modal-btn.primary:hover:not(:disabled) {
+    background: var(--olive-dark);
+}
+
+.ats-modal-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.ats-btn-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.loading-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--white);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.ats-hidden {
+    display: none !important;
+}
+
 .ats-dimension-not-assessed {
     color: var(--olive-soft);
     font-style: italic;

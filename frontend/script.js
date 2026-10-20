@@ -4554,6 +4554,20 @@ document.addEventListener(
             summaryCount: document.getElementById("summary-count"),
             titleInput: document.getElementById("resume-title"),
             titleCount: document.getElementById("title-count"),
+            // ATS Check Modal elements
+            atsModal: document.getElementById("ats-check-modal"),
+            atsModalClose: document.getElementById("ats-modal-close"),
+            atsModalCancel: document.getElementById("ats-modal-cancel"),
+            atsModalRun: document.getElementById("ats-modal-run"),
+            atsModalBackdrop: document.querySelector(".ats-modal-backdrop"),
+            atsModalResumeTitle: document.getElementById("ats-modal-resume-title"),
+            atsModeRadios: document.querySelectorAll('input[name="ats-mode"]'),
+            atsJobDescriptionField: document.querySelector(".ats-job-description-field"),
+            atsJobDescription: document.getElementById("ats-job-description"),
+            atsJobDescCount: document.getElementById("ats-job-desc-count"),
+            atsSourceRadios: document.querySelectorAll('input[name="ats-source"]'),
+            atsUploadField: document.querySelector(".ats-upload-field"),
+            atsFileUpload: document.getElementById("ats-file-upload"),
         };
 
         async function apiRequest(path, options = {}, redirectIfMissing = true) {
@@ -4687,6 +4701,13 @@ document.addEventListener(
             const summary = resumeBuilderState.resumes.find((r) => r.id === resumeId);
             if (!summary) {
                 return;
+            }
+
+            // Clear previous ATS report when switching resumes
+            const atsResults = document.getElementById("resume-ats-results");
+            if (atsResults) {
+                atsResults.classList.add("hidden");
+                atsResults.innerHTML = "";
             }
 
             resumeBuilderState.selectedResumeId = resumeId;
@@ -5301,31 +5322,55 @@ document.addEventListener(
             }
         }
 
+};
         // =================================================
         // RESUME BUILDER — ATS CHECK
         // =================================================
 
         async function runAtsCheck() {
-            if (!resumeBuilderState.selectedResumeId) {
-                return;
-            }
+            // Legacy function - now opens modal instead
+            openAtsCheckModal();
+        }
 
-            const atsBtn = resumeElements.atsCheckBtn;
+        async function runAtsCheckFromModal() {
+            const mode = document.querySelector('input[name="ats-mode"]:checked')?.value;
+            const source = document.querySelector('input[name="ats-source"]:checked')?.value;
+            const jobDesc = resumeElements.atsJobDescription.value.trim();
+            const file = resumeElements.atsFileUpload.files?.[0];
+
+            // Prevent duplicate submissions
+            if (atsCheckState.abortController) {
+                atsCheckState.abortController.abort();
+            }
+            atsCheckState.abortController = new AbortController();
+            const currentResumeId = resumeBuilderState.selectedResumeId;
+            atsCheckState.pendingResumeId = currentResumeId;
+
+            const runBtn = resumeElements.atsModalRun;
+            const btnText = runBtn.querySelector(".ats-btn-text");
+            const btnLoading = runBtn.querySelector(".ats-btn-loading");
+            runBtn.disabled = true;
+            btnText.classList.add("hidden");
+            btnLoading.classList.remove("hidden");
+
             const resultsContainer = document.getElementById("resume-ats-results");
-            const originalText = atsBtn.textContent;
-            atsBtn.disabled = true;
-            atsBtn.textContent = "Analyzing...";
             resultsContainer.classList.add("hidden");
             resultsContainer.innerHTML = "";
 
             try {
-                const resumeId = resumeBuilderState.selectedResumeId;
                 const formData = new FormData();
-                formData.append("resume_id", resumeId);
 
-                // Optional: get job description from a new input field if we add one
-                // For now, run general analysis only
-                // formData.append("job_description", "");
+                if (source === "saved") {
+                    if (!currentResumeId) throw new Error("No resume selected");
+                    formData.append("resume_id", currentResumeId);
+                } else if (source === "upload") {
+                    if (!file) throw new Error("No PDF file selected");
+                    formData.append("file", file);
+                }
+
+                if (mode === "job-specific" && jobDesc) {
+                    formData.append("job_description", jobDesc);
+                }
 
                 const response = await fetch(`${API_BASE_URL}/ats/analyze-resume`, {
                     method: "POST",
@@ -5333,7 +5378,14 @@ document.addEventListener(
                         Authorization: `Bearer ${await getAccessToken()}`,
                     },
                     body: formData,
+                    signal: atsCheckState.abortController.signal,
                 });
+
+                // Check if resume was switched during request
+                if (atsCheckState.pendingResumeId !== resumeBuilderState.selectedResumeId) {
+                    console.log("Resume switched during ATS request, discarding stale response");
+                    return;
+                }
 
                 if (!response.ok) {
                     let message = "ATS analysis failed.";
@@ -5346,25 +5398,45 @@ document.addEventListener(
 
                 const result = await response.json();
 
+                // Double-check resume still matches
+                if (atsCheckState.pendingResumeId !== resumeBuilderState.selectedResumeId) {
+                    console.log("Resume switched during ATS request, discarding stale response");
+                    return;
+                }
+
                 // Display results
                 resultsContainer.innerHTML = createAtsCheckReport(result);
                 resultsContainer.classList.remove("hidden");
 
+                // Close modal on success
+                closeAtsCheckModal();
+
             } catch (error) {
+                if (error.name === "AbortError") {
+                    console.log("ATS request aborted due to resume switch");
+                    return;
+                }
                 console.error("ATS check error:", error);
                 resultsContainer.innerHTML = `
                     <div class="ats-check-error">
                         <strong>ATS Check Failed:</strong> ${escapeHTML(error.message || "Unknown error")}
+                        <button type="button" class="ats-retry-btn" onclick="runAtsCheckFromModal()">
+                            Retry
+                        </button>
                     </div>
                 `;
                 resultsContainer.classList.remove("hidden");
             } finally {
-                atsBtn.disabled = false;
-                atsBtn.textContent = originalText;
+                atsCheckState.abortController = null;
+                atsCheckState.pendingResumeId = null;
+                runBtn.disabled = false;
+                btnText.classList.remove("hidden");
+                btnLoading.classList.add("hidden");
+                updateAtsModalRunButton();
             }
         }
 
-        function createAtsCheckReport(result) {
+        function createAtsCheckReport(result) {        function createAtsCheckReport(result) {
             if (result.error) {
                 return `<div class="ats-check-error"><strong>Error:</strong> ${escapeHTML(result.error)}</div>`;
             }
@@ -6195,6 +6267,7 @@ document.addEventListener(
 
             if (resumeElements.atsCheckBtn) {
                 resumeElements.atsCheckBtn.addEventListener("click", runAtsCheck);
+            setupAtsModalListeners();
             }
 
             sectionTypeSelect = setupSectionTypeSelect(
