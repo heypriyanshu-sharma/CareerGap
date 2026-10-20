@@ -484,3 +484,103 @@ def test_section_type_dropdown_markup():
     # The Add button starts disabled until a type is chosen.
     assert 'id="add-section-btn"' in html
     assert re.search(r'id="add-section-btn"[^>]*disabled', html)
+
+
+# ============================================================
+# ATS MODAL REGRESSION TESTS
+# ============================================================
+
+def test_ats_modal_functions_exist_in_js():
+    """Verify all ATS modal functions are defined in the JavaScript source."""
+    import re
+    source = _read_script_js()
+
+    required_functions = [
+        'setupAtsModalListeners',
+        'openAtsCheckModal',
+        'closeAtsCheckModal',
+        'updateAtsModalRunButton',
+        'runAtsCheckFromModal',
+        'createAtsCheckReport',
+    ]
+
+    for func_name in required_functions:
+        matches = re.findall(r'function ' + re.escape(func_name), source)
+        assert len(matches) == 1, f"Function {func_name} should be defined exactly once in JS, found {len(matches)}"
+
+
+def test_ats_check_state_declared_once_in_js():
+    """Verify atsCheckState is declared exactly once in the JavaScript source."""
+    import re
+    source = _read_script_js()
+
+    declarations = re.findall(r'let atsCheckState\s*=', source)
+    assert len(declarations) == 1, f"atsCheckState should be declared exactly once in JS, found {len(declarations)}"
+
+
+def test_setupatsmodallisteners_guards_missing_elements():
+    """Verify setupAtsModalListeners guards against missing modal elements."""
+    source = _read_script_js()
+
+    # Extract the function body
+    handler = _extract_braced_block(source, 'function setupAtsModalListeners(')
+
+    # The function should have an early return guard for missing atsModal
+    assert 'if (!resumeElements.atsModal) return;' in handler, (
+        "setupAtsModalListeners must guard against missing atsModal element"
+    )
+
+    # All event listeners should use optional chaining
+    assert 'resumeElements.atsModalBackdrop?.addEventListener' in handler
+    assert 'resumeElements.atsModalClose?.addEventListener' in handler
+    assert 'resumeElements.atsModalCancel?.addEventListener' in handler
+    assert 'resumeElements.atsModeRadios?.forEach' in handler
+    assert 'resumeElements.atsSourceRadios?.forEach' in handler
+    assert 'resumeElements.atsJobDescription?.addEventListener' in handler
+    assert 'resumeElements.atsFileUpload?.addEventListener' in handler
+    assert 'resumeElements.atsModalRun?.addEventListener' in handler
+
+
+def test_loadresumes_called_inside_initresumebuilder():
+    """Verify loadResumes is called inside initResumeBuilder before it returns.
+
+    The initialization flow is: initResumeBuilder() is defined, and at the end
+    of its body it calls loadResumes(), then initResumeBuilder() is invoked.
+    """
+    source = _read_script_js()
+
+    # Extract the initResumeBuilder function body
+    init_fn = _extract_braced_block(source, 'function initResumeBuilder(')
+
+    # loadResumes() should be called inside initResumeBuilder
+    assert 'loadResumes()' in init_fn, "initResumeBuilder must call loadResumes()"
+
+    # The call should be near the end of the function (before the closing brace)
+    loadresumes_pos = init_fn.rfind("loadResumes()")
+    assert loadresumes_pos != -1, "loadResumes() call not found in initResumeBuilder"
+
+    # Should be after the click handler setup
+    click_handler_end = init_fn.rfind("});")
+    assert click_handler_end != -1, "Click handler not found in initResumeBuilder"
+    assert loadresumes_pos > click_handler_end, "loadResumes() should be called after click handler setup"
+
+
+def test_initresumebuilder_calls_setupatsmodallisteners():
+    """Verify initResumeBuilder calls setupAtsModalListeners when ATS check button exists."""
+    source = _read_script_js()
+
+    # Extract initResumeBuilder function
+    init_fn = _extract_braced_block(source, 'function initResumeBuilder(')
+
+    # Should call setupAtsModalListeners inside the atsCheckBtn check
+    assert 'setupAtsModalListeners()' in init_fn, (
+        "initResumeBuilder must call setupAtsModalListeners"
+    )
+
+    # The call should be inside the atsCheckBtn conditional
+    assert 'if (resumeElements.atsCheckBtn)' in init_fn
+
+
+if __name__ == "__main__":
+    import pytest
+    pytest.main([__file__, "-v"])
