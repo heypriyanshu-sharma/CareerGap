@@ -1555,7 +1555,7 @@ document.addEventListener(
 
                 projects:
                     collectProjects()
-            };
+            }
         }
 
         // =================================================
@@ -5322,7 +5322,6 @@ document.addEventListener(
             }
         }
 
-};
         // =================================================
         // RESUME BUILDER — ATS CHECK
         // =================================================
@@ -5436,7 +5435,7 @@ document.addEventListener(
             }
         }
 
-        function createAtsCheckReport(result) {        function createAtsCheckReport(result) {
+        function createAtsCheckReport(result) {
             if (result.error) {
                 return `<div class="ats-check-error"><strong>Error:</strong> ${escapeHTML(result.error)}</div>`;
             }
