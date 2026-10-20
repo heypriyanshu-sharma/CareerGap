@@ -6161,8 +6161,12 @@ document.addEventListener(
         function setupAtsModalListeners() {
             if (!resumeElements.atsModal) return;
 
-            // Close modal on backdrop click
-            resumeElements.atsModalBackdrop?.addEventListener("click", closeAtsCheckModal);
+            // Close modal on backdrop click (only when clicking the backdrop itself, not content)
+            resumeElements.atsModalBackdrop?.addEventListener("click", function (event) {
+                if (event.target === event.currentTarget) {
+                    closeAtsCheckModal();
+                }
+            });
 
             // Close modal on close button click
             resumeElements.atsModalClose?.addEventListener("click", closeAtsCheckModal);
@@ -6170,32 +6174,72 @@ document.addEventListener(
             // Close modal on cancel button click
             resumeElements.atsModalCancel?.addEventListener("click", closeAtsCheckModal);
 
-            // Mode radio change
+            // Mode radio change - toggle job description field visibility and update run button
             resumeElements.atsModeRadios?.forEach(function (radio) {
-                radio.addEventListener("change", updateAtsModalRunButton);
+                radio.addEventListener("change", function () {
+                    const mode = radio.value;
+                    if (resumeElements.atsJobDescriptionField) {
+                        resumeElements.atsJobDescriptionField.hidden = mode !== "job-specific";
+                    }
+                    updateAtsModalRunButton();
+                });
             });
 
-            // Source radio change
+            // Source radio change - toggle upload field visibility and update run button
             resumeElements.atsSourceRadios?.forEach(function (radio) {
-                radio.addEventListener("change", updateAtsModalRunButton);
+                radio.addEventListener("change", function () {
+                    const source = radio.value;
+                    if (resumeElements.atsUploadField) {
+                        resumeElements.atsUploadField.hidden = source !== "upload";
+                    }
+                    updateAtsModalRunButton();
+                });
             });
 
-            // Job description input
+            // Job description input - enforce 20k char limit and update run button
             resumeElements.atsJobDescription?.addEventListener("input", function () {
-                const count = resumeElements.atsJobDescription.value.length;
-                resumeElements.atsJobDescCount.textContent = count;
+                if (this.value.length > 20000) {
+                    this.value = this.value.slice(0, 20000);
+                }
+                const count = this.value.length;
+                if (resumeElements.atsJobDescCount) {
+                    resumeElements.atsJobDescCount.textContent = count;
+                }
                 updateAtsModalRunButton();
             });
 
-            // File upload
-            resumeElements.atsFileUpload?.addEventListener("change", updateAtsModalRunButton);
+            // File upload - validate PDF type and 5MB size
+            resumeElements.atsFileUpload?.addEventListener("change", function () {
+                const file = this.files?.[0];
+                if (file) {
+                    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+                    const maxSize = 5 * 1024 * 1024; // 5 MB
+                    if (!isPdf || file.size > maxSize) {
+                        this.value = "";
+                        alert(isPdf ? "File size must not exceed 5 MB." : "Please select a PDF file.");
+                    }
+                }
+                updateAtsModalRunButton();
+            });
 
             // Run button
             resumeElements.atsModalRun?.addEventListener("click", runAtsCheckFromModal);
+
+            // Retry button (event delegation on results container)
+            const resultsContainer = document.getElementById("resume-ats-results");
+            if (resultsContainer) {
+                resultsContainer.addEventListener("click", function (event) {
+                    const retryBtn = event.target?.closest(".ats-retry-btn");
+                    if (retryBtn && resultsContainer.contains(retryBtn)) {
+                        runAtsCheckFromModal();
+                    }
+                });
+            }
         }
 
         function openAtsCheckModal() {
             if (!resumeBuilderState.selectedResumeId) {
+                alert("Please select a resume from the list before running an ATS check.");
                 return;
             }
 
@@ -6203,6 +6247,7 @@ document.addEventListener(
                 function (r) { return r.id === resumeBuilderState.selectedResumeId; }
             );
             if (!selectedResume) {
+                alert("Selected resume not found. Please try selecting again.");
                 return;
             }
 
@@ -6213,14 +6258,20 @@ document.addEventListener(
             resumeElements.atsModeRadios.forEach(function (r) {
                 r.checked = r.value === "general";
             });
-            resumeElements.atsJobDescriptionField.classList.add("hidden");
+            if (resumeElements.atsJobDescriptionField) {
+                resumeElements.atsJobDescriptionField.hidden = true;
+            }
             resumeElements.atsJobDescription.value = "";
-            resumeElements.atsJobDescCount.textContent = "0";
+            if (resumeElements.atsJobDescCount) {
+                resumeElements.atsJobDescCount.textContent = "0";
+            }
 
             resumeElements.atsSourceRadios.forEach(function (r) {
                 r.checked = r.value === "saved";
             });
-            resumeElements.atsUploadField.classList.add("hidden");
+            if (resumeElements.atsUploadField) {
+                resumeElements.atsUploadField.hidden = true;
+            }
             resumeElements.atsFileUpload.value = "";
 
             // Enable run button for saved resume (no upload needed)
@@ -6244,11 +6295,18 @@ document.addEventListener(
             let canRun = false;
             if (source === "saved" && resumeBuilderState.selectedResumeId) {
                 canRun = true;
-            } else if (source === "upload" && file && file.type === "application/pdf") {
-                canRun = true;
+            } else if (source === "upload" && file) {
+                const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+                const maxSize = 5 * 1024 * 1024; // 5 MB
+                if (isPdf && file.size <= maxSize) {
+                    canRun = true;
+                }
             }
 
             if (mode === "job-specific" && !jobDesc) {
+                canRun = false;
+            }
+            if (jobDesc.length > 20000) {
                 canRun = false;
             }
 
@@ -6343,9 +6401,7 @@ document.addEventListener(
                 resultsContainer.innerHTML = `
                     <div class="ats-check-error">
                         <strong>ATS Check Failed:</strong> ${escapeHTML(error.message || "Unknown error")}
-                        <button type="button" class="ats-retry-btn" onclick="runAtsCheckFromModal()">
-                            Retry
-                        </button>
+                        <button type="button" class="ats-retry-btn">Retry</button>
                     </div>
                 `;
                 resultsContainer.classList.remove("hidden");
