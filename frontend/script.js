@@ -6179,7 +6179,7 @@ document.addEventListener(
                 radio.addEventListener("change", function () {
                     const mode = radio.value;
                     if (resumeElements.atsJobDescriptionField) {
-                        resumeElements.atsJobDescriptionField.hidden = mode !== "job-specific";
+                        resumeElements.atsJobDescriptionField.classList.toggle("hidden", mode !== "job-specific");
                     }
                     updateAtsModalRunButton();
                 });
@@ -6190,7 +6190,7 @@ document.addEventListener(
                 radio.addEventListener("change", function () {
                     const source = radio.value;
                     if (resumeElements.atsUploadField) {
-                        resumeElements.atsUploadField.hidden = source !== "upload";
+                        resumeElements.atsUploadField.classList.toggle("hidden", source !== "upload");
                     }
                     updateAtsModalRunButton();
                 });
@@ -6259,7 +6259,7 @@ document.addEventListener(
                 r.checked = r.value === "general";
             });
             if (resumeElements.atsJobDescriptionField) {
-                resumeElements.atsJobDescriptionField.hidden = true;
+                resumeElements.atsJobDescriptionField.classList.add("hidden");
             }
             resumeElements.atsJobDescription.value = "";
             if (resumeElements.atsJobDescCount) {
@@ -6270,7 +6270,7 @@ document.addEventListener(
                 r.checked = r.value === "saved";
             });
             if (resumeElements.atsUploadField) {
-                resumeElements.atsUploadField.hidden = true;
+                resumeElements.atsUploadField.classList.add("hidden");
             }
             resumeElements.atsFileUpload.value = "";
 
