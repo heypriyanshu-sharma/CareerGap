@@ -1075,12 +1075,24 @@
 
                             <div class="ats-upload-field hidden">
                                 <label for="ats-file-upload">PDF File</label>
-                                <input
-                                    type="file"
-                                    id="ats-file-upload"
-                                    accept=".pdf,application/pdf"
-                                    aria-describedby="ats-file-hint"
-                                >
+                                <div class="ats-file-upload-wrapper">
+                                    <input
+                                        type="file"
+                                        id="ats-file-upload"
+                                        class="ats-file-upload-input"
+                                        accept=".pdf,application/pdf"
+                                        aria-describedby="ats-file-hint"
+                                    >
+                                    <label for="ats-file-upload" class="ats-file-upload-label">
+                                        <span class="ats-file-upload-icon" aria-hidden="true">📄</span>
+                                        <span class="ats-file-upload-text">Choose PDF file</span>
+                                        <span class="ats-file-upload-hint">PDF only, max 5 MB</span>
+                                    </label>
+                                    <div class="ats-file-selected hidden" aria-live="polite">
+                                        <span class="ats-file-name"></span>
+                                        <button type="button" class="ats-file-remove" aria-label="Remove selected file">×</button>
+                                    </div>
+                                </div>
                                 <div class="ats-field-hint" id="ats-file-hint">PDF only, max 5 MB</div>
                             </div>
                         </div>

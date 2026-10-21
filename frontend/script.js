@@ -6211,15 +6211,47 @@ document.addEventListener(
             // File upload - validate PDF type and 5MB size
             resumeElements.atsFileUpload?.addEventListener("change", function () {
                 const file = this.files?.[0];
+                const wrapper = this.closest(".ats-file-upload-wrapper");
+                const selectedDiv = wrapper?.querySelector(".ats-file-selected");
+                const fileNameSpan = selectedDiv?.querySelector(".ats-file-name");
+                const label = wrapper?.querySelector(".ats-file-upload-label");
+
                 if (file) {
                     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
                     const maxSize = 5 * 1024 * 1024; // 5 MB
                     if (!isPdf || file.size > maxSize) {
                         this.value = "";
                         alert(isPdf ? "File size must not exceed 5 MB." : "Please select a PDF file.");
+                    } else if (selectedDiv && fileNameSpan && label) {
+                        fileNameSpan.textContent = file.name;
+                        selectedDiv.classList.remove("hidden");
+                        label.classList.add("hidden");
                     }
+                } else if (selectedDiv && label) {
+                    selectedDiv.classList.add("hidden");
+                    label.classList.remove("hidden");
                 }
                 updateAtsModalRunButton();
+            });
+
+            // Remove selected file
+            document.querySelectorAll(".ats-file-remove").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    const wrapper = this.closest(".ats-file-upload-wrapper");
+                    const input = wrapper?.querySelector(".ats-file-upload-input");
+                    const selectedDiv = wrapper?.querySelector(".ats-file-selected");
+                    const label = wrapper?.querySelector(".ats-file-upload-label");
+                    if (input) {
+                        input.value = "";
+                    }
+                    if (selectedDiv) {
+                        selectedDiv.classList.add("hidden");
+                    }
+                    if (label) {
+                        label.classList.remove("hidden");
+                    }
+                    updateAtsModalRunButton();
+                });
             });
 
             // Run button
@@ -6273,6 +6305,16 @@ document.addEventListener(
                 resumeElements.atsUploadField.classList.add("hidden");
             }
             resumeElements.atsFileUpload.value = "";
+            // Reset file upload UI
+            const fileWrapper = resumeElements.atsFileUpload?.closest(".ats-file-upload-wrapper");
+            const fileSelected = fileWrapper?.querySelector(".ats-file-selected");
+            const fileLabel = fileWrapper?.querySelector(".ats-file-upload-label");
+            if (fileSelected) {
+                fileSelected.classList.add("hidden");
+            }
+            if (fileLabel) {
+                fileLabel.classList.remove("hidden");
+            }
 
             // Enable run button for saved resume (no upload needed)
             resumeElements.atsModalRun.disabled = false;

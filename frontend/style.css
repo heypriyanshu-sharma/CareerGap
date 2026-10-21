@@ -5744,38 +5744,140 @@ textarea:focus,
 
 .ats-job-description-field textarea {
     width: 100%;
-    min-height: 120px;
-    padding: 12px;
+    min-height: 140px;
+    max-height: 300px;
+    padding: 14px 16px;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     font-family: inherit;
     font-size: 0.9rem;
-    line-height: 1.5;
+    line-height: 1.6;
     resize: vertical;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    background: var(--cream);
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.ats-job-description-field textarea:hover {
+    background: var(--white);
+    border-color: var(--pistachio);
 }
 
 .ats-job-description-field textarea:focus {
     outline: none;
     border-color: var(--ref-green-dark);
     box-shadow: 0 0 0 3px rgba(49, 93, 59, 0.15);
+    background: var(--white);
 }
 
-.ats-file-upload {
+.ats-file-upload-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ats-file-upload-input {
+    position: absolute;
+    inset: 0;
     width: 100%;
-    padding: 12px;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.ats-file-upload-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px 20px;
     border: 2px dashed var(--border);
     border-radius: var(--radius-md);
-    font-family: inherit;
-    font-size: 0.9rem;
-    color: var(--olive);
+    background: var(--pistachio-soft);
     cursor: pointer;
     transition: border-color 0.2s, background 0.2s;
 }
 
-.ats-file-upload:hover {
+.ats-file-upload-label:hover {
     border-color: var(--pistachio);
+    background: var(--pistachio-light);
+}
+
+.ats-file-upload-input:focus + .ats-file-upload-label {
+    outline: none;
+    border-color: var(--ref-green-dark);
+    box-shadow: 0 0 0 3px rgba(49, 93, 59, 0.15);
+}
+
+.ats-file-upload-icon {
+    font-size: 1.5rem;
+    color: var(--ref-green-dark);
+}
+
+.ats-file-upload-text {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--olive-dark);
+}
+
+.ats-file-upload-hint {
+    font-size: 0.8rem;
+    color: var(--olive-soft);
+}
+
+.ats-file-selected {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--pistachio);
+    border-radius: var(--radius-md);
     background: var(--pistachio-soft);
+    animation: ats-fade-in 0.2s ease-out;
+}
+
+.ats-file-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--olive-dark);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.ats-file-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: var(--border);
+    color: var(--olive);
+    border-radius: var(--radius-sm);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    flex-shrink: 0;
+}
+
+.ats-file-remove:hover {
+    background: var(--error-red);
+    color: var(--white);
+}
+
+.ats-file-remove:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(200, 50, 50, 0.3);
+}
+
+.ats-file-upload-input:disabled + .ats-file-upload-label {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .ats-field-hint {
