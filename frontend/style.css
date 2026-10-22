@@ -351,18 +351,16 @@ a {
 .profile-trigger {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 10px 6px 8px;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
 
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: 10px;
 
     background: var(--cream);
     color: var(--olive-dark);
-
-    font: inherit;
-    font-size: 0.8rem;
-    font-weight: 700;
 
     transition:
         background 0.2s ease,
@@ -383,41 +381,11 @@ a {
     outline-offset: 2px;
 }
 
-.profile-avatar,
-.profile-menu-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--pistachio);
-    color: var(--olive);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    font-weight: 700;
+.profile-icon {
+    width: 20px;
+    height: 20px;
+    color: currentColor;
     flex-shrink: 0;
-    overflow: hidden;
-    background-size: cover;
-    background-position: center;
-}
-
-.profile-name {
-    max-width: 140px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.profile-caret {
-    width: 16px;
-    height: 16px;
-    color: var(--olive-soft);
-    flex-shrink: 0;
-    transition: transform 0.2s ease;
-}
-
-.profile-trigger[aria-expanded="true"] .profile-caret {
-    transform: rotate(180deg);
 }
 
 .profile-menu {
@@ -454,7 +422,18 @@ a {
 .profile-menu-avatar {
     width: 36px;
     height: 36px;
+    border-radius: 50%;
+    background: var(--pistachio);
+    color: var(--olive);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 0.85rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
 }
 
 .profile-menu-name {
@@ -662,26 +641,20 @@ a {
 
 
 
-.hero-decoration {
-
+.hero-illustration {
     position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 420px;
+    height: 520px;
+    max-width: 45%;
+    pointer-events: none;
+}
 
-    right: 5%;
-
-    bottom: 17%;
-
-    display: flex;
-
-    flex-direction: column;
-
-    gap: 30px;
-
-    color: var(--pistachio);
-
-    font-size: 4rem;
-
-    opacity: 0.6;
-
+.hero-illustration svg {
+    width: 100%;
+    height: 100%;
 }
 
 
@@ -3109,6 +3082,42 @@ textarea:focus,
 
 }
 
+.footer-links {
+    display: flex;
+    align-items: center;
+}
+
+.github-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    color: var(--olive-dark);
+    background: var(--cream);
+    border: 1px solid var(--border);
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.github-link:hover {
+    background: var(--pistachio-soft);
+    border-color: var(--pistachio);
+    color: var(--olive);
+    transform: translateY(-1px);
+}
+
+.github-link:focus-visible {
+    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline-offset: 2px;
+}
+
+.github-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
 
 
 
@@ -3803,15 +3812,29 @@ textarea:focus,
 }
 
     .analysis-history-item {
-    align-items: flex-start;
     flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
 }
 
-.analysis-history-item strong {
-    text-align: left;
+.analysis-history-item .analysis-history-side {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
 }
 
-    .nav-links {
+.analysis-history-item .analysis-history-actions {
+    flex-direction: row;
+    gap: 10px;
+}
+
+.analysis-history-item .history-view-button {
+    flex: 1;
+    justify-content: center;
+}
+
+.nav-links {
         display: none;
     }
 
@@ -4655,46 +4678,146 @@ textarea:focus,
 
 .analysis-history-list {
     display: grid;
-    gap: 16px;
+    gap: 12px;
 }
 
 .analysis-history-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 30px;
-    padding: 24px 26px;
+    gap: 20px;
+    padding: 18px 20px;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: var(--cream);
     box-shadow: var(--shadow-soft);
 }
 
-.analysis-history-item h3 {
+.analysis-history-item .analysis-history-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.analysis-history-item .analysis-history-title {
     color: var(--olive-dark);
-    font-size: 1.05rem;
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.analysis-history-item p {
-    max-width: 760px;
-    margin-top: 5px;
+.analysis-history-item .analysis-history-preview {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 0 0 8px;
     color: var(--olive-soft);
-    font-size: 0.88rem;
+    font-size: 0.82rem;
+    line-height: 1.5;
 }
 
-.analysis-history-item span {
+.analysis-history-item .analysis-history-date {
     display: block;
-    margin-top: 7px;
     color: var(--olive-soft);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
 }
 
-.analysis-history-item strong {
-    display: block;
-    margin-bottom: 10px;
+.analysis-history-item .analysis-history-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.analysis-history-item .analysis-history-score {
     color: var(--olive-dark);
     font-size: 1.1rem;
-    text-align: right;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.analysis-history-item .analysis-history-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.analysis-history-item .history-view-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 15px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--olive);
+    color: white;
+    font: inherit;
+    font-size: 0.76rem;
+    font-weight: 750;
+    cursor: pointer;
+    box-shadow: 0 5px 14px rgba(75, 96, 67, 0.10);
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.analysis-history-item .history-view-button:hover {
+    background: var(--olive-dark);
+    border-color: var(--olive-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(75, 96, 67, 0.14);
+}
+
+.analysis-history-item .history-view-button:focus-visible {
+    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline-offset: 2px;
+}
+
+.analysis-history-item .history-delete-button {
+    width: 30px;
+    height: 30px;
+
+    padding: 0;
+
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    background: transparent;
+    color: var(--olive-soft);
+
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+
+    line-height: 1;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.analysis-history-item .history-delete-button:hover {
+    background: rgba(164, 87, 71, 0.08);
+    border-color: rgba(164, 87, 71, 0.25);
+    color: #A45747;
+
+    transform: translateY(-1px);
+}
+
+.analysis-history-item .history-delete-button:disabled {
+    opacity: 0.5;
+    cursor: wait;
 }
 
 .history-view-button {
@@ -5744,7 +5867,7 @@ textarea:focus,
 
 .ats-job-description-field textarea {
     width: 100%;
-    min-height: 140px;
+    min-height: 110px;
     max-height: 300px;
     padding: 14px 16px;
     border: 1px solid var(--border);
@@ -5752,7 +5875,7 @@ textarea:focus,
     font-family: inherit;
     font-size: 0.9rem;
     line-height: 1.6;
-    resize: vertical;
+    resize: none;
     background: var(--cream);
     transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
@@ -6383,22 +6506,24 @@ textarea:focus,
 
 .resume-builder-layout {
     display: grid;
-    grid-template-columns: 320px 1fr;
-    gap: 24px;
-    width: min(1180px, 90%);
+    grid-template-columns: minmax(280px, 320px) 1fr;
+    gap: 28px;
+    width: min(1280px, 92%);
     margin: auto;
+    align-items: start;
 }
 
 .resume-list-panel {
     background: var(--white);
     border: 1px solid var(--ref-green-border);
     border-radius: var(--radius-lg);
-    padding: 20px;
+    padding: 22px;
     height: fit-content;
-    max-height: calc(100vh - var(--navbar-offset) - 40px);
+    max-height: calc(100vh - var(--navbar-offset) - 48px);
     overflow-y: auto;
     position: sticky;
-    top: calc(var(--navbar-offset) + 16px);
+    top: calc(var(--navbar-offset) + 20px);
+    flex-shrink: 0;
 }
 
 .resume-list-header {
@@ -6406,12 +6531,14 @@ textarea:focus,
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--ref-green-border);
     flex-wrap: wrap;
 }
 
 .resume-list-header h2 {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: var(--ref-green-dark);
     margin: 0;
@@ -6421,13 +6548,13 @@ textarea:focus,
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 9px 14px;
+    padding: 10px 16px;
     border: 1px solid var(--ref-green-border);
     border-radius: 10px;
     background: var(--ref-green-primary);
     color: var(--white);
     font: inherit;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     font-weight: 650;
     cursor: pointer;
     transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
@@ -6449,7 +6576,7 @@ textarea:focus,
 .resume-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .resume-list-item {
@@ -6457,9 +6584,9 @@ textarea:focus,
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 12px 14px;
+    padding: 14px 16px;
     border: 1px solid var(--ref-green-border);
-    border-radius: 10px;
+    border-radius: 12px;
     background: var(--ref-page);
     cursor: pointer;
     transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
@@ -6480,7 +6607,7 @@ textarea:focus,
 .resume-list-item-main {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
     min-width: 0;
     flex: 1;
 }
@@ -6488,7 +6615,7 @@ textarea:focus,
 .resume-list-item-title {
     font-weight: 650;
     color: var(--ref-green-dark);
-    font-size: 0.9rem;
+    font-size: 0.92rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -6498,14 +6625,14 @@ textarea:focus,
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     color: var(--olive-soft);
 }
 
 .resume-list-item-badge {
     display: inline-flex;
     align-items: center;
-    padding: 2px 8px;
+    padding: 3px 10px;
     border-radius: 999px;
     font-size: 0.62rem;
     font-weight: 700;
@@ -6525,7 +6652,7 @@ textarea:focus,
 
 .resume-empty {
     text-align: center;
-    padding: 32px 16px;
+    padding: 40px 20px;
     color: var(--olive-soft);
 }
 
@@ -6538,7 +6665,7 @@ textarea:focus,
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 32px;
+    padding: 40px;
     gap: 12px;
     color: var(--olive-soft);
     font-size: 0.85rem;
@@ -6565,7 +6692,7 @@ textarea:focus,
 .resume-editor-panel {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 20px;
     min-width: 0;
 }
 
@@ -6574,6 +6701,7 @@ textarea:focus,
     border: 1px solid var(--ref-green-border);
     border-radius: var(--radius-lg);
     overflow: hidden;
+    box-shadow: var(--shadow-soft);
 }
 
 .resume-view-header {
@@ -6581,14 +6709,14 @@ textarea:focus,
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 18px 22px;
+    padding: 20px 24px;
     border-bottom: 1px solid var(--ref-green-border);
     background: var(--ref-green-pale);
     flex-wrap: wrap;
 }
 
 .resume-view-header h3 {
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     font-weight: 700;
     color: var(--ref-green-dark);
     margin: 0;
@@ -6604,11 +6732,11 @@ textarea:focus,
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 14px;
+    padding: 9px 16px;
     border: 1px solid var(--ref-green-border);
     border-radius: 10px;
     font: inherit;
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     font-weight: 650;
     cursor: pointer;
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
@@ -6665,7 +6793,7 @@ textarea:focus,
 }
 
 .resume-preview {
-    padding: 24px;
+    padding: 28px 32px;
     max-height: 70vh;
     overflow-y: auto;
     contain: layout style;
@@ -6848,6 +6976,7 @@ textarea:focus,
     border: 1px solid var(--ref-green-border);
     border-radius: var(--radius-lg);
     overflow: hidden;
+    box-shadow: var(--shadow-soft);
 }
 
 .resume-editor-header {
@@ -6855,14 +6984,14 @@ textarea:focus,
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 16px 22px;
+    padding: 18px 24px;
     border-bottom: 1px solid var(--ref-green-border);
     background: var(--ref-green-pale);
     flex-wrap: wrap;
 }
 
 .resume-editor-header h3 {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     font-weight: 700;
     color: var(--ref-green-dark);
     margin: 0;
@@ -6874,7 +7003,7 @@ textarea:focus,
 }
 
 .resume-form {
-    padding: 22px;
+    padding: 28px 32px;
 }
 
 .resume-section {

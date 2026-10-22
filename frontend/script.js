@@ -1032,7 +1032,7 @@ document.addEventListener(
                     return;
                 }
 
-                analysisHistoryList.innerHTML =
+analysisHistoryList.innerHTML =
                     analysisHistoryData
                         .map(
                             function (item, index) {
@@ -1057,63 +1057,81 @@ document.addEventListener(
                                         }
                                     );
 
+                                // Extract role/title from job description (first non-empty line)
+                                const rawJobDesc = item.job_description || "";
+                                const firstLine = rawJobDesc
+                                    .split("\n")
+                                    .find(line => line.trim().length > 0) || "";
+                                const roleTitle = firstLine
+                                    .replace(/^[#\s]+/, "") // Remove markdown headings
+                                    .replace(/^[\-*\s]+/, "") // Remove list markers
+                                    .trim()
+                                    .slice(0, 80); // Cap length
+
+                                // Create a clean preview (2-3 lines) - strip markdown, limit length
+                                const cleanDesc = rawJobDesc
+                                    .replace(/^[#\s]+/gm, "") // Remove markdown headings
+                                    .replace(/^[\-*\s]+/gm, "") // Remove list markers
+                                    .replace(/\s+/g, " ") // Normalize whitespace
+                                    .trim()
+                                    .slice(0, 300); // Limit preview length
+
                                 return `
                                     <article
                                         class="analysis-history-item"
                                     >
 
-                                        <div>
-                                            <h3>
-                                                Career Analysis
+                                        <div class="analysis-history-content">
+                                            <h3 class="analysis-history-title">
+                                                ${escapeHTML(roleTitle) || "Career Analysis"}
                                             </h3>
 
-                                            <p>
-                                                ${escapeHTML(
-                                                    item.job_description
-                                                )}
+                                            <p class="analysis-history-preview">
+                                                ${escapeHTML(cleanDesc)}
                                             </p>
 
-                                            <span>
+                                            <span class="analysis-history-date">
                                                 ${createdDate}
                                             </span>
                                         </div>
 
-                                        <strong>
-                                            ${score.toFixed(1)}%
-                                        </strong>
+                                        <div class="analysis-history-side">
+                                            <strong class="analysis-history-score">
+                                                ${score.toFixed(1)}%
+                                            </strong>
 
-                                        <div
-                                            class="analysis-history-actions"
-                                        >
-
-                                            <button
-                                                type="button"
-                                                class="history-view-button"
-                                                data-history-index="${index}"
+                                            <div
+                                                class="analysis-history-actions"
                                             >
-                                                View Analysis
-                                            </button>
 
-                                            <button
-                                                type="button"
-                                                class="history-delete-button"
-                                                data-history-index="${index}"
-                                                data-analysis-id="${escapeHTML(
-                                                    String(
-                                                        item.id || ""
-                                                    )
-                                                )}"
-                                                aria-label="Delete analysis"
-                                                title="Delete analysis"
-                                            >
-                                                ×
-                                            </button>
+                                                <button
+                                                    type="button"
+                                                    class="history-view-button"
+                                                    data-history-index="${index}"
+                                                >
+                                                    View Analysis
+                                                </button>
 
+                                                <button
+                                                    type="button"
+                                                    class="history-delete-button"
+                                                    data-history-index="${index}"
+                                                    data-analysis-id="${escapeHTML(
+                                                        String(
+                                                            item.id || ""
+                                                        )
+                                                    )}"
+                                                    aria-label="Delete analysis"
+                                                    title="Delete analysis"
+                                                >
+                                                    ×
+                                                </button>
+
+                                            </div>
                                         </div>
 
                                     </article>
                                 `;
-
                             }
                         )
                         .join("");
@@ -6196,7 +6214,7 @@ document.addEventListener(
                 });
             });
 
-            // Job description input - enforce 20k char limit and update run button
+            // Job description input - enforce 20k char limit, update run button, and auto-grow
             resumeElements.atsJobDescription?.addEventListener("input", function () {
                 if (this.value.length > 20000) {
                     this.value = this.value.slice(0, 20000);
@@ -6206,6 +6224,12 @@ document.addEventListener(
                     resumeElements.atsJobDescCount.textContent = count;
                 }
                 updateAtsModalRunButton();
+
+                // Auto-grow textarea
+                this.style.height = "auto";
+                const maxHeight = parseInt(getComputedStyle(this).maxHeight, 10) || 300;
+                const newHeight = Math.min(this.scrollHeight, maxHeight);
+                this.style.height = newHeight + "px";
             });
 
             // File upload - validate PDF type and 5MB size
@@ -6294,6 +6318,7 @@ document.addEventListener(
                 resumeElements.atsJobDescriptionField.classList.add("hidden");
             }
             resumeElements.atsJobDescription.value = "";
+            resumeElements.atsJobDescription.style.height = "auto";
             if (resumeElements.atsJobDescCount) {
                 resumeElements.atsJobDescCount.textContent = "0";
             }

@@ -85,13 +85,6 @@
             </button>
 
         </nav>
-
-
-        <span class="dashboard-concept-badge">
-            Dashboard concept
-        </span>
-
-
         <div class="account-area" id="account-area">
 
             <button
@@ -103,10 +96,9 @@
                 aria-controls="profile-menu"
                 aria-label="Account menu"
             >
-                <span class="profile-avatar" aria-hidden="true"></span>
-                <span id="profile-name" class="profile-name"></span>
-                <svg class="profile-caret" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <svg class="profile-icon" viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2" fill="none"/>
                 </svg>
             </button>
 
@@ -243,11 +235,39 @@
     </div>
 
 
-    <div class="hero-decoration">
+    <div class="hero-illustration" aria-hidden="true">
+        <svg viewBox="0 0 400 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Growth path -->
+            <path d="M80 420 Q120 360 180 340 Q240 320 300 340 Q360 360 380 300" stroke="#C6D8A7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/>
+            <path d="M100 400 Q140 320 200 280 Q260 240 320 260 Q380 280 390 220" stroke="#C6D8A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.3"/>
 
-        <span>⌁</span>
-        <span>⌁</span>
+            <!-- Milestone nodes -->
+            <circle cx="180" cy="340" r="14" fill="#EDF0E5" stroke="#2E6038" stroke-width="2"/>
+            <circle cx="180" cy="340" r="6" fill="#2E6038"/>
+            <circle cx="300" cy="340" r="12" fill="#EDF0E5" stroke="#2E6038" stroke-width="2"/>
+            <circle cx="300" cy="340" r="5" fill="#2E6038"/>
+            <circle cx="380" cy="300" r="10" fill="#EDF0E5" stroke="#2E6038" stroke-width="2"/>
+            <circle cx="380" cy="300" r="4" fill="#2E6038"/>
 
+            <!-- Ascending bars representing growth -->
+            <rect x="140" y="280" width="12" height="60" rx="6" fill="#C6D8A7" opacity="0.5"/>
+            <rect x="170" y="240" width="12" height="100" rx="6" fill="#C6D8A7" opacity="0.6"/>
+            <rect x="200" y="200" width="12" height="140" rx="6" fill="#2E6038" opacity="0.7"/>
+            <rect x="230" y="180" width="12" height="160" rx="6" fill="#2E6038"/>
+            <rect x="260" y="200" width="12" height="140" rx="6" fill="#2E6038" opacity="0.7"/>
+            <rect x="290" y="240" width="12" height="100" rx="6" fill="#C6D8A7" opacity="0.6"/>
+            <rect x="320" y="280" width="12" height="60" rx="6" fill="#C6D8A7" opacity="0.5"/>
+
+            <!-- Leaf accent -->
+            <path d="M340 140 Q360 120 350 100 Q340 80 320 100 Q310 120 330 140 Z" fill="#C6D8A7" opacity="0.6"/>
+            <path d="M330 140 Q325 125 320 110 Q315 95 330 100" stroke="#2E6038" stroke-width="1.5" fill="none" opacity="0.4"/>
+
+            <!-- Small decorative dots -->
+            <circle cx="100" cy="180" r="3" fill="#C6D8A7" opacity="0.4"/>
+            <circle cx="360" cy="160" r="2" fill="#2E6038" opacity="0.3"/>
+            <circle cx="80" cy="320" r="2" fill="#C6D8A7" opacity="0.3"/>
+            <circle cx="390" cy="400" r="2" fill="#2E6038" opacity="0.2"/>
+        </svg>
     </div>
 
 </section>
@@ -1346,6 +1366,21 @@
 
     </div>
 
+
+    <div class="footer-links">
+        <a
+            href="https://github.com/heypriyanshu-sharma"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="github-link"
+            aria-label="Visit GitHub profile"
+            title="Visit GitHub profile"
+        >
+            <svg class="github-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+            </svg>
+        </a>
+    </div>
 
     <span>
         © 2026 CareerGap
