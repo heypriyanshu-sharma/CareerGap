@@ -84,6 +84,15 @@
                 Saved Analyses
             </button>
 
+            <button
+                type="button"
+                id="nav-interview-studio"
+                class="primary-nav-btn"
+                data-view="interview-studio"
+            >
+                Interview Studio
+            </button>
+
         </nav>
         <div class="account-area" id="account-area">
 
@@ -358,7 +367,179 @@
 
 
 <!-- =========================================================
-     PAGE INTRO
+     INTERVIEW STUDIO WORKSPACE
+========================================================= -->
+
+<section
+    id="interview-studio"
+    class="workspace-section hidden"
+    aria-labelledby="interview-studio-heading"
+>
+    <div class="interview-studio-layout">
+
+        <!-- SETUP PANEL -->
+        <div id="interview-setup" class="interview-setup-panel">
+            <header class="interview-setup-header">
+                <h2 id="interview-studio-heading">Interview Studio</h2>
+                <p class="interview-setup-description">
+                    Practice technical, behavioral, and project-based questions tailored to your background.
+                </p>
+            </header>
+
+            <form id="interview-setup-form" class="interview-setup-form">
+                <div class="interview-field-group">
+                    <label for="interview-mode">Mode</label>
+                    <select id="interview-mode" name="mode" required>
+                        <option value="quick">Quick Practice — 5 questions</option>
+                        <option value="full">Full Mock Interview — 15 questions</option>
+                    </select>
+                </div>
+
+                <div class="interview-field-group">
+                    <label for="interview-target-role">Target Role (optional)</label>
+                    <input
+                        type="text"
+                        id="interview-target-role"
+                        name="target_role"
+                        placeholder="e.g., Backend Engineer, Product Manager"
+                        maxlength="120"
+                    >
+                </div>
+
+                <div class="interview-field-group">
+                    <label for="interview-resume">Linked Resume (optional)</label>
+                    <select id="interview-resume" name="resume_id">
+                        <option value="">None — practice without resume context</option>
+                    </select>
+                </div>
+
+                <button
+                    type="submit"
+                    id="interview-generate-btn"
+                    class="interview-generate-btn"
+                >
+                    <span class="btn-text">Generate Questions</span>
+                    <span class="btn-loading hidden" aria-hidden="true">
+                        <svg class="spinner" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"></circle></svg>
+                        Generating...
+                    </span>
+                </button>
+            </form>
+
+            <div
+                id="interview-setup-error"
+                class="interview-error hidden"
+                role="alert"
+            ></div>
+        </div>
+
+        <!-- QUESTIONS PANEL (hidden until generated) -->
+        <div id="interview-questions" class="interview-questions-panel hidden">
+            <header class="interview-questions-header">
+                <div class="interview-progress">
+                    <span id="interview-progress-text">Question 1 of 5</span>
+                    <div class="interview-progress-bar">
+                        <div id="interview-progress-fill" class="interview-progress-fill"></div>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    id="interview-restart-btn"
+                    class="interview-restart-btn"
+                    aria-label="Start over"
+                >
+                    <span aria-hidden="true">←</span> Restart
+                </button>
+            </header>
+
+            <form id="interview-form" class="interview-form">
+                <div id="interview-question-list" class="interview-question-list" role="list"></div>
+
+                <div class="interview-form-actions">
+                    <button
+                        type="button"
+                        id="interview-save-draft-btn"
+                        class="interview-save-draft-btn"
+                    >
+                        Save Draft
+                    </button>
+                    <button
+                        type="submit"
+                        id="interview-submit-btn"
+                        class="interview-submit-btn"
+                    >
+                        <span class="btn-text">Submit for Feedback</span>
+                        <span class="btn-loading hidden" aria-hidden="true">
+                            <svg class="spinner" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"></circle></svg>
+                            Evaluating...
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- FEEDBACK MODAL -->
+        <div
+            id="interview-feedback-modal"
+            class="interview-modal hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="interview-feedback-modal-title"
+        >
+            <div class="interview-modal-backdrop"></div>
+            <div class="interview-modal-content">
+                <header class="interview-modal-header">
+                    <h3 id="interview-feedback-modal-title">Interview Feedback</h3>
+                    <button
+                        type="button"
+                        id="interview-modal-close"
+                        class="interview-modal-close"
+                        aria-label="Close feedback"
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </header>
+                <div id="interview-feedback-body" class="interview-feedback-body"></div>
+            </div>
+        </div>
+
+        <!-- HISTORY PANEL -->
+        <div id="interview-history" class="interview-history-panel">
+            <header class="interview-history-header">
+                <h3>Previous Sessions</h3>
+            </header>
+            <div
+                id="interview-history-list"
+                class="interview-history-list"
+                role="list"
+                aria-live="polite"
+            ></div>
+            <div
+                id="interview-history-empty"
+                class="interview-empty hidden"
+            >
+                <p>No interview sessions yet. Generate your first practice session above.</p>
+            </div>
+            <div
+                id="interview-history-loading"
+                class="interview-loading hidden"
+            >
+                <div class="loading-orbit-small"></div>
+                <p>Loading history...</p>
+            </div>
+            <div
+                id="interview-history-error"
+                class="interview-error hidden"
+                role="alert"
+            ></div>
+        </div>
+
+    </div>
+</section>
+
+
+<!-- =========================================================
+     FOOTER
 ========================================================= -->
 
 <section class="page-intro" aria-labelledby="page-intro-heading">

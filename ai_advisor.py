@@ -6,7 +6,7 @@ from google import genai
 
 load_dotenv()
 
-DEFAULT_MODEL = "gemini-3.6-flash"
+DEFAULT_MODEL = "gemini-1.5-flash"
 
 
 def build_client():

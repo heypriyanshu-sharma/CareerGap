@@ -1,20 +1,22 @@
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, conint, confloat, constr
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 from starlette.types import ASGIApp, Receive, Scope, Send
-from typing import NoReturn, Optional
+from typing import NoReturn, Optional, List, Dict, Literal
 from uuid import UUID
+from datetime import datetime
 import os
+import json
 import requests
 from supabase import create_client
 from auth import get_current_user, security
 from career_gap import run_careergap
-from ai_advisor import generate_career_advice, safe_error_detail
+from ai_advisor import DEFAULT_MODEL, build_client, generate_career_advice, safe_error_detail
 from ats_match import extract_job_keywords, calculate_ats_scorecard, analyze_resume_pdf
 from database import (
     get_analysis_history,
@@ -27,6 +29,10 @@ from database import (
     list_resumes,
     set_default_resume,
     update_resume,
+    create_interview_session,
+    submit_interview_answers,
+    delete_interview_session,
+    get_interview_history,
 )
 from file_upload import (
     MAX_FILE_SIZE,
@@ -441,6 +447,79 @@ class ResumeWriteRequest(BaseModel):
         default_factory=dict,
     )
     is_default: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Interview Studio models
+# ---------------------------------------------------------------------------
+
+class InterviewQuestion(BaseModel):
+    type: Literal["technical", "behavioral", "project"]
+    text: str = Field(min_length=1, max_length=1000)
+
+
+class InterviewGenerateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["quick", "full"]
+    target_role: Optional[str] = Field(default=None, max_length=120)
+    resume_id: Optional[UUID] = None
+
+
+class InterviewAnswerRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    answers: List[constr(strip_whitespace=True, min_length=1, max_length=5000)]
+
+
+class CategoryFeedback(BaseModel):
+    score: conint(ge=0, le=100)
+    strengths: List[str] = Field(default_factory=list)
+    gaps: List[str] = Field(default_factory=list)
+
+
+class Recommendation(BaseModel):
+    area: str = Field(min_length=1, max_length=120)
+    action: str = Field(min_length=1, max_length=500)
+    resources: List[str] = Field(default_factory=list)
+
+
+class InterviewFeedbackResponse(BaseModel):
+    session_id: UUID
+    score: confloat(ge=0, le=100)
+    feedback: Dict[Literal["technical", "behavioral", "project"], CategoryFeedback]
+    weak_areas: List[str] = Field(default_factory=list)
+    recommendations: List[Recommendation] = Field(default_factory=list)
+    completed_at: datetime
+
+
+class InterviewSessionResponse(BaseModel):
+    id: UUID
+    mode: Literal["quick", "full"]
+    target_role: Optional[str]
+    resume_id: Optional[UUID]
+    questions: List[InterviewQuestion]
+    status: Literal["pending", "completed"]
+    created_at: datetime
+
+
+class InterviewHistoryItem(BaseModel):
+    id: UUID
+    mode: Literal["quick", "full"]
+    target_role: Optional[str]
+    score: Optional[float]
+    status: Literal["pending", "completed"]
+    created_at: datetime
+    completed_at: Optional[datetime]
+
+
+# Rebuild models to resolve forward references
+InterviewQuestion.model_rebuild()
+CategoryFeedback.model_rebuild()
+Recommendation.model_rebuild()
+InterviewFeedbackResponse.model_rebuild()
+InterviewSessionResponse.model_rebuild()
+InterviewHistoryItem.model_rebuild()
 
 
 # ---------------------------------------------------------------------------
@@ -1242,6 +1321,457 @@ async def ats_analyze_resume(
         raise HTTPException(status_code=400, detail=result["error"])
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Interview Studio
+# ---------------------------------------------------------------------------
+
+# Mode-specific question distribution
+INTERVIEW_QUESTION_CONFIG = {
+    "quick": {"technical": 2, "behavioral": 2, "project": 1},
+    "full": {"technical": 5, "behavioral": 5, "project": 5},
+}
+
+
+def build_interview_prompt(mode: str, target_role: Optional[str], resume_text: str, job_description: str, projects: list) -> str:
+    """Build prompt for generating interview questions."""
+    config = INTERVIEW_QUESTION_CONFIG[mode]
+    total = sum(config.values())
+    role_line = f"Target role: {target_role}" if target_role else "Target role: Not specified"
+
+    return f"""
+You are an expert technical interviewer for CareerGap's Interview Studio.
+
+Generate {total} interview questions for a {mode} practice session.
+
+{role_line}
+
+Candidate context:
+- Resume: {resume_text[:3000]}
+- Target job: {job_description[:3000]}
+- Projects: {json.dumps([p.get('description', '')[:500] for p in projects[:3]])}
+
+Question distribution:
+- Technical: {config['technical']}
+- Behavioral: {config['behavioral']}
+- Project-based: {config['project']}
+
+Rules:
+- Questions must be specific to the candidate's background and target role
+- Technical questions should probe depth in relevant technologies
+- Behavioral questions should use STAR format (Situation, Task, Action, Result)
+- Project questions should reference the candidate's actual projects
+- No generic "tell me about yourself" questions
+- Each question must be a single clear sentence
+
+Return JSON only:
+{{
+  "questions": [
+    {{"type": "technical", "text": "..."}},
+    {{"type": "behavioral", "text": "..."}},
+    {{"type": "project", "text": "..."}}
+  ]
+}}
+""".strip()
+
+
+def build_feedback_prompt(mode: str, target_role: Optional[str], resume_text: str, job_description: str, projects: list, questions: list, answers: list) -> str:
+    """Build prompt for evaluating interview answers."""
+    return f"""
+You are an expert interview evaluator for CareerGap's Interview Studio.
+
+Evaluate a {mode} interview session.
+
+Target role: {target_role or 'Not specified'}
+
+Candidate context:
+- Resume: {resume_text[:3000]}
+- Target job: {job_description[:3000]}
+- Projects: {json.dumps([p.get('description', '')[:500] for p in projects[:3]])}
+
+Interview Q&A:
+{json.dumps([{{"question": q["text"], "type": q["type"], "answer": a}} for q, a in zip(questions, answers)], indent=2)}
+
+Provide structured feedback:
+
+Scoring (0-100 per category, overall 0-100):
+- Technical: knowledge depth, problem-solving
+- Behavioral: communication, STAR usage, self-awareness
+- Project: ownership, impact, technical depth
+
+Weak areas: specific skill gaps observed
+Recommendations: actionable next steps with resources
+
+Return JSON only:
+{{
+  "score": 75.5,
+  "feedback": {{
+    "technical": {{"score": 80, "strengths": ["..."], "gaps": ["..."]}},
+    "behavioral": {{"score": 70, "strengths": ["..."], "gaps": ["..."]}},
+    "project": {{"score": 75, "strengths": ["..."], "gaps": ["..."]}}
+  }},
+  "weak_areas": ["Docker", "System Design"],
+  "recommendations": [
+    {{"area": "Docker", "action": "Add Dockerfile to Project X", "resources": ["https://docs.docker.com"]}}
+  ]
+}}
+""".strip()
+
+
+async def generate_interview_questions(mode: str, target_role: Optional[str], resume_text: str, job_description: str, projects: list) -> List[InterviewQuestion]:
+    """Generate interview questions via Gemini."""
+    client = build_client()
+    prompt = build_interview_prompt(mode, target_role, resume_text, job_description, projects)
+    model = os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
+
+    try:
+        interaction = client.interactions.create(model=model, input=prompt)
+        # Try multiple response attributes for SDK compatibility
+        raw = (
+            getattr(interaction, "output_text", None)
+            or getattr(interaction, "text", None)
+            or getattr(interaction, "output", None)
+            or ""
+        )
+        raw = raw.strip() if raw else ""
+        if not raw:
+            raise RuntimeError("Gemini returned no questions text.")
+
+        data = json.loads(raw)
+        questions = [InterviewQuestion(**q) for q in data.get("questions", [])]
+
+        if not questions:
+            raise ValueError("No questions generated")
+
+        return questions
+
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Failed to parse Gemini questions output: {e}")
+    except Exception as e:
+        raise RuntimeError(f"Question generation failed: {safe_error_detail(e)}")
+
+
+async def evaluate_interview_answers(
+    mode: str,
+    target_role: Optional[str],
+    resume_text: str,
+    job_description: str,
+    projects: list,
+    questions: List[InterviewQuestion],
+    answers: List[str],
+) -> InterviewFeedbackResponse:
+    """Evaluate interview answers via Gemini."""
+    client = build_client()
+    prompt = build_feedback_prompt(mode, target_role, resume_text, job_description, projects, questions, answers)
+    model = os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
+
+    try:
+        interaction = client.interactions.create(model=model, input=prompt)
+        # Try multiple response attributes for SDK compatibility
+        raw = (
+            getattr(interaction, "output_text", None)
+            or getattr(interaction, "text", None)
+            or getattr(interaction, "output", None)
+            or ""
+        )
+        raw = raw.strip() if raw else ""
+        if not raw:
+            raise RuntimeError("Gemini returned no feedback text.")
+
+        data = json.loads(raw)
+
+        # Validate required keys
+        required_feedback_keys = {"technical", "behavioral", "project"}
+        if not required_feedback_keys.issubset(data.get("feedback", {}).keys()):
+            raise ValueError("Missing feedback categories")
+
+        return InterviewFeedbackResponse(**data)
+
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Failed to parse Gemini feedback output: {e}")
+    except Exception as e:
+        raise RuntimeError(f"Feedback generation failed: {safe_error_detail(e)}")
+
+
+# ---------------------------------------------------------------------------
+# Interview Studio Routes
+# ---------------------------------------------------------------------------
+
+@app.post("/interview/generate")
+@limiter.limit("5/minute")
+async def interview_generate(
+    request: Request,
+    interview_request: InterviewGenerateRequest,
+    claims: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    user_id = claims["sub"]
+
+    # Validate resume_id if provided
+    if interview_request.resume_id:
+        resume = get_resume(credentials.credentials, user_id, str(interview_request.resume_id))
+        if not resume:
+            raise HTTPException(status_code=404, detail="Resume not found or not owned.")
+
+    # Get user profile for target_role context
+    profile = None
+    try:
+        profile_resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/profiles",
+            headers={
+                "apikey": SUPABASE_PUBLISHABLE_KEY,
+                "Authorization": f"Bearer {credentials.credentials}",
+            },
+            params={"id": f"eq.{user_id}", "select": "target_role"},
+            timeout=10,
+        )
+        if profile_resp.ok:
+            rows = profile_resp.json()
+            if rows:
+                profile = rows[0]
+    except Exception:
+        pass
+
+    target_role = interview_request.target_role or (profile.get("target_role") if profile else None)
+
+    # Get resume text for context
+    resume_text = ""
+    if interview_request.resume_id:
+        resume = get_resume(credentials.credentials, user_id, str(interview_request.resume_id))
+        if resume:
+            resume_text = resume.get("plain_text", "")
+
+    # We need job description - for interview studio, we can use a generic one or ask user
+    # For now, construct from target_role
+    job_description = f"Role: {target_role or 'Software Engineer'}. " \
+        "We are looking for a candidate with strong technical skills, " \
+        "problem-solving ability, and relevant project experience."
+
+    # Get user's projects from resume if available
+    projects = []
+    if interview_request.resume_id and resume:
+        content = resume.get("content", {})
+        resume_projects = content.get("projects", [])
+        for p in resume_projects[:3]:
+            if isinstance(p, dict):
+                projects.append({
+                    "name": p.get("name", ""),
+                    "description": p.get("description", "")[:500]
+                })
+
+    # Generate questions
+    try:
+        questions = await generate_interview_questions(
+            mode=interview_request.mode,
+            target_role=target_role,
+            resume_text=resume_text,
+            job_description=job_description,
+            projects=projects,
+        )
+    except RuntimeError as e:
+        if "GEMINI_API_KEY" in str(e):
+            raise HTTPException(status_code=503, detail="AI service unavailable: API key not configured.")
+        if "timeout" in str(e).lower():
+            raise HTTPException(status_code=504, detail="AI request timed out.")
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Question generation failed: {safe_error_detail(e)}")
+
+    # Create session
+    questions_json = [q.model_dump() for q in questions]
+    try:
+        session = create_interview_session(
+            access_token=credentials.credentials,
+            user_id=user_id,
+            mode=interview_request.mode,
+            target_role=target_role,
+            resume_id=str(interview_request.resume_id) if interview_request.resume_id else None,
+            questions=questions_json,
+        )
+    except DatabaseRequestError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    except Exception as e:
+        print("CREATE SESSION ERROR:", type(e).__name__, safe_error_detail(e))
+        raise HTTPException(status_code=500, detail="Unable to create interview session.")
+
+    return InterviewSessionResponse(
+        id=UUID(session["id"]),
+        mode=session["mode"],
+        target_role=session.get("target_role"),
+        resume_id=UUID(session["resume_id"]) if session.get("resume_id") else None,
+        questions=questions,
+        status=session["status"],
+        created_at=session["created_at"],
+    )
+
+
+@app.post("/interview/{session_id}/answer")
+@limiter.limit("10/minute")
+async def interview_answer(
+    request: Request,
+    session_id: UUID,
+    answer_request: InterviewAnswerRequest,
+    claims: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    user_id = claims["sub"]
+
+    # Validate answer count will be checked in RPC, but we can pre-validate
+    if not answer_request.answers:
+        raise HTTPException(status_code=400, detail="At least one answer is required.")
+
+    # We need the session data to build the evaluation prompt
+    # Fetch session first
+    try:
+        session_resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/interview_sessions",
+            headers={
+                "apikey": SUPABASE_PUBLISHABLE_KEY,
+                "Authorization": f"Bearer {credentials.credentials}",
+            },
+            params={
+                "id": f"eq.{session_id}",
+                "user_id": f"eq.{user_id}",
+                "select": "id,mode,target_role,resume_id,questions,status",
+            },
+            timeout=10,
+        )
+        if not session_resp.ok:
+            raise HTTPException(status_code=500, detail="Unable to load session.")
+
+        sessions = session_resp.json()
+        if not sessions:
+            raise HTTPException(status_code=404, detail="Session not found.")
+
+        session = sessions[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("LOAD SESSION ERROR:", type(e).__name__, safe_error_detail(e))
+        raise HTTPException(status_code=500, detail="Unable to load session.")
+
+    if session["status"] != "pending":
+        raise HTTPException(status_code=400, detail="Session already completed.")
+
+    questions = session["questions"]
+    if len(answer_request.answers) != len(questions):
+        raise HTTPException(status_code=400, detail="Answer count must match question count.")
+
+    # Get context for evaluation
+    target_role = session.get("target_role")
+    resume_text = ""
+    if session.get("resume_id"):
+        resume = get_resume(credentials.credentials, user_id, str(session["resume_id"]))
+        if resume:
+            resume_text = resume.get("plain_text", "")
+
+    job_description = f"Role: {target_role or 'Software Engineer'}. " \
+        "We are looking for a candidate with strong technical skills, " \
+        "problem-solving ability, and relevant project experience."
+
+    projects = []
+    if session.get("resume_id"):
+        resume = get_resume(credentials.credentials, user_id, str(session["resume_id"]))
+        if resume:
+            content = resume.get("content", {})
+            resume_projects = content.get("projects", [])
+            for p in resume_projects[:3]:
+                if isinstance(p, dict):
+                    projects.append({
+                        "name": p.get("name", ""),
+                        "description": p.get("description", "")[:500]
+                    })
+
+    # Evaluate answers
+    try:
+        feedback = await evaluate_interview_answers(
+            mode=session["mode"],
+            target_role=target_role,
+            resume_text=resume_text,
+            job_description=job_description,
+            projects=projects,
+            questions=[InterviewQuestion(**q) for q in questions],
+            answers=answer_request.answers,
+        )
+    except RuntimeError as e:
+        if "GEMINI_API_KEY" in str(e):
+            raise HTTPException(status_code=503, detail="AI service unavailable: API key not configured.")
+        if "timeout" in str(e).lower():
+            raise HTTPException(status_code=504, detail="AI request timed out.")
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Feedback generation failed: {safe_error_detail(e)}")
+
+    # Persist answers and feedback
+    try:
+        updated_session = submit_interview_answers(
+            access_token=credentials.credentials,
+            user_id=user_id,
+            session_id=str(session_id),
+            answers=answer_request.answers,
+            score=feedback.score,
+            feedback={k: v.model_dump() for k, v in feedback.feedback.items()},
+            weak_areas=feedback.weak_areas,
+            recommendations=[r.model_dump() for r in feedback.recommendations],
+        )
+    except DatabaseRequestError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    except Exception as e:
+        print("SUBMIT ANSWERS ERROR:", type(e).__name__, safe_error_detail(e))
+        raise HTTPException(status_code=500, detail="Unable to submit interview answers.")
+
+    return feedback
+
+
+@app.get("/interview/history")
+def interview_history(
+    claims: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    limit: int = 20,
+    offset: int = 0,
+):
+    user_id = claims["sub"]
+
+    try:
+        history = get_interview_history(
+            access_token=credentials.credentials,
+            user_id=user_id,
+            limit=limit,
+            offset=offset,
+        )
+    except DatabaseRequestError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    except Exception as e:
+        print("HISTORY ERROR:", type(e).__name__, safe_error_detail(e))
+        raise HTTPException(status_code=500, detail="Unable to load interview history.")
+
+    return [InterviewHistoryItem(**item) for item in history]
+
+
+@app.delete("/interview/{session_id}", status_code=204)
+@limiter.limit("10/minute")
+def interview_delete(
+    request: Request,
+    session_id: UUID,
+    claims: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    user_id = claims["sub"]
+
+    try:
+        delete_interview_session(
+            access_token=credentials.credentials,
+            user_id=user_id,
+            session_id=str(session_id),
+        )
+    except DatabaseRequestError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    except Exception as e:
+        print("DELETE SESSION ERROR:", type(e).__name__, safe_error_detail(e))
+        raise HTTPException(status_code=500, detail="Unable to delete interview session.")
+
+    return Response(status_code=204)
 
 
 @app.delete(

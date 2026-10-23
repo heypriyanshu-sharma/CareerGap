@@ -94,6 +94,76 @@ document.addEventListener(
             );
 
         // =================================================
+        // INTERVIEW STUDIO ELEMENTS
+        // =================================================
+
+        const interviewStudioSection =
+            document.getElementById("interview-studio");
+
+        const interviewSetupForm =
+            document.getElementById("interview-setup-form");
+
+        const interviewModeSelect =
+            document.getElementById("interview-mode");
+
+        const interviewTargetRoleInput =
+            document.getElementById("interview-target-role");
+
+        const interviewResumeSelect =
+            document.getElementById("interview-resume");
+
+        const interviewGenerateBtn =
+            document.getElementById("interview-generate-btn");
+
+        const interviewSetupError =
+            document.getElementById("interview-setup-error");
+
+        const interviewQuestionsPanel =
+            document.getElementById("interview-questions");
+
+        const interviewProgressText =
+            document.getElementById("interview-progress-text");
+
+        const interviewProgressFill =
+            document.getElementById("interview-progress-fill");
+
+        const interviewRestartBtn =
+            document.getElementById("interview-restart-btn");
+
+        const interviewForm =
+            document.getElementById("interview-form");
+
+        const interviewQuestionList =
+            document.getElementById("interview-question-list");
+
+        const interviewSaveDraftBtn =
+            document.getElementById("interview-save-draft-btn");
+
+        const interviewSubmitBtn =
+            document.getElementById("interview-submit-btn");
+
+        const interviewFeedbackModal =
+            document.getElementById("interview-feedback-modal");
+
+        const interviewFeedbackBody =
+            document.getElementById("interview-feedback-body");
+
+        const interviewModalClose =
+            document.getElementById("interview-modal-close");
+
+        const interviewHistoryList =
+            document.getElementById("interview-history-list");
+
+        const interviewHistoryEmpty =
+            document.getElementById("interview-history-empty");
+
+        const interviewHistoryLoading =
+            document.getElementById("interview-history-loading");
+
+        const interviewHistoryError =
+            document.getElementById("interview-history-error");
+
+        // =================================================
         // DASHBOARD NAVIGATION
         // =================================================
 
@@ -195,6 +265,21 @@ document.addEventListener(
                 return;
             }
 
+            if (view === "interview-studio") {
+                if (interviewStudioSection) {
+                    interviewStudioSection.classList.remove("hidden");
+                }
+                // Load resumes into the resume selector
+                interviewStudio.loadResumesIntoSelector();
+                // Load history
+                interviewStudio.loadHistory();
+                return;
+            }
+
+            if (interviewStudioSection) {
+                interviewStudioSection.classList.add("hidden");
+            }
+
             if (resultsSection) {
                 resultsSection.classList.add(
                     "hidden"
@@ -248,6 +333,10 @@ document.addEventListener(
                 view === "saved-analyses"
             ) {
                 target = analysisHistorySection;
+            } else if (
+                view === "interview-studio"
+            ) {
+                target = interviewStudioSection;
             }
 
             if (!target) {
@@ -950,7 +1039,7 @@ document.addEventListener(
         const API_BASE_URL = configuredApiUrl && isLocalhost
             ? configuredApiUrl
             : isLocalhost
-            ? "http://127.0.0.1:8001"
+            ? "http://127.0.0.1:8000"
             : "https://careergap.onrender.com";
 
         async function getAccessToken(
@@ -6648,6 +6737,402 @@ analysisHistoryList.innerHTML =
 
             loadResumes();
         }
+
+        // =========================================================
+        // INTERVIEW STUDIO MODULE
+        // =========================================================
+
+        const interviewStudio = (function () {
+            let session = null;
+            let questions = [];
+
+            function showError(element, message) {
+                if (element) {
+                    element.textContent = message;
+                    element.classList.remove("hidden");
+                }
+            }
+
+            function hideError(element) {
+                if (element) {
+                    element.textContent = "";
+                    element.classList.add("hidden");
+                }
+            }
+
+            function setButtonLoading(button, loading, textElement, loadingElement) {
+                if (!button) return;
+                button.disabled = loading;
+                if (textElement) textElement.classList.toggle("hidden", loading);
+                if (loadingElement) loadingElement.classList.toggle("hidden", !loading);
+            }
+
+            async function loadResumesIntoSelector() {
+                if (!interviewResumeSelect) return;
+
+                try {
+                    const accessToken = await getAccessToken(false);
+                    if (!accessToken) return;
+
+                    const resumes = await apiRequest("/resumes?limit=50", {}, false);
+                    if (!resumes || !Array.isArray(resumes)) return;
+
+                    interviewResumeSelect.innerHTML = '<option value="">None — practice without resume context</option>';
+                    resumes.forEach(function (resume) {
+                        const option = document.createElement("option");
+                        option.value = resume.id;
+                        option.textContent = escapeHTML(resume.title);
+                        interviewResumeSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error("Failed to load resumes for interview studio:", error);
+                }
+            }
+
+            function renderQuestions() {
+                if (!interviewQuestionList || !questions.length) return;
+
+                interviewQuestionList.innerHTML = questions.map(function (q, index) {
+                    const typeLabels = {
+                        technical: "Technical",
+                        behavioral: "Behavioral",
+                        project: "Project-Based"
+                    };
+                    const typeLabel = typeLabels[q.type] || q.type;
+
+                    return `
+                        <article class="interview-question-card" data-index="${index}">
+                            <header class="interview-question-header">
+                                <span class="interview-question-type">${escapeHTML(typeLabel)}</span>
+                                <span class="interview-question-number">Question ${index + 1} of ${questions.length}</span>
+                            </header>
+                            <p class="interview-question-text">${escapeHTML(q.text)}</p>
+                            <textarea
+                                class="interview-answer-input"
+                                name="answer_${index}"
+                                placeholder="Type your answer here..."
+                                rows="4"
+                                required
+                                maxlength="5000"
+                            ></textarea>
+                        </article>
+                    `;
+                }).join("");
+
+                updateProgress();
+            }
+
+            function updateProgress() {
+                if (!interviewProgressText || !interviewProgressFill) return;
+                const answered = interviewQuestionList.querySelectorAll("textarea:not(:placeholder-shown)").length;
+                interviewProgressText.textContent = `Question ${answered + 1} of ${questions.length}`;
+                interviewProgressFill.style.width = `${(answered / questions.length) * 100}%`;
+            }
+
+            let isSubmitting = false;
+
+            async function submitAnswers(event) {
+                if (event) event.preventDefault();
+
+                if (isSubmitting) return;
+                if (!session) return;
+
+                // Collect answers
+                const textareas = interviewQuestionList.querySelectorAll("textarea.interview-answer-input");
+                const answers = Array.from(textareas).map(function (ta) {
+                    return ta.value.trim();
+                });
+
+                // Validate all answers present and within length limit
+                const emptyCount = answers.filter(function (a) { return a === ""; }).length;
+                if (emptyCount > 0) {
+                    alert("Please answer all questions before submitting.");
+                    return;
+                }
+
+                const tooLong = answers.find(function (a) { return a.length > 5000; });
+                if (tooLong) {
+                    alert("An answer exceeds the 5000 character limit. Please shorten it and try again.");
+                    return;
+                }
+
+                isSubmitting = true;
+                setButtonLoading(interviewSubmitBtn, true,
+                    interviewSubmitBtn.querySelector(".btn-text"),
+                    interviewSubmitBtn.querySelector(".btn-loading")
+                );
+
+                try {
+                    const feedback = await apiRequest(`/interview/${session.id}/answer`, {
+                        method: "POST",
+                        body: JSON.stringify({ answers })
+                    });
+
+                    // Render feedback in modal
+                    renderFeedback(feedback);
+                    interviewFeedbackModal.classList.remove("hidden");
+
+                    // Reset state - session is now completed
+                    session = null;
+                    questions = [];
+
+                } catch (error) {
+                    console.error("Submit answers error:", error);
+                    alert("Failed to submit answers: " + escapeHTML(error.message || "Unknown error"));
+                } finally {
+                    isSubmitting = false;
+                    setButtonLoading(interviewSubmitBtn, false,
+                        interviewSubmitBtn.querySelector(".btn-text"),
+                        interviewSubmitBtn.querySelector(".btn-loading")
+                    );
+                }
+            }
+
+            function isValidHttpUrl(url) {
+                try {
+                    const u = new URL(url);
+                    return u.protocol === "http:" || u.protocol === "https:";
+                } catch (_) {
+                    return false;
+                }
+            }
+
+            function renderFeedback(feedback) {
+                if (!interviewFeedbackBody) return;
+
+                const categoryLabels = {
+                    technical: "Technical",
+                    behavioral: "Behavioral",
+                    project: "Project-Based"
+                };
+
+                const feedbackHtml = `
+                    <div class="interview-feedback-overall">
+                        <span class="interview-feedback-score">${Math.round(feedback.score)}%</span>
+                        <span class="interview-feedback-label">Overall Score</span>
+                    </div>
+
+                    <section class="interview-feedback-categories">
+                        ${Object.entries(feedback.feedback).map(function (_ref) {
+                            var cat = _ref[0];
+                            var data = _ref[1];
+                            return `
+                                <article class="interview-feedback-category">
+                                    <header>
+                                        <h4>${escapeHTML(categoryLabels[cat] || cat)}</h4>
+                                        <span class="interview-category-score">${data.score}%</span>
+                                    </header>
+                                    <div class="interview-feedback-strengths">
+                                        <strong>Strengths:</strong>
+                                        <ul>
+                                            ${data.strengths.map(function (s) { return "<li>" + escapeHTML(s) + "</li>"; }).join("") || "<li>—</li>"}
+                                        </ul>
+                                    </div>
+                                    <div class="interview-feedback-gaps">
+                                        <strong>Areas for Improvement:</strong>
+                                        <ul>
+                                            ${data.gaps.map(function (g) { return "<li>" + escapeHTML(g) + "</li>"; }).join("") || "<li>—</li>"}
+                                        </ul>
+                                    </div>
+                                </article>
+                            `;
+                        }).join("")}
+                    </section>
+
+                    ${feedback.weak_areas.length ? `
+                        <section class="interview-feedback-weak-areas">
+                            <h4>Weak Areas</h4>
+                            <ul>
+                                ${feedback.weak_areas.map(function (w) { return "<li>" + escapeHTML(w) + "</li>"; }).join("")}
+                            </ul>
+                        </section>
+                    ` : ""}
+
+                    ${feedback.recommendations.length ? `
+                        <section class="interview-feedback-recommendations">
+                            <h4>Recommended Next Steps</h4>
+                            <ul>
+                                ${feedback.recommendations.map(function (r) {
+                                    return `
+                                        <li>
+                                            <strong>${escapeHTML(r.area)}:</strong> ${escapeHTML(r.action)}
+                                            ${r.resources && r.resources.length ? `
+                                                <ul class="interview-feedback-resources">
+                                                    ${r.resources.filter(isValidHttpUrl).map(function (res) { return "<li><a href=\"" + escapeHTML(res) + "\" target=\"_blank\" rel=\"noopener\">" + escapeHTML(res) + "</a></li>"; }).join("")}
+                                                </ul>
+                                            ` : ""}
+                                        </li>
+                                    `;
+                                }).join("")}
+                            </ul>
+                        </section>
+                    ` : ""}
+                `;
+
+                interviewFeedbackBody.innerHTML = feedbackHtml;
+            }
+
+            async function generateSession(event) {
+                if (event) event.preventDefault();
+
+                hideError(interviewSetupError);
+                setButtonLoading(interviewGenerateBtn, true,
+                    interviewGenerateBtn.querySelector(".btn-text"),
+                    interviewGenerateBtn.querySelector(".btn-loading")
+                );
+
+                const mode = interviewModeSelect.value;
+                const targetRole = interviewTargetRoleInput.value.trim() || null;
+                const resumeId = interviewResumeSelect.value || null;
+
+                try {
+                    const data = await apiRequest("/interview/generate", {
+                        method: "POST",
+                        body: JSON.stringify({ mode, target_role: targetRole, resume_id: resumeId })
+                    });
+
+                    if (!data || !data.questions) {
+                        throw new Error("Invalid response from server");
+                    }
+
+                    session = data;
+                    questions = data.questions;
+
+                    // Switch to questions panel
+                    interviewSetupForm.classList.add("hidden");
+                    interviewQuestionsPanel.classList.remove("hidden");
+
+                    renderQuestions();
+
+                } catch (error) {
+                    console.error("Generate session error:", error);
+                    showError(interviewSetupError, escapeHTML(error.message || "Failed to generate interview session."));
+                } finally {
+                    setButtonLoading(interviewGenerateBtn, false,
+                        interviewGenerateBtn.querySelector(".btn-text"),
+                        interviewGenerateBtn.querySelector(".btn-loading")
+                    );
+                }
+            }
+
+            async function loadHistory() {
+                if (!interviewHistoryList) return;
+
+                interviewHistoryLoading.classList.remove("hidden");
+                interviewHistoryEmpty.classList.add("hidden");
+                interviewHistoryError.classList.add("hidden");
+                interviewHistoryList.innerHTML = "";
+
+                try {
+                    const accessToken = await getAccessToken(false);
+                    if (!accessToken) {
+                        interviewHistoryLoading.classList.add("hidden");
+                        return;
+                    }
+
+                    const history = await apiRequest("/interview/history", {}, false);
+
+                    if (!history || !history.length) {
+                        interviewHistoryEmpty.classList.remove("hidden");
+                        return;
+                    }
+
+                    interviewHistoryList.innerHTML = history.map(function (item) {
+                        const date = new Date(item.created_at).toLocaleDateString(undefined, {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric"
+                        });
+                        const scoreDisplay = item.score !== null && item.score !== undefined
+                            ? `${item.score.toFixed(1)}%`
+                            : "—";
+
+                        return `
+                            <article class="interview-history-card">
+                                <header>
+                                    <span class="interview-history-mode">${escapeHTML(item.mode === "quick" ? "Quick Practice" : "Full Mock Interview")}</span>
+                                    <span class="interview-history-date">${date}</span>
+                                </header>
+                                <div class="interview-history-main">
+                                    <h4>${escapeHTML(item.target_role || "General Interview")}</h4>
+                                    <span class="interview-history-score">${scoreDisplay}</span>
+                                </div>
+                                <footer>
+                                    <button type="button" class="interview-history-delete" data-id="${item.id}" aria-label="Delete session">Delete</button>
+                                </footer>
+                            </article>
+                        `;
+                    }).join("");
+
+                    // Add delete handlers
+                    interviewHistoryList.querySelectorAll(".interview-history-delete").forEach(function (btn) {
+                        btn.addEventListener("click", function () {
+                            interviewStudio.deleteSession(btn.dataset.id);
+                        });
+                    });
+
+                } catch (error) {
+                    console.error("Load history error:", error);
+                    interviewHistoryError.textContent = escapeHTML(error.message || "Failed to load history.");
+                    interviewHistoryError.classList.remove("hidden");
+                } finally {
+                    interviewHistoryLoading.classList.add("hidden");
+                }
+            }
+
+            async function deleteSession(sessionId) {
+                if (!confirm("Delete this interview session?")) return;
+
+                try {
+                    await apiRequest(`/interview/${sessionId}`, { method: "DELETE" });
+                    loadHistory();
+                } catch (error) {
+                    console.error("Delete session error:", error);
+                    interviewHistoryError.textContent = escapeHTML(error.message || "Failed to delete session.");
+                    interviewHistoryError.classList.remove("hidden");
+                }
+            }
+
+            // Event listeners
+            if (interviewSetupForm) {
+                interviewSetupForm.addEventListener("submit", generateSession);
+            }
+            if (interviewForm) {
+                interviewForm.addEventListener("submit", submitAnswers);
+            }
+            if (interviewRestartBtn) {
+                interviewRestartBtn.addEventListener("click", function () {
+                    session = null;
+                    questions = [];
+                    interviewQuestionList.innerHTML = "";
+                    interviewQuestionsPanel.classList.add("hidden");
+                    interviewSetupForm.classList.remove("hidden");
+                    interviewSetupForm.reset();
+                });
+            }
+            if (interviewModalClose) {
+                interviewModalClose.addEventListener("click", function () {
+                    interviewFeedbackModal.classList.add("hidden");
+                });
+            }
+            if (interviewFeedbackModal) {
+                interviewFeedbackModal.addEventListener("click", function (event) {
+                    if (event.target === interviewFeedbackModal) {
+                        interviewFeedbackModal.classList.add("hidden");
+                    }
+                });
+            }
+
+            return {
+                generateSession,
+                loadResumesIntoSelector,
+                loadHistory,
+                deleteSession,
+                // State accessors for future checkpoints
+                getSession: function () { return session; },
+                getQuestions: function () { return questions; }
+            };
+        })();
 
 initResumeBuilder();
     }

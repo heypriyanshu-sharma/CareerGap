@@ -504,6 +504,151 @@ def get_analysis_history(access_token):
 
     return response.json()
 
+
+def _call_interview_function(
+    access_token,
+    function_name,
+    payload,
+    fallback_message,
+):
+    """Call one interview RPC and return the row it produced.
+
+    Ownership is derived from the caller's token inside the function.
+    caller_id is sent so the function can verify the token belongs to that user.
+    """
+
+    response = requests.post(
+        f"{SUPABASE_URL}/rest/v1/rpc/{function_name}",
+        headers=_resumes_headers(access_token),
+        json=payload,
+        timeout=10,
+    )
+
+    _raise_for_database_response(
+        response,
+        fallback_message,
+    )
+
+    data = response.json()
+
+    if data is None:
+        raise DatabaseRequestError(fallback_message)
+
+    if isinstance(data, list):
+        if not data:
+            raise DatabaseRequestError(fallback_message)
+        return data[0]
+
+    if isinstance(data, dict):
+        return data
+
+    raise DatabaseRequestError(fallback_message)
+
+
+def create_interview_session(
+    access_token,
+    user_id,
+    mode,
+    target_role,
+    resume_id,
+    questions,
+):
+    return _call_interview_function(
+        access_token,
+        "create_interview_session",
+        {
+            "caller_id": user_id,
+            "p_mode": mode,
+            "p_target_role": target_role,
+            "p_resume_id": str(resume_id) if resume_id else None,
+            "p_questions": questions,
+        },
+        "Unable to create interview session.",
+    )
+
+
+def submit_interview_answers(
+    access_token,
+    user_id,
+    session_id,
+    answers,
+    score,
+    feedback,
+    weak_areas,
+    recommendations,
+):
+    return _call_interview_function(
+        access_token,
+        "submit_interview_answers",
+        {
+            "caller_id": user_id,
+            "p_session_id": str(session_id),
+            "p_answers": answers,
+            "p_score": score,
+            "p_feedback": feedback,
+            "p_weak_areas": weak_areas,
+            "p_recommendations": recommendations,
+        },
+        "Unable to submit interview answers.",
+    )
+
+
+def delete_interview_session(
+    access_token,
+    user_id,
+    session_id,
+):
+    response = requests.post(
+        f"{SUPABASE_URL}/rest/v1/rpc/delete_interview_session",
+        headers=_resumes_headers(access_token),
+        json={"caller_id": user_id, "p_session_id": str(session_id)},
+        timeout=10,
+    )
+
+    _raise_for_database_response(
+        response,
+        "Unable to delete interview session.",
+    )
+
+
+def get_interview_history(
+    access_token,
+    user_id,
+    limit=20,
+    offset=0,
+):
+    if limit is None:
+        limit = 20
+    else:
+        limit = min(max(1, limit), 50)
+
+    response = requests.get(
+        f"{SUPABASE_URL}/rest/v1/interview_sessions",
+        headers=_resumes_headers(access_token),
+        params={
+            **_owned_params(
+                user_id,
+                select="id,mode,target_role,score,status,created_at,completed_at",
+            ),
+            "order": "created_at.desc",
+            "limit": str(limit),
+            "offset": str(offset),
+        },
+        timeout=10,
+    )
+
+    # Handle 404 specifically for interview_sessions table (may not exist yet)
+    if response.status_code == 404:
+        return []
+
+    _raise_for_database_response(
+        response,
+        "Unable to load interview history.",
+    )
+
+    return response.json()
+
+
 def delete_analysis(
     access_token,
     analysis_id

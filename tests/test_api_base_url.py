@@ -68,35 +68,35 @@ const scenarios = [
         metaContent: null,
         protocol: "http:",
         hostname: "localhost",
-        expected: "http://127.0.0.1:8001"
+        expected: "http://127.0.0.1:8000"
     },
     {
         name: "localhost_with_meta",
-        metaContent: "http://127.0.0.1:8001",
+        metaContent: "http://127.0.0.1:8000",
         protocol: "http:",
         hostname: "localhost",
-        expected: "http://127.0.0.1:8001"
+        expected: "http://127.0.0.1:8000"
     },
     {
         name: "loopback_without_meta",
         metaContent: null,
         protocol: "http:",
         hostname: "127.0.0.1",
-        expected: "http://127.0.0.1:8001"
+        expected: "http://127.0.0.1:8000"
     },
     {
         name: "file_protocol_without_meta",
         metaContent: null,
         protocol: "file:",
         hostname: "",
-        expected: "http://127.0.0.1:8001"
+        expected: "http://127.0.0.1:8000"
     },
     {
         name: "file_protocol_with_meta",
-        metaContent: "http://127.0.0.1:8001",
+        metaContent: "http://127.0.0.1:8000",
         protocol: "file:",
         hostname: "",
-        expected: "http://127.0.0.1:8001"
+        expected: "http://127.0.0.1:8000"
     }
 ];
 
@@ -160,7 +160,7 @@ def test_api_base_url_selection_production_vs_local(tmp_path):
         "production_with_stale_local_meta: https://careergap.onrender.com"
         in result.stdout
     )
-    assert "localhost_with_meta: http://127.0.0.1:8001" in result.stdout
+    assert "localhost_with_meta: http://127.0.0.1:8000" in result.stdout
 
 
 def test_meta_tag_does_not_force_a_local_url():
@@ -187,12 +187,12 @@ def test_selection_logic_scopes_override_to_localhost():
     assert "configuredApiUrl && isLocalhost" in source, (
         "meta tag override must be scoped to localhost"
     )
-    assert '"http://127.0.0.1:8001"' in source, (
-        "local backend fallback must be http://127.0.0.1:8001"
+    assert '"http://127.0.0.1:8000"' in source, (
+        "local backend fallback must be http://127.0.0.1:8000"
     )
     assert '"https://careergap.onrender.com"' in source, (
         "production API fallback must be https://careergap.onrender.com"
     )
-    assert '"http://127.0.0.1:8000"' not in source, (
-        "stale local fallback port 8000 must be gone"
+    assert '"http://127.0.0.1:8001"' not in source, (
+        "stale local fallback port 8001 must be gone"
     )
