@@ -667,7 +667,6 @@ def test_interview_answer_accepts_valid_submission(monkeypatch):
 
 # Mock feedback generation
     expected_feedback = {
-        "session_id": "123e4567-e89b-12d3-a456-426614174000",
         "score": 78.5,
         "feedback": {
             "technical": {"score": 80, "strengths": ["Good knowledge"], "gaps": ["Docker"]},
@@ -678,19 +677,18 @@ def test_interview_answer_accepts_valid_submission(monkeypatch):
         "recommendations": [
             {"area": "Docker", "action": "Add Dockerfile to project", "resources": ["https://docs.docker.com"]}
         ],
-        "completed_at": "2024-01-01T00:00:00Z",
     }
 
     async def mock_evaluate(mode, target_role, resume_text, job_description, projects, questions, answers):
-        return backend.InterviewFeedbackResponse(**expected_feedback)
+        return expected_feedback
 
     monkeypatch.setattr(backend, "evaluate_interview_answers", mock_evaluate)
 
-    # Mock submit answers
+# Mock submit answers
     monkeypatch.setattr(
         backend,
         "submit_interview_answers",
-        lambda access_token, user_id, session_id, answers, score, feedback, weak_areas, recommendations: {
+        lambda user_id, session_id, answers, score, feedback, weak_areas, recommendations: {
             "id": "123e4567-e89b-12d3-a456-426614174000",
             "mode": "quick",
             "target_role": "Backend Engineer",
@@ -965,23 +963,21 @@ def test_interview_concurrent_submission_rejected(monkeypatch):
     async def mock_evaluate(*args, **kwargs):
         call_count["count"] += 1
         await asyncio.sleep(0.01)  # Simulate AI delay
-        return backend.InterviewFeedbackResponse(
-            session_id=UUID("123e4567-e89b-12d3-a456-426614174000"),
-            score=80.0,
-            feedback={
-                "technical": backend.CategoryFeedback(score=80, strengths=[], gaps=[]),
-                "behavioral": backend.CategoryFeedback(score=80, strengths=[], gaps=[]),
-                "project": backend.CategoryFeedback(score=80, strengths=[], gaps=[]),
+        return {
+            "score": 80.0,
+            "feedback": {
+                "technical": {"score": 80, "strengths": [], "gaps": []},
+                "behavioral": {"score": 80, "strengths": [], "gaps": []},
+                "project": {"score": 80, "strengths": [], "gaps": []},
             },
-            weak_areas=[],
-            recommendations=[],
-            completed_at=datetime.now(),
-        )
+            "weak_areas": [],
+            "recommendations": [],
+        }
 
     monkeypatch.setattr(backend, "evaluate_interview_answers", mock_evaluate)
 
     submit_results = [
-        {"id": "123e4567-e89b-12d3-a456-426614174000", "status": "completed"},
+        {"id": "123e4567-e89b-12d3-a456-426614174000", "status": "completed", "completed_at": "2024-01-01T00:00:00Z"},
         backend.DatabaseRequestError("Session already completed.", status_code=400),
     ]
 
@@ -1104,3 +1100,103 @@ def test_interview_answer_handles_missing_gemini_key(monkeypatch):
     assert response.status_code == 503
     assert "api key" in response.json()["detail"].lower() or "unavailable" in response.json()["detail"].lower()
     assert not submit_called["called"], "submit_interview_answers should not be called on missing API key"
+
+
+def test_build_feedback_prompt_accepts_interviewquestion_objects():
+    """Regression test for 'InterviewQuestion' object is not subscriptable.
+
+    build_feedback_prompt must access InterviewQuestion attributes (.text, .type)
+    not dictionary keys (["text"], ["type"]).
+    """
+    questions = [
+        backend.InterviewQuestion(type="technical", text="What is a decorator?"),
+        backend.InterviewQuestion(type="behavioral", text="Describe a challenge."),
+        backend.InterviewQuestion(type="project", text="Explain your project."),
+    ]
+    answers = ["A decorator wraps a function.", "I fixed a bug.", "It's a web app."]
+
+    # Should not raise TypeError about subscripting InterviewQuestion
+    prompt = backend.build_feedback_prompt(
+        mode="quick",
+        target_role="Backend Engineer",
+        resume_text="Python developer",
+        job_description="Backend role",
+        projects=[],
+        questions=questions,
+        answers=answers,
+    )
+
+    # Basic sanity checks on prompt content
+    assert isinstance(prompt, str)
+    assert len(prompt) > 0
+    assert "What is a decorator?" in prompt
+    assert "Describe a challenge." in prompt
+    assert "Explain your project." in prompt
+
+
+def test_interview_get_session_returns_session(monkeypatch):
+    """Test that GET /interview/{id} returns session for review."""
+    expected_session = {
+        "id": "123e4567-e89b-12d3-a456-426614174000",
+        "mode": "quick",
+        "target_role": "Backend Engineer",
+        "resume_id": None,
+        "questions": [{"type": "technical", "text": "What is a decorator?"}],
+        "answers": ["A decorator wraps a function."],
+        "feedback": {
+            "technical": {"score": 80, "strengths": [], "gaps": []},
+            "behavioral": {"score": 75, "strengths": [], "gaps": []},
+            "project": {"score": 78, "strengths": [], "gaps": []},
+        },
+        "score": 78.5,
+        "weak_areas": ["Docker"],
+        "recommendations": [{"area": "Docker", "action": "Add Dockerfile", "resources": []}],
+        "status": "completed",
+        "created_at": "2024-01-01T00:00:00Z",
+        "completed_at": "2024-01-01T01:00:00Z",
+    }
+
+    monkeypatch.setattr(
+        backend,
+        "get_interview_session",
+        lambda access_token, user_id, session_id: expected_session,
+    )
+
+    response = client.get("/interview/123e4567-e89b-12d3-a456-426614174000")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == "123e4567-e89b-12d3-a456-426614174000"
+    assert data["mode"] == "quick"
+    assert data["target_role"] == "Backend Engineer"
+    assert data["score"] == 78.5
+    assert data["completed_at"] == "2024-01-01T01:00:00Z"
+    assert data["questions"][0]["text"] == "What is a decorator?"
+    assert data["answers"][0] == "A decorator wraps a function."
+
+
+def test_interview_get_session_rejects_unowned(monkeypatch):
+    """Test that GET /interview/{id} rejects session not owned by user."""
+    monkeypatch.setattr(
+        backend,
+        "get_interview_session",
+        lambda access_token, user_id, session_id: None,
+    )
+
+    response = client.get("/interview/123e4567-e89b-12d3-a456-426614174000")
+
+    assert response.status_code == 404
+
+
+def test_interview_get_session_requires_authentication():
+    """Test that GET /interview/{id} requires authentication."""
+    backend.app.dependency_overrides.pop(backend.get_current_user, None)
+    backend.app.dependency_overrides.pop(backend.security, None)
+
+    response = client.get("/interview/123e4567-e89b-12d3-a456-426614174000")
+
+    assert response.status_code == 401
+
+    # Restore auth
+    backend.app.dependency_overrides[backend.get_current_user] = lambda: {"sub": "test-user-id", "email": "test@example.com"}
+    backend.app.dependency_overrides[backend.security] = lambda: HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-access-token")

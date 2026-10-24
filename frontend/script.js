@@ -103,14 +103,26 @@ document.addEventListener(
         const interviewSetupForm =
             document.getElementById("interview-setup-form");
 
-        const interviewModeSelect =
+        const interviewModeSelectEl =
+            document.getElementById("interview-mode-select");
+        const interviewModeInput =
             document.getElementById("interview-mode");
+        const interviewModeTrigger =
+            document.querySelector("#interview-mode-select .custom-select-trigger");
+        const interviewModeOptions =
+            document.querySelector("#interview-mode-select .custom-select-options");
 
         const interviewTargetRoleInput =
             document.getElementById("interview-target-role");
 
-        const interviewResumeSelect =
+        const interviewResumeSelectEl =
+            document.getElementById("interview-resume-select");
+        const interviewResumeInput =
             document.getElementById("interview-resume");
+        const interviewResumeTrigger =
+            document.querySelector("#interview-resume-select .custom-select-trigger");
+        const interviewResumeOptions =
+            document.querySelector("#interview-resume-select .custom-select-options");
 
         const interviewGenerateBtn =
             document.getElementById("interview-generate-btn");
@@ -6768,7 +6780,7 @@ analysisHistoryList.innerHTML =
             }
 
             async function loadResumesIntoSelector() {
-                if (!interviewResumeSelect) return;
+                if (!interviewResumeSelectEl || !interviewResumeOptions) return;
 
                 try {
                     const accessToken = await getAccessToken(false);
@@ -6777,13 +6789,34 @@ analysisHistoryList.innerHTML =
                     const resumes = await apiRequest("/resumes?limit=50", {}, false);
                     if (!resumes || !Array.isArray(resumes)) return;
 
-                    interviewResumeSelect.innerHTML = '<option value="">None — practice without resume context</option>';
-                    resumes.forEach(function (resume) {
-                        const option = document.createElement("option");
-                        option.value = resume.id;
-                        option.textContent = escapeHTML(resume.title);
-                        interviewResumeSelect.appendChild(option);
+                    // Deduplicate by ID in case API returns duplicates
+                    const seen = new Set();
+                    const uniqueResumes = resumes.filter(function (r) {
+                        if (seen.has(r.id)) return false;
+                        seen.add(r.id);
+                        return true;
                     });
+
+                    // Group by title to identify duplicates
+                    const titleCounts = {};
+                    uniqueResumes.forEach(function (r) {
+                        const title = r.title || "Untitled Resume";
+                        titleCounts[title] = (titleCounts[title] || 0) + 1;
+                    });
+
+                    const options = [{ value: "", label: "None — practice without resume context" }];
+                    uniqueResumes.forEach(function (resume) {
+                        const title = resume.title || "Untitled Resume";
+                        let label = title;
+                        // Disambiguate duplicate titles with short ID
+                        if (titleCounts[title] > 1) {
+                            const shortId = resume.id.slice(0, 8);
+                            label = `${title} (${shortId})`;
+                        }
+                        options.push({ value: resume.id, label: label });
+                    });
+
+                    populateCustomOptions(interviewResumeOptions, options, interviewResumeInput.value);
                 } catch (error) {
                     console.error("Failed to load resumes for interview studio:", error);
                 }
@@ -6811,7 +6844,6 @@ analysisHistoryList.innerHTML =
                                 class="interview-answer-input"
                                 name="answer_${index}"
                                 placeholder="Type your answer here..."
-                                rows="4"
                                 required
                                 maxlength="5000"
                             ></textarea>
@@ -6981,9 +7013,9 @@ analysisHistoryList.innerHTML =
                     interviewGenerateBtn.querySelector(".btn-loading")
                 );
 
-                const mode = interviewModeSelect.value;
+                const mode = interviewModeInput.value;
                 const targetRole = interviewTargetRoleInput.value.trim() || null;
-                const resumeId = interviewResumeSelect.value || null;
+                const resumeId = interviewResumeInput.value || null;
 
                 try {
                     const data = await apiRequest("/interview/generate", {
@@ -7092,8 +7124,191 @@ analysisHistoryList.innerHTML =
                     interviewHistoryError.classList.remove("hidden");
                 }
             }
+            // =================================================
+            // CUSTOM SELECT DROPDOWN HELPERS
+            // =================================================
 
-            // Event listeners
+            const populateCustomOptions = function (optionsList, options, selectedValue) {
+                if (!optionsList) return;
+                optionsList.innerHTML = "";
+                options.forEach(function (opt) {
+                    const li = document.createElement("li");
+                    li.className = "custom-select-option";
+                    li.setAttribute("role", "option");
+                    li.setAttribute("tabindex", "-1");
+                    li.setAttribute("data-value", opt.value);
+                    li.textContent = opt.label;
+                    if (opt.value === selectedValue) {
+                        li.setAttribute("aria-selected", "true");
+                    }
+                    optionsList.appendChild(li);
+                });
+            };
+
+            const initCustomSelect = function (container, trigger, optionsList, hiddenInput, initialOptions) {
+                if (!container || !trigger || !optionsList || !hiddenInput) return;
+
+                // Populate initial options
+                populateCustomOptions(optionsList, initialOptions, hiddenInput.value);
+
+                // Click trigger to toggle
+                trigger.addEventListener("click", function (e) {
+                    e.stopPropagation();
+                    toggleCustomSelect(container, trigger, optionsList);
+                });
+
+                // Click outside to close
+                document.addEventListener("click", function (e) {
+                    if (!container.contains(e.target)) {
+                        closeCustomSelect(container, trigger, optionsList);
+                    }
+                });
+
+                // Keyboard navigation on trigger
+                trigger.addEventListener("keydown", function (e) {
+                    handleCustomSelectKeydown(e, container, trigger, optionsList, hiddenInput);
+                });
+
+                // Keyboard navigation on options list
+                optionsList.addEventListener("keydown", function (e) {
+                    handleOptionsKeydown(e, container, trigger, optionsList, hiddenInput);
+                });
+
+                // Click option to select
+                optionsList.addEventListener("click", function (e) {
+                    const option = e.target.closest(".custom-select-option");
+                    if (option) {
+                        selectCustomOption(container, trigger, optionsList, hiddenInput, option);
+                    }
+                });
+            };
+
+            const toggleCustomSelect = function (container, trigger, optionsList) {
+                const isOpen = container.getAttribute("aria-expanded") === "true";
+                if (isOpen) {
+                    closeCustomSelect(container, trigger, optionsList);
+                } else {
+                    openCustomSelect(container, trigger, optionsList);
+                }
+            };
+
+            const openCustomSelect = function (container, trigger, optionsList) {
+                container.setAttribute("aria-expanded", "true");
+                trigger.setAttribute("aria-expanded", "true");
+                optionsList.removeAttribute("hidden");
+                // Focus first option or selected option
+                const selectedOption = optionsList.querySelector('[aria-selected="true"]') || optionsList.querySelector(".custom-select-option");
+                if (selectedOption) {
+                    selectedOption.focus();
+                }
+            };
+
+            const closeCustomSelect = function (container, trigger, optionsList) {
+                container.setAttribute("aria-expanded", "false");
+                trigger.setAttribute("aria-expanded", "false");
+                optionsList.setAttribute("hidden", "");
+            };
+
+            const selectCustomOption = function (container, trigger, optionsList, hiddenInput, option) {
+                const value = option.getAttribute("data-value");
+                const label = option.textContent;
+
+                hiddenInput.value = value;
+                trigger.querySelector(".custom-select-value").textContent = label;
+
+                // Update aria-selected on all options
+                optionsList.querySelectorAll(".custom-select-option").forEach(function (opt) {
+                    opt.setAttribute("aria-selected", opt === option ? "true" : "false");
+                });
+
+                closeCustomSelect(container, trigger, optionsList);
+                trigger.focus();
+
+                // Trigger change event for form validation
+                hiddenInput.dispatchEvent(new Event("change", { bubbles: true }));
+            };
+
+            const handleCustomSelectKeydown = function (e, container, trigger, optionsList, hiddenInput) {
+                const isOpen = container.getAttribute("aria-expanded") === "true";
+
+                switch (e.key) {
+                    case "Enter":
+                    case " ":
+                        e.preventDefault();
+                        toggleCustomSelect(container, trigger, optionsList);
+                        break;
+                    case "Escape":
+                        if (isOpen) {
+                            e.preventDefault();
+                            closeCustomSelect(container, trigger, optionsList);
+                            trigger.focus();
+                        }
+                        break;
+                    case "ArrowDown":
+                        e.preventDefault();
+                        if (!isOpen) {
+                            openCustomSelect(container, trigger, optionsList);
+                        } else {
+                            focusNextOption(optionsList, 1);
+                        }
+                        break;
+                    case "ArrowUp":
+                        e.preventDefault();
+                        if (isOpen) {
+                            focusNextOption(optionsList, -1);
+                        }
+                        break;
+                }
+            };
+
+            const handleOptionsKeydown = function (e, container, trigger, optionsList, hiddenInput) {
+                switch (e.key) {
+                    case "Enter":
+                    case " ":
+                        e.preventDefault();
+                        const focusedOption = optionsList.querySelector(".custom-select-option:focus");
+                        if (focusedOption) {
+                            selectCustomOption(container, trigger, optionsList, hiddenInput, focusedOption);
+                        }
+                        break;
+                    case "Escape":
+                        e.preventDefault();
+                        closeCustomSelect(container, trigger, optionsList);
+                        trigger.focus();
+                        break;
+                    case "ArrowDown":
+                        e.preventDefault();
+                        focusNextOption(optionsList, 1);
+                        break;
+                    case "ArrowUp":
+                        e.preventDefault();
+                        focusNextOption(optionsList, -1);
+                        break;
+                    case "Tab":
+                        closeCustomSelect(container, trigger, optionsList);
+                        break;
+                }
+            };
+
+            const focusNextOption = function (optionsList, direction) {
+                const options = Array.from(optionsList.querySelectorAll(".custom-select-option"));
+                const currentIndex = options.findIndex(function (opt) { return opt === document.activeElement; });
+                let nextIndex = currentIndex + direction;
+                if (nextIndex < 0) nextIndex = options.length - 1;
+                if (nextIndex >= options.length) nextIndex = 0;
+                options[nextIndex].focus();
+            };
+
+            // Initialize custom dropdowns
+            initCustomSelect(interviewModeSelectEl, interviewModeTrigger, interviewModeOptions, interviewModeInput, [
+                { value: "quick", label: "Quick Practice — 5 questions" },
+                { value: "full", label: "Full Mock Interview — 15 questions" }
+            ]);
+            initCustomSelect(interviewResumeSelectEl, interviewResumeTrigger, interviewResumeOptions, interviewResumeInput, []);
+
+            // =================================================
+            // EVENT LISTENERS
+            // =================================================
             if (interviewSetupForm) {
                 interviewSetupForm.addEventListener("submit", generateSession);
             }

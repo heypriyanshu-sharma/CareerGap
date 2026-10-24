@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
@@ -6,7 +7,12 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client, create_client
 
 
-load_dotenv()
+# Load the external secrets file used by local development
+SECRETS_PATH = Path(r"C:\Users\ASUS\OneDrive\Documents\careergap_secrets\.env")
+if SECRETS_PATH.exists():
+    load_dotenv(SECRETS_PATH)
+else:
+    load_dotenv()
 
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")

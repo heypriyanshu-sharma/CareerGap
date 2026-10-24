@@ -389,10 +389,16 @@
             <form id="interview-setup-form" class="interview-setup-form">
                 <div class="interview-field-group">
                     <label for="interview-mode">Mode</label>
-                    <select id="interview-mode" name="mode" required>
-                        <option value="quick">Quick Practice — 5 questions</option>
-                        <option value="full">Full Mock Interview — 15 questions</option>
-                    </select>
+                    <div class="custom-select" id="interview-mode-select" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-label="Interview mode">
+                        <input type="hidden" id="interview-mode" name="mode" value="quick" required>
+                        <button type="button" class="custom-select-trigger" aria-label="Select interview mode">
+                            <span class="custom-select-value">Quick Practice — 5 questions</span>
+                            <span class="custom-select-arrow" aria-hidden="true">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </span>
+                        </button>
+                        <ul class="custom-select-options" role="listbox" aria-label="Interview mode options"></ul>
+                    </div>
                 </div>
 
                 <div class="interview-field-group">
@@ -408,9 +414,16 @@
 
                 <div class="interview-field-group">
                     <label for="interview-resume">Linked Resume (optional)</label>
-                    <select id="interview-resume" name="resume_id">
-                        <option value="">None — practice without resume context</option>
-                    </select>
+                    <div class="custom-select" id="interview-resume-select" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-label="Linked resume">
+                        <input type="hidden" id="interview-resume" name="resume_id" value="">
+                        <button type="button" class="custom-select-trigger" aria-label="Select linked resume">
+                            <span class="custom-select-value">None — practice without resume context</span>
+                            <span class="custom-select-arrow" aria-hidden="true">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </span>
+                        </button>
+                        <ul class="custom-select-options" role="listbox" aria-label="Linked resume options"></ul>
+                    </div>
                 </div>
 
                 <button
@@ -501,6 +514,26 @@
                 </header>
                 <div id="interview-feedback-body" class="interview-feedback-body"></div>
             </div>
+        </div>
+
+        <!-- REVIEW PANEL (hidden until a session is selected for review) -->
+        <div
+            id="interview-review"
+            class="interview-review-panel hidden"
+            aria-live="polite"
+        >
+            <header class="interview-review-header">
+                <button
+                    type="button"
+                    id="interview-review-back"
+                    class="interview-review-back"
+                    aria-label="Back to previous sessions"
+                >
+                    <span aria-hidden="true">←</span> Back to Sessions
+                </button>
+                <h3 id="interview-review-title">Session Review</h3>
+            </header>
+            <div id="interview-review-body" class="interview-review-body"></div>
         </div>
 
         <!-- HISTORY PANEL -->
@@ -985,6 +1018,8 @@
         ></div>
 
     </div>
+</section>
+
 <section
     id="saved-analysis"
     class="saved-analysis hidden"
@@ -995,7 +1030,8 @@
         ></div>
     </div>
 </section>
-</section><section
+
+<section
     id="results"
     class="results hidden"
 >
@@ -1074,6 +1110,7 @@
 
     </div>
 
+</section>
 </section>
 
 <!-- =========================================================

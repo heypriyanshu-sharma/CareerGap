@@ -1,12 +1,20 @@
 import json
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from google import genai
 
-load_dotenv()
 
-DEFAULT_MODEL = "gemini-1.5-flash"
+# Load the external secrets file used by local development
+SECRETS_PATH = Path(r"C:\Users\ASUS\OneDrive\Documents\careergap_secrets\.env")
+if SECRETS_PATH.exists():
+    load_dotenv(SECRETS_PATH)
+else:
+    load_dotenv()
+
+
+DEFAULT_MODEL = "gemini-3.5-flash"
 
 
 def build_client():

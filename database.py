@@ -3,6 +3,7 @@ import logging
 
 import requests
 from dotenv import load_dotenv
+from supabase import create_client
 
 
 load_dotenv()
@@ -11,6 +12,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_PUBLISHABLE_KEY = os.getenv(
     "SUPABASE_PUBLISHABLE_KEY"
 )
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 # Logger for database errors (redacted, no secrets)
 _db_logger = logging.getLogger("database")
@@ -486,21 +488,6 @@ def get_analysis_history(access_token):
     )
 
     response.raise_for_status()
-def get_analysis_history(access_token):
-    response = requests.get(
-        f"{SUPABASE_URL}/rest/v1/career_analyses",
-        headers={
-            "apikey": SUPABASE_PUBLISHABLE_KEY,
-            "Authorization": f"Bearer {access_token}",
-        },
-        params={
-            "select": "id,job_description,analysis,created_at",
-            "order": "created_at.desc",
-        },
-        timeout=10,
-    )
-
-    response.raise_for_status()
 
     return response.json()
 
@@ -520,6 +507,71 @@ def _call_interview_function(
     response = requests.post(
         f"{SUPABASE_URL}/rest/v1/rpc/{function_name}",
         headers=_resumes_headers(access_token),
+        json=payload,
+        timeout=10,
+    )
+
+    _raise_for_database_response(
+        response,
+        fallback_message,
+    )
+
+    data = response.json()
+
+    if data is None:
+        raise DatabaseRequestError(fallback_message)
+
+    if isinstance(data, list):
+        if not data:
+            raise DatabaseRequestError(fallback_message)
+        return data[0]
+
+    if isinstance(data, dict):
+        return data
+
+    raise DatabaseRequestError(fallback_message)
+
+
+def _get_service_role_token():
+    """Return a service role access token, or raise if not configured.
+
+    Uses the SUPABASE_SERVICE_KEY to authenticate as the service role.
+    This token bypasses RLS and is only used for privileged RPC calls
+    that the backend makes on behalf of authenticated users.
+    """
+    if not SUPABASE_SERVICE_KEY:
+        raise DatabaseRequestError(
+            "Server configuration error: SUPABASE_SERVICE_KEY not set. "
+            "Interview answer submission requires a service role key.",
+            status_code=503,
+        )
+
+    # Use the service key to get an access token via Supabase admin API
+    # The service key itself can be used as the access token for PostgREST
+    # when using the service role (it acts as both apikey and bearer token)
+    return SUPABASE_SERVICE_KEY
+
+
+def _call_privileged_interview_function(
+    function_name,
+    payload,
+    fallback_message,
+):
+    """Call an interview RPC with service role privileges.
+
+    This bypasses RLS and is only used for submit_interview_answers
+    which writes evaluation fields that users must not modify directly.
+    The function validates the caller_id against the session ownership.
+    """
+    token = _get_service_role_token()
+
+    response = requests.post(
+        f"{SUPABASE_URL}/rest/v1/rpc/{function_name}",
+        headers={
+            "apikey": SUPABASE_SERVICE_KEY,
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
         json=payload,
         timeout=10,
     )
@@ -568,7 +620,6 @@ def create_interview_session(
 
 
 def submit_interview_answers(
-    access_token,
     user_id,
     session_id,
     answers,
@@ -577,8 +628,13 @@ def submit_interview_answers(
     weak_areas,
     recommendations,
 ):
-    return _call_interview_function(
-        access_token,
+    """Submit interview answers using privileged service role.
+
+    The access_token parameter is no longer used; this function now uses
+    the service role key which must be configured in the environment.
+    Raises DatabaseRequestError(503) if SUPABASE_SERVICE_KEY is not set.
+    """
+    return _call_privileged_interview_function(
         "submit_interview_answers",
         {
             "caller_id": user_id,
@@ -647,6 +703,36 @@ def get_interview_history(
     )
 
     return response.json()
+
+
+def get_interview_session(
+    access_token,
+    user_id,
+    session_id,
+):
+    response = requests.get(
+        f"{SUPABASE_URL}/rest/v1/interview_sessions",
+        headers=_resumes_headers(access_token),
+        params={
+            **_owned_params(
+                user_id,
+                select="id,mode,target_role,resume_id,questions,answers,feedback,score,weak_areas,recommendations,status,created_at,completed_at",
+            ),
+            "id": f"eq.{session_id}",
+        },
+        timeout=10,
+    )
+
+    if response.status_code == 404:
+        return None
+
+    _raise_for_database_response(
+        response,
+        "Unable to load interview session.",
+    )
+
+    data = response.json()
+    return data[0] if data else None
 
 
 def delete_analysis(

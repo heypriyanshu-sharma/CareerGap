@@ -7,13 +7,23 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 from starlette.types import ASGIApp, Receive, Scope, Send
-from typing import NoReturn, Optional, List, Dict, Literal
+from typing import Annotated, NoReturn, Optional, List, Dict, Literal
 from uuid import UUID
 from datetime import datetime
 import os
 import json
 import requests
 from supabase import create_client
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load the external secrets file used by local development
+SECRETS_PATH = Path(r"C:\Users\ASUS\OneDrive\Documents\careergap_secrets\.env")
+if SECRETS_PATH.exists():
+    load_dotenv(SECRETS_PATH)
+else:
+    load_dotenv()
+
 from auth import get_current_user, security
 from career_gap import run_careergap
 from ai_advisor import DEFAULT_MODEL, build_client, generate_career_advice, safe_error_detail
@@ -33,6 +43,7 @@ from database import (
     submit_interview_answers,
     delete_interview_session,
     get_interview_history,
+    get_interview_session,
 )
 from file_upload import (
     MAX_FILE_SIZE,
@@ -466,14 +477,15 @@ class InterviewGenerateRequest(BaseModel):
     resume_id: Optional[UUID] = None
 
 
+
 class InterviewAnswerRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    answers: List[constr(strip_whitespace=True, min_length=1, max_length=5000)]
+    answers: List[Annotated[str, Field(min_length=1, max_length=5000)]]
 
 
 class CategoryFeedback(BaseModel):
-    score: conint(ge=0, le=100)
+    score: Annotated[int, Field(ge=0, le=100)]
     strengths: List[str] = Field(default_factory=list)
     gaps: List[str] = Field(default_factory=list)
 
@@ -486,11 +498,12 @@ class Recommendation(BaseModel):
 
 class InterviewFeedbackResponse(BaseModel):
     session_id: UUID
-    score: confloat(ge=0, le=100)
+    score: Annotated[float, Field(ge=0, le=100)]
     feedback: Dict[Literal["technical", "behavioral", "project"], CategoryFeedback]
     weak_areas: List[str] = Field(default_factory=list)
     recommendations: List[Recommendation] = Field(default_factory=list)
     completed_at: datetime
+
 
 
 class InterviewSessionResponse(BaseModel):
@@ -499,8 +512,14 @@ class InterviewSessionResponse(BaseModel):
     target_role: Optional[str]
     resume_id: Optional[UUID]
     questions: List[InterviewQuestion]
+    answers: Optional[List[str]] = None
+    feedback: Optional[Dict[Literal["technical", "behavioral", "project"], CategoryFeedback]] = None
+    score: Optional[float] = None
+    weak_areas: Optional[List[str]] = None
+    recommendations: Optional[List[Recommendation]] = None
     status: Literal["pending", "completed"]
     created_at: datetime
+    completed_at: Optional[datetime] = None
 
 
 class InterviewHistoryItem(BaseModel):
@@ -1378,6 +1397,13 @@ Return JSON only:
 
 def build_feedback_prompt(mode: str, target_role: Optional[str], resume_text: str, job_description: str, projects: list, questions: list, answers: list) -> str:
     """Build prompt for evaluating interview answers."""
+    qa_pairs = [
+        {"question": q.text, "type": q.type, "answer": a}
+        for q, a in zip(questions, answers)
+    ]
+    qa_json = json.dumps(qa_pairs, indent=2)
+    projects_json = json.dumps([p.get('description', '')[:500] for p in projects[:3]])
+
     return f"""
 You are an expert interview evaluator for CareerGap's Interview Studio.
 
@@ -1388,10 +1414,10 @@ Target role: {target_role or 'Not specified'}
 Candidate context:
 - Resume: {resume_text[:3000]}
 - Target job: {job_description[:3000]}
-- Projects: {json.dumps([p.get('description', '')[:500] for p in projects[:3]])}
+- Projects: {projects_json}
 
 Interview Q&A:
-{json.dumps([{{"question": q["text"], "type": q["type"], "answer": a}} for q, a in zip(questions, answers)], indent=2)}
+{qa_json}
 
 Provide structured feedback:
 
@@ -1418,6 +1444,16 @@ Return JSON only:
 }}
 """.strip()
 
+def parse_gemini_json(raw: str) -> dict:
+    """Parse JSON returned by Gemini, including Markdown-fenced responses."""
+    raw = raw.strip()
+
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[1]
+        if raw.rstrip().endswith("```"):
+            raw = raw.rstrip()[:-3].strip()
+
+    return json.loads(raw)
 
 async def generate_interview_questions(mode: str, target_role: Optional[str], resume_text: str, job_description: str, projects: list) -> List[InterviewQuestion]:
     """Generate interview questions via Gemini."""
@@ -1438,7 +1474,7 @@ async def generate_interview_questions(mode: str, target_role: Optional[str], re
         if not raw:
             raise RuntimeError("Gemini returned no questions text.")
 
-        data = json.loads(raw)
+        data = parse_gemini_json(raw)
         questions = [InterviewQuestion(**q) for q in data.get("questions", [])]
 
         if not questions:
@@ -1460,8 +1496,8 @@ async def evaluate_interview_answers(
     projects: list,
     questions: List[InterviewQuestion],
     answers: List[str],
-) -> InterviewFeedbackResponse:
-    """Evaluate interview answers via Gemini."""
+) -> dict:
+    """Evaluate interview answers via Gemini. Returns dict with feedback data."""
     client = build_client()
     prompt = build_feedback_prompt(mode, target_role, resume_text, job_description, projects, questions, answers)
     model = os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
@@ -1479,14 +1515,14 @@ async def evaluate_interview_answers(
         if not raw:
             raise RuntimeError("Gemini returned no feedback text.")
 
-        data = json.loads(raw)
+        data = parse_gemini_json(raw)
 
         # Validate required keys
         required_feedback_keys = {"technical", "behavioral", "project"}
         if not required_feedback_keys.issubset(data.get("feedback", {}).keys()):
             raise ValueError("Missing feedback categories")
 
-        return InterviewFeedbackResponse(**data)
+        return data
 
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Failed to parse Gemini feedback output: {e}")
@@ -1706,14 +1742,13 @@ async def interview_answer(
     # Persist answers and feedback
     try:
         updated_session = submit_interview_answers(
-            access_token=credentials.credentials,
             user_id=user_id,
             session_id=str(session_id),
             answers=answer_request.answers,
-            score=feedback.score,
-            feedback={k: v.model_dump() for k, v in feedback.feedback.items()},
-            weak_areas=feedback.weak_areas,
-            recommendations=[r.model_dump() for r in feedback.recommendations],
+            score=feedback["score"],
+            feedback={k: CategoryFeedback(**v).model_dump() for k, v in feedback["feedback"].items()},
+            weak_areas=feedback["weak_areas"],
+            recommendations=[Recommendation(**r).model_dump() for r in feedback["recommendations"]],
         )
     except DatabaseRequestError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
@@ -1721,7 +1756,15 @@ async def interview_answer(
         print("SUBMIT ANSWERS ERROR:", type(e).__name__, safe_error_detail(e))
         raise HTTPException(status_code=500, detail="Unable to submit interview answers.")
 
-    return feedback
+    # Build complete response with session_id and completed_at from database
+    return InterviewFeedbackResponse(
+        session_id=UUID(updated_session["id"]),
+        score=feedback["score"],
+        feedback={k: CategoryFeedback(**v) for k, v in feedback["feedback"].items()},
+        weak_areas=feedback["weak_areas"],
+        recommendations=[Recommendation(**r) for r in feedback["recommendations"]],
+        completed_at=updated_session["completed_at"],
+    )
 
 
 @app.get("/interview/history")
@@ -1772,6 +1815,35 @@ def interview_delete(
         raise HTTPException(status_code=500, detail="Unable to delete interview session.")
 
     return Response(status_code=204)
+
+
+@app.get("/interview/{session_id}")
+@limiter.limit("30/minute")
+def interview_get_session(
+    request: Request,
+    session_id: UUID,
+    claims: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """Get a single interview session by ID for review."""
+    user_id = claims["sub"]
+
+    try:
+        session = get_interview_session(
+            access_token=credentials.credentials,
+            user_id=user_id,
+            session_id=str(session_id),
+        )
+    except DatabaseRequestError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    except Exception as e:
+        print("GET SESSION ERROR:", type(e).__name__, safe_error_detail(e))
+        raise HTTPException(status_code=500, detail="Unable to load interview session.")
+
+    if session is None:
+        raise HTTPException(status_code=404, detail="Interview session not found.")
+
+    return InterviewSessionResponse(**session)
 
 
 @app.delete(
