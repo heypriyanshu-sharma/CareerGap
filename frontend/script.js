@@ -231,6 +231,20 @@ document.addEventListener(
 
         function setActiveWorkspace(view) {
 
+            // Guard: prevent navigation away from Interview Studio if there are unsaved answers
+            if (
+                activeWorkspace === "interview-studio" &&
+                view !== "interview-studio" &&
+                interviewStudio?.hasUnsavedAnswers?.()
+            ) {
+                const confirmed = window.confirm(
+                    "You have unsaved interview answers. Leave anyway?"
+                );
+                if (!confirmed) {
+                    return; // Abort navigation - keep current view active
+                }
+            }
+
             activeWorkspace = view;
 
             primaryNavButtons.forEach(
@@ -256,6 +270,7 @@ document.addEventListener(
             const onAnalyze =
                 view === "analyze";
 
+            // Hide all major sections first - this ensures clean state transitions
             if (analyzeSection) {
                 analyzeSection.classList.toggle(
                     "hidden",
@@ -270,11 +285,42 @@ document.addEventListener(
                 );
             }
 
+            if (interviewStudioSection) {
+                interviewStudioSection.classList.toggle(
+                    "hidden",
+                    view !== "interview-studio"
+                );
+            }
+
+            if (resultsSection) {
+                resultsSection.classList.add("hidden");
+            }
+
+            if (analysisHistorySection) {
+                analysisHistorySection.classList.add("hidden");
+            }
+
+            if (savedAnalysisSection) {
+                savedAnalysisSection.classList.add("hidden");
+            }
+
             if (analysisTabs) {
                 analysisTabs.classList.toggle(
                     "hidden",
-                    view === "resume-builder"
+                    view === "resume-builder" || view === "interview-studio"
                 );
+            }
+
+            // Reset interview studio internal panels when leaving or entering
+            if (view !== "interview-studio") {
+                interviewStudio?.resetPanels?.();
+            } else {
+                // Entering interview studio - reset to initial state
+                interviewStudio?.resetPanels?.();
+                // Load resumes into the resume selector
+                interviewStudio?.loadResumesIntoSelector();
+                // Load history
+                interviewStudio?.loadHistory();
             }
 
             if (onAnalyze) {
@@ -288,55 +334,15 @@ document.addEventListener(
                 return;
             }
 
-            if (view === "interview-studio") {
-                if (interviewStudioSection) {
-                    interviewStudioSection.classList.remove("hidden");
-                }
-                // Load resumes into the resume selector
-                interviewStudio?.loadResumesIntoSelector();
-                // Load history
-                interviewStudio?.loadHistory();
-                return;
-            }
-
-            if (interviewStudioSection) {
-                interviewStudioSection.classList.add("hidden");
-            }
-
-            if (resultsSection) {
-                resultsSection.classList.add(
-                    "hidden"
-                );
-            }
-
-            if (analysisHistorySection) {
-                analysisHistorySection.classList.add(
-                    "hidden"
-                );
-            }
-
-            if (savedAnalysisSection) {
-                savedAnalysisSection.classList.add(
-                    "hidden"
-                );
-            }
-
+            // Clear analysis tab states for non-analyze views
             if (currentAnalysisTab) {
-                currentAnalysisTab.classList.remove(
-                    "active"
-                );
+                currentAnalysisTab.classList.remove("active");
             }
-
             if (historyTab) {
-                historyTab.classList.remove(
-                    "active"
-                );
+                historyTab.classList.remove("active");
             }
-
             if (savedAnalysisTab) {
-                savedAnalysisTab.classList.remove(
-                    "active"
-                );
+                savedAnalysisTab.classList.remove("active");
             }
 
             syncSubnavState();
@@ -6794,6 +6800,8 @@ analysisHistoryList.innerHTML =
         interviewStudio = (function () {
             let session = null;
             let questions = [];
+            let resumeLoadId = 0;
+            let historyLoadId = 0;
 
             function showError(element, message) {
                 if (element) {
@@ -6816,14 +6824,60 @@ analysisHistoryList.innerHTML =
                 if (loadingElement) loadingElement.classList.toggle("hidden", !loading);
             }
 
+            function resetPanels() {
+                // Reset all interview studio internal panels to initial state
+                session = null;
+                questions = [];
+
+                if (interviewSetupForm) {
+                    interviewSetupForm.classList.remove("hidden");
+                    interviewSetupForm.reset();
+                }
+                if (interviewQuestionsPanel) {
+                    interviewQuestionsPanel.classList.add("hidden");
+                }
+                if (interviewQuestionList) {
+                    interviewQuestionList.innerHTML = "";
+                }
+                if (interviewFeedbackModal) {
+                    interviewFeedbackModal.classList.add("hidden");
+                }
+                if (interviewReview) {
+                    interviewReview.classList.add("hidden");
+                }
+                if (interviewHistory) {
+                    interviewHistory.classList.remove("hidden");
+                }
+                if (interviewSetupError) {
+                    hideError(interviewSetupError);
+                }
+                // Reset progress
+                if (interviewProgressText) {
+                    interviewProgressText.textContent = "Question 1 of 5";
+                }
+                if (interviewProgressFill) {
+                    interviewProgressFill.style.width = "0%";
+                }
+            }
+
+            function hasUnsavedAnswers() {
+                if (!interviewQuestionList || !questions.length) return false;
+                const textareas = interviewQuestionList.querySelectorAll("textarea.interview-answer-input");
+                return Array.from(textareas).some(function (ta) { return ta.value.trim() !== ""; });
+            }
+
             async function loadResumesIntoSelector() {
                 if (!interviewResumeSelectEl || !interviewResumeOptions) return;
+
+                const thisLoadId = ++resumeLoadId;
 
                 try {
                     const accessToken = await getAccessToken(false);
                     if (!accessToken) return;
+                    if (thisLoadId !== resumeLoadId) return; // Stale request
 
                     const resumes = await apiRequest("/resumes?limit=50", {}, false);
+                    if (thisLoadId !== resumeLoadId) return; // Stale request
                     if (!resumes || !Array.isArray(resumes)) {
                         // Show empty state - keep "None" option only
                         populateCustomOptions(interviewResumeOptions, [{ value: "", label: "None — practice without resume context" }], "");
@@ -6857,8 +6911,10 @@ analysisHistoryList.innerHTML =
                         options.push({ value: resume.id, label: label });
                     });
 
+                    if (thisLoadId !== resumeLoadId) return; // Stale request
                     populateCustomOptions(interviewResumeOptions, options, interviewResumeInput.value);
                 } catch (error) {
+                    if (thisLoadId !== resumeLoadId) return; // Stale request
                     console.error("Failed to load resumes for interview studio:", error);
                     // Show error state in dropdown
                     populateCustomOptions(interviewResumeOptions, [{ value: "", label: "Failed to load resumes — try again" }], "");
@@ -6937,9 +6993,13 @@ analysisHistoryList.innerHTML =
                     interviewSubmitBtn.querySelector(".btn-loading")
                 );
 
+                // Use timeout matching backend evaluation: 30s quick / 120s full, plus 15s margin
+                const submissionTimeout = session.mode === "quick" ? 45000 : 135000;
+
                 try {
                     const feedback = await apiRequest(`/interview/${session.id}/answer`, {
                         method: "POST",
+                        timeout: submissionTimeout,
                         body: JSON.stringify({ answers })
                     });
 
@@ -6953,7 +7013,50 @@ analysisHistoryList.innerHTML =
 
                 } catch (error) {
                     console.error("Submit answers error:", error);
-                    alert("Failed to submit answers: " + escapeHTML(error.message || "Unknown error"));
+
+                    // Determine if this is a recoverable error: either backend explicitly says
+                    // "Session already completed" (double-submit), OR the request was aborted
+                    // (frontend timeout fired but backend may have succeeded in background).
+                    const isAbortError = error instanceof DOMException && error.name === "AbortError";
+                    const isAlreadyCompleted = error.message && error.message.includes("Session already completed");
+
+                    if (isAbortError || isAlreadyCompleted) {
+                        try {
+                            const completedSession = await apiRequest(`/interview/${session.id}`, {
+                                method: "GET",
+                                redirectIfMissing: false
+                            });
+                            if (completedSession && completedSession.feedback) {
+                                renderFeedback({
+                                    score: completedSession.score,
+                                    feedback: completedSession.feedback,
+                                    weak_areas: completedSession.weak_areas || [],
+                                    recommendations: completedSession.recommendations || []
+                                });
+                                interviewFeedbackModal.classList.remove("hidden");
+                                session = null;
+                                questions = [];
+                            } else if (isAlreadyCompleted) {
+                                alert("Session completed but feedback unavailable. Check history to review.");
+                                session = null;
+                                questions = [];
+                            } else {
+                                // Aborted but session not yet completed - let user retry
+                                alert("The request timed out. Your answers may still be processing. Please try submitting again in a moment.");
+                            }
+                        } catch (fetchError) {
+                            console.error("Failed to fetch completed session:", fetchError);
+                            if (isAlreadyCompleted) {
+                                alert("Session completed but feedback unavailable. Check history to review.");
+                                session = null;
+                                questions = [];
+                            } else {
+                                alert("The request timed out. Your answers may still be processing. Please try submitting again in a moment.");
+                            }
+                        }
+                    } else {
+                        alert("Failed to submit answers: " + escapeHTML(error.message || "Unknown error"));
+                    }
                 } finally {
                     isSubmitting = false;
                     setButtonLoading(interviewSubmitBtn, false,
@@ -7098,6 +7201,8 @@ analysisHistoryList.innerHTML =
             async function loadHistory() {
                 if (!interviewHistoryList) return;
 
+                const thisLoadId = ++historyLoadId;
+
                 interviewHistoryLoading.classList.remove("hidden");
                 interviewHistoryEmpty.classList.add("hidden");
                 interviewHistoryError.classList.add("hidden");
@@ -7106,11 +7211,13 @@ analysisHistoryList.innerHTML =
                 try {
                     const accessToken = await getAccessToken(false);
                     if (!accessToken) {
+                        if (thisLoadId !== historyLoadId) return;
                         interviewHistoryLoading.classList.add("hidden");
                         return;
                     }
 
                     const history = await apiRequest("/interview/history", {}, false);
+                    if (thisLoadId !== historyLoadId) return;
 
                     if (!history || !history.length) {
                         interviewHistoryEmpty.classList.remove("hidden");
@@ -7144,6 +7251,8 @@ analysisHistoryList.innerHTML =
                         `;
                     }).join("");
 
+                    if (thisLoadId !== historyLoadId) return;
+
                     // Add click handlers for review (card click) and delete
                     interviewHistoryList.querySelectorAll(".interview-history-card").forEach(function (card) {
                         card.addEventListener("click", function (e) {
@@ -7161,10 +7270,12 @@ analysisHistoryList.innerHTML =
                     });
 
                 } catch (error) {
+                    if (thisLoadId !== historyLoadId) return;
                     console.error("Load history error:", error);
                     interviewHistoryError.textContent = escapeHTML(error.message || "Failed to load history.");
                     interviewHistoryError.classList.remove("hidden");
                 } finally {
+                    if (thisLoadId !== historyLoadId) return;
                     interviewHistoryLoading.classList.add("hidden");
                 }
             }
@@ -7572,6 +7683,8 @@ analysisHistoryList.innerHTML =
                 deleteSession,
                 openReview,
                 closeReview,
+                resetPanels,
+                hasUnsavedAnswers,
                 // State accessors for future checkpoints
                 getSession: function () { return session; },
                 getQuestions: function () { return questions; }

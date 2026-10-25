@@ -1420,15 +1420,22 @@ Candidate context:
 Interview Q&A:
 {qa_json}
 
+CRITICAL EVALUATION RULES:
+1. GROUND ALL FEEDBACK IN THE ACTUAL ANSWERS PROVIDED. Do not invent technical details, skills, or concepts not mentioned in the candidate's answers.
+2. If an answer is generic, placeholder text (e.g., "test", "N/A", "idk"), or irrelevant, score it LOW and note "Insufficient evidence in answer" in gaps.
+3. Scores MUST reflect the quality and relevance of the actual answers. Do not give moderate scores to empty/placeholder responses.
+4. Weak areas and recommendations must be directly traceable to gaps observed IN THE ANSWERS.
+5. If answers lack STAR format, say so explicitly. If answers lack technical depth, say so explicitly.
+
 Provide structured feedback:
 
 Scoring (0-100 per category, overall 0-100):
-- Technical: knowledge depth, problem-solving
-- Behavioral: communication, STAR usage, self-awareness
-- Project: ownership, impact, technical depth
+- Technical: knowledge depth, problem-solving (based ONLY on technical answers given)
+- Behavioral: communication, STAR usage, self-awareness (based ONLY on behavioral answers given)
+- Project: ownership, impact, technical depth (based ONLY on project-based answers given)
 
-Weak areas: specific skill gaps observed
-Recommendations: actionable next steps with resources
+Weak areas: specific skill gaps observed IN THE ANSWERS
+Recommendations: actionable next steps with resources, grounded in answer gaps
 
 Return JSON only:
 {{
@@ -1462,8 +1469,10 @@ async def generate_interview_questions(mode: str, target_role: Optional[str], re
     prompt = build_interview_prompt(mode, target_role, resume_text, job_description, projects)
     model = os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
 
-    # Set timeout based on mode: 30s for quick (5 questions), 120s for full (15 questions)
-    timeout_seconds = 30 if mode == "quick" else 120
+    # Set timeout based on mode: 35s for quick (5 questions), 125s for full (15 questions)
+    # These are set slightly below frontend timeouts (45s/135s) so backend timeout fires first
+    # if model is slow, allowing frontend to show proper error. If network is slow, frontend timeout fires.
+    timeout_seconds = 35 if mode == "quick" else 125
 
     def _sync_call():
         interaction = client.interactions.create(
@@ -1517,8 +1526,15 @@ async def evaluate_interview_answers(
     prompt = build_feedback_prompt(mode, target_role, resume_text, job_description, projects, questions, answers)
     model = os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
 
-    try:
-        interaction = client.interactions.create(model=model, input=prompt)
+    # Match question generation timeout: 30s for quick (5 questions), 120s for full (15 questions)
+    timeout_seconds = 30 if mode == "quick" else 120
+
+    def _sync_call():
+        interaction = client.interactions.create(
+            model=model,
+            input=prompt,
+            generation_config={"temperature": 0.3, "max_output_tokens": 4096},
+        )
         # Try multiple response attributes for SDK compatibility
         raw = (
             getattr(interaction, "output_text", None)
@@ -1529,6 +1545,11 @@ async def evaluate_interview_answers(
         raw = raw.strip() if raw else ""
         if not raw:
             raise RuntimeError("Gemini returned no feedback text.")
+        return raw
+
+    try:
+        # Run synchronous SDK call in thread pool with timeout
+        raw = await asyncio.wait_for(asyncio.to_thread(_sync_call), timeout=timeout_seconds)
 
         data = parse_gemini_json(raw)
 
@@ -1539,6 +1560,8 @@ async def evaluate_interview_answers(
 
         return data
 
+    except asyncio.TimeoutError:
+        raise RuntimeError(f"Feedback generation timed out after {timeout_seconds} seconds.")
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Failed to parse Gemini feedback output: {e}")
     except Exception as e:
