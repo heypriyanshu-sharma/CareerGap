@@ -12,6 +12,7 @@ from uuid import UUID
 from datetime import datetime
 import os
 import json
+import asyncio
 import requests
 from supabase import create_client
 from pathlib import Path
@@ -1461,8 +1462,15 @@ async def generate_interview_questions(mode: str, target_role: Optional[str], re
     prompt = build_interview_prompt(mode, target_role, resume_text, job_description, projects)
     model = os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
 
-    try:
-        interaction = client.interactions.create(model=model, input=prompt)
+    # Set timeout based on mode: 30s for quick (5 questions), 120s for full (15 questions)
+    timeout_seconds = 30 if mode == "quick" else 120
+
+    def _sync_call():
+        interaction = client.interactions.create(
+            model=model,
+            input=prompt,
+            generation_config={"temperature": 0.3, "max_output_tokens": 4096},
+        )
         # Try multiple response attributes for SDK compatibility
         raw = (
             getattr(interaction, "output_text", None)
@@ -1473,6 +1481,11 @@ async def generate_interview_questions(mode: str, target_role: Optional[str], re
         raw = raw.strip() if raw else ""
         if not raw:
             raise RuntimeError("Gemini returned no questions text.")
+        return raw
+
+    try:
+        # Run synchronous SDK call in thread pool with timeout
+        raw = await asyncio.wait_for(asyncio.to_thread(_sync_call), timeout=timeout_seconds)
 
         data = parse_gemini_json(raw)
         questions = [InterviewQuestion(**q) for q in data.get("questions", [])]
@@ -1482,6 +1495,8 @@ async def generate_interview_questions(mode: str, target_role: Optional[str], re
 
         return questions
 
+    except asyncio.TimeoutError:
+        raise RuntimeError(f"Question generation timed out after {timeout_seconds} seconds.")
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Failed to parse Gemini questions output: {e}")
     except Exception as e:

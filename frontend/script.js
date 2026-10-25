@@ -175,6 +175,15 @@ document.addEventListener(
         const interviewHistoryError =
             document.getElementById("interview-history-error");
 
+        const interviewHistory =
+            document.getElementById("interview-history");
+        const interviewReview =
+            document.getElementById("interview-review");
+        const interviewReviewBody =
+            document.getElementById("interview-review-body");
+        const interviewReviewBack =
+            document.getElementById("interview-review-back");
+
         // =================================================
         // DASHBOARD NAVIGATION
         // =================================================
@@ -214,6 +223,8 @@ document.addEventListener(
             );
 
         let activeWorkspace = "analyze";
+
+        let interviewStudio = null;
 
         let analysisHistoryData = [];
         let currentAnalysis = null;
@@ -282,9 +293,9 @@ document.addEventListener(
                     interviewStudioSection.classList.remove("hidden");
                 }
                 // Load resumes into the resume selector
-                interviewStudio.loadResumesIntoSelector();
+                interviewStudio?.loadResumesIntoSelector();
                 // Load history
-                interviewStudio.loadHistory();
+                interviewStudio?.loadHistory();
                 return;
             }
 
@@ -4705,31 +4716,57 @@ analysisHistoryList.innerHTML =
                 throw new Error("You need to sign in to manage resumes.");
             }
 
-            const response = await fetch(`${API_BASE_URL}${path}`, {
-                ...options,
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`,
-                    ...options.headers,
-                },
-            });
+            // Create AbortController for timeout (30s default, configurable via options.timeout)
+            const timeoutMs = options.timeout ?? 30000;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-            if (!response.ok) {
-                let message = "Request failed.";
-                try {
-                    const error = await response.json();
-                    message = error.detail || message;
-                } catch (_) {}
-                throw new Error(message);
+            // If caller provided a signal, compose it with our timeout signal
+            const externalSignal = options.signal;
+            // Define the abort callback once so we can remove it later
+            const abortCallback = () => controller.abort();
+            if (externalSignal) {
+                if (externalSignal.aborted) {
+                    controller.abort();
+                } else {
+                    externalSignal.addEventListener("abort", abortCallback, { once: true });
+                }
             }
 
-            // DELETE /resumes/{id} answers 204 with no body, so there is nothing
-            // to parse. Calling json() on it throws a misleading SyntaxError.
-            if (response.status === 204) {
-                return null;
-            }
+            try {
+                const response = await fetch(`${API_BASE_URL}${path}`, {
+                    ...options,
+                    signal: controller.signal,
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${accessToken}`,
+                        ...options.headers,
+                    },
+                });
 
-            return response.json();
+                if (!response.ok) {
+                    let message = "Request failed.";
+                    try {
+                        const error = await response.json();
+                        message = error.detail || message;
+                    } catch (_) {}
+                    throw new Error(message);
+                }
+
+                // DELETE /resumes/{id} answers 204 with no body, so there is nothing
+                // to parse. Calling json() on it throws a misleading SyntaxError.
+                if (response.status === 204) {
+                    return null;
+                }
+
+                const data = await response.json();
+                return data;
+            } finally {
+                clearTimeout(timeoutId);
+                if (externalSignal) {
+                    externalSignal.removeEventListener("abort", abortCallback);
+                }
+            }
         }
 
         async function loadResumes() {
@@ -6754,7 +6791,7 @@ analysisHistoryList.innerHTML =
         // INTERVIEW STUDIO MODULE
         // =========================================================
 
-        const interviewStudio = (function () {
+        interviewStudio = (function () {
             let session = null;
             let questions = [];
 
@@ -6787,7 +6824,11 @@ analysisHistoryList.innerHTML =
                     if (!accessToken) return;
 
                     const resumes = await apiRequest("/resumes?limit=50", {}, false);
-                    if (!resumes || !Array.isArray(resumes)) return;
+                    if (!resumes || !Array.isArray(resumes)) {
+                        // Show empty state - keep "None" option only
+                        populateCustomOptions(interviewResumeOptions, [{ value: "", label: "None — practice without resume context" }], "");
+                        return;
+                    }
 
                     // Deduplicate by ID in case API returns duplicates
                     const seen = new Set();
@@ -6819,6 +6860,8 @@ analysisHistoryList.innerHTML =
                     populateCustomOptions(interviewResumeOptions, options, interviewResumeInput.value);
                 } catch (error) {
                     console.error("Failed to load resumes for interview studio:", error);
+                    // Show error state in dropdown
+                    populateCustomOptions(interviewResumeOptions, [{ value: "", label: "Failed to load resumes — try again" }], "");
                 }
             }
 
@@ -7017,9 +7060,14 @@ analysisHistoryList.innerHTML =
                 const targetRole = interviewTargetRoleInput.value.trim() || null;
                 const resumeId = interviewResumeInput.value || null;
 
+                // Use appropriate timeout based on mode: 30s for quick (5q), 90s for full (15q)
+                // Add 15s margin for quick, 30s for full to account for network overhead
+                const generationTimeout = mode === "quick" ? 45000 : 120000;
+
                 try {
                     const data = await apiRequest("/interview/generate", {
                         method: "POST",
+                        timeout: generationTimeout,
                         body: JSON.stringify({ mode, target_role: targetRole, resume_id: resumeId })
                     });
 
@@ -7080,7 +7128,7 @@ analysisHistoryList.innerHTML =
                             : "—";
 
                         return `
-                            <article class="interview-history-card">
+                            <article class="interview-history-card" data-id="${item.id}">
                                 <header>
                                     <span class="interview-history-mode">${escapeHTML(item.mode === "quick" ? "Quick Practice" : "Full Mock Interview")}</span>
                                     <span class="interview-history-date">${date}</span>
@@ -7096,9 +7144,18 @@ analysisHistoryList.innerHTML =
                         `;
                     }).join("");
 
+                    // Add click handlers for review (card click) and delete
+                    interviewHistoryList.querySelectorAll(".interview-history-card").forEach(function (card) {
+                        card.addEventListener("click", function (e) {
+                            if (e.target.closest(".interview-history-delete")) return;
+                            interviewStudio.openReview(card.dataset.id);
+                        });
+                    });
+
                     // Add delete handlers
                     interviewHistoryList.querySelectorAll(".interview-history-delete").forEach(function (btn) {
-                        btn.addEventListener("click", function () {
+                        btn.addEventListener("click", function (e) {
+                            e.stopPropagation();
                             interviewStudio.deleteSession(btn.dataset.id);
                         });
                     });
@@ -7337,12 +7394,184 @@ analysisHistoryList.innerHTML =
                     }
                 });
             }
+            if (interviewReviewBack) {
+                interviewReviewBack.addEventListener("click", closeReview);
+            }
+
+            // =================================================
+            // SESSION REVIEW FUNCTIONS
+            // =================================================
+
+            async function openReview(sessionId) {
+                try {
+                    interviewReviewBody.innerHTML = '<div class="interview-loading"><div class="loading-orbit-small"></div><p>Loading session...</p></div>';
+                    interviewReview.classList.remove("hidden");
+                    interviewHistory.classList.add("hidden");
+
+                    const accessToken = await getAccessToken(false);
+                    if (!accessToken) return;
+
+                    const sessionData = await apiRequest(`/interview/${sessionId}`, {}, false);
+                    renderReview(sessionData);
+                } catch (error) {
+                    console.error("Open review error:", error);
+                    interviewReviewBody.innerHTML = `<div class="interview-error">${escapeHTML(error.message || "Failed to load session.")}</div>`;
+                }
+            }
+
+            function closeReview() {
+                interviewReview.classList.add("hidden");
+                interviewHistory.classList.remove("hidden");
+            }
+
+            function renderReview(session) {
+                const date = new Date(session.completed_at || session.created_at).toLocaleDateString(undefined, {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric"
+                });
+                const time = new Date(session.completed_at || session.created_at).toLocaleTimeString(undefined, {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                });
+
+                const modeLabel = session.mode === "quick" ? "Quick Practice" : "Full Mock Interview";
+                const scoreDisplay = session.score !== null && session.score !== undefined
+                    ? `${session.score.toFixed(1)}%`
+                    : "—";
+
+                let html = `
+                    <div class="interview-review-meta">
+                        <div class="interview-review-meta-item">
+                            <span class="interview-review-meta-label">Mode</span>
+                            <span class="interview-review-meta-value">${escapeHTML(modeLabel)}</span>
+                        </div>
+                        <div class="interview-review-meta-item">
+                            <span class="interview-review-meta-label">Target Role</span>
+                            <span class="interview-review-meta-value">${escapeHTML(session.target_role || "General Interview")}</span>
+                        </div>
+                        <div class="interview-review-meta-item">
+                            <span class="interview-review-meta-label">Completed</span>
+                            <span class="interview-review-meta-value">${date} at ${time}</span>
+                        </div>
+                        <div class="interview-review-score">${scoreDisplay}</div>
+                    </div>
+                `;
+
+                if (session.questions && session.questions.length) {
+                    html += `
+                        <section class="interview-review-section">
+                            <h4 class="interview-review-section-title">Questions & Answers</h4>
+                            <div class="interview-review-qa">
+                    `;
+                    session.questions.forEach(function (q, idx) {
+                        const answer = session.answers && session.answers[idx] ? session.answers[idx] : "";
+                        const typeClass = q.type ? `interview-review-qa-type ${q.type}` : "";
+                        html += `
+                            <article class="interview-review-qa-item">
+                                <header class="interview-review-qa-header">
+                                    <span class="interview-review-qa-type ${escapeHTML(q.type || "")}">${escapeHTML(q.type ? q.type.charAt(0).toUpperCase() + q.type.slice(1) : "Question")}</span>
+                                    <span class="interview-review-qa-number">Q${idx + 1}</span>
+                                </header>
+                                <p class="interview-review-qa-question">${escapeHTML(q.text || "")}</p>
+                                <p class="interview-review-qa-answer ${answer ? "" : "empty"}">${answer ? escapeHTML(answer) : "No answer provided"}</p>
+                            </article>
+                        `;
+                    });
+                    html += `
+                            </div>
+                        </section>
+                    `;
+                }
+
+                if (session.feedback) {
+                    html += `
+                        <section class="interview-review-section">
+                            <h4 class="interview-review-section-title">Feedback by Category</h4>
+                            <div class="interview-review-feedback-categories">
+                    `;
+                    ["technical", "behavioral", "project"].forEach(function (cat) {
+                        const catData = session.feedback[cat];
+                        if (catData) {
+                            html += `
+                                <article class="interview-review-feedback-category">
+                                    <header class="interview-review-feedback-category-header">
+                                        <span class="interview-review-feedback-category-name">${cat}</span>
+                                        <span class="interview-review-feedback-category-score">${catData.score}%</span>
+                                    </header>
+                                    ${catData.strengths && catData.strengths.length ? `
+                                        <div class="interview-review-feedback-list">
+                                            <span class="interview-review-feedback-label">Strengths</span>
+                                            <ul>${catData.strengths.map(function (s) { return `<li>${escapeHTML(s)}</li>`; }).join("")}</ul>
+                                        </div>
+                                    ` : ""}
+                                    ${catData.gaps && catData.gaps.length ? `
+                                        <div class="interview-review-feedback-list">
+                                            <span class="interview-review-feedback-label">Gaps</span>
+                                            <ul>${catData.gaps.map(function (g) { return `<li>${escapeHTML(g)}</li>`; }).join("")}</ul>
+                                        </div>
+                                    ` : ""}
+                                </article>
+                            `;
+                        }
+                    });
+                    html += `
+                            </div>
+                        </section>
+                    `;
+                }
+
+                if (session.weak_areas && session.weak_areas.length) {
+                    html += `
+                        <section class="interview-review-section">
+                            <h4 class="interview-review-section-title">Weak Areas</h4>
+                            <div class="interview-review-weak-areas">
+                                <ul>${session.weak_areas.map(function (w) { return `<li>${escapeHTML(w)}</li>`; }).join("")}</ul>
+                            </div>
+                        </section>
+                    `;
+                }
+
+                if (session.recommendations && session.recommendations.length) {
+                    html += `
+                        <section class="interview-review-section">
+                            <h4 class="interview-review-section-title">Recommendations</h4>
+                            <div class="interview-review-recommendations">
+                    `;
+                    session.recommendations.forEach(function (rec) {
+                        html += `
+                            <article class="interview-review-recommendation">
+                                <header class="interview-review-recommendation-header">
+                                    <span class="interview-review-recommendation-area">${escapeHTML(rec.area || "")}</span>
+                                </header>
+                                <p class="interview-review-recommendation-action">${escapeHTML(rec.action || "")}</p>
+                                ${rec.resources && rec.resources.length ? `
+                                    <ul class="interview-review-recommendation-resources">
+                                        ${rec.resources.map(function (r) {
+                                            const url = isValidHttpUrl(r) ? r : "#";
+                                            return `<li><a href="${escapeHTML(url)}" target="_blank" rel="noopener">${escapeHTML(r)}</a></li>`;
+                                        }).join("")}
+                                    </ul>
+                                ` : ""}
+                            </article>
+                        `;
+                    });
+                    html += `
+                            </div>
+                        </section>
+                    `;
+                }
+
+                interviewReviewBody.innerHTML = html;
+            }
 
             return {
                 generateSession,
                 loadResumesIntoSelector,
                 loadHistory,
                 deleteSession,
+                openReview,
+                closeReview,
                 // State accessors for future checkpoints
                 getSession: function () { return session; },
                 getQuestions: function () { return questions; }
