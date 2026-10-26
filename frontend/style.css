@@ -4025,6 +4025,8 @@ textarea:focus,
 
 
 
+@media (max-width: 700px) {
+
     .hero {
 
         min-height: 570px;
@@ -4186,6 +4188,8 @@ textarea:focus,
         min-height: 0;
 
     }
+
+}
 
 
 
@@ -8197,6 +8201,18 @@ textarea:focus,
 
         flex-shrink: 0;
 
+        padding: 12px 16px;
+
+        min-height: 44px;
+
+    }
+
+    .ats-file-remove {
+
+        width: 44px;
+
+        height: 44px;
+
     }
 
     #overview-section,
@@ -9683,5 +9699,27 @@ textarea:focus,
     .profile-trigger[aria-expanded="true"]
     .profile-caret {
         transform: none;
+    }
+}
+
+/* Text-entry controls keep a 16px floor on touch devices so
+   iOS Safari does not auto-zoom the page on focus (the zoom
+   persists after blur). Desktop typography is unchanged. */
+@media (pointer: coarse) {
+
+    .input-number,
+
+    .interview-field-group input,
+
+    .interview-answer-input,
+
+    .ats-job-description-field textarea,
+
+    .resume-field textarea,
+
+    .resume-bullet-row input {
+
+        font-size: 16px;
+
     }
 }
