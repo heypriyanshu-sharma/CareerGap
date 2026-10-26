@@ -7,8 +7,12 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client, create_client
 
 
-# Load the external secrets file used by local development
-SECRETS_PATH = Path(r"C:\Users\ASUS\OneDrive\Documents\careergap_secrets\.env")
+# Load the external secrets file used by local development.
+# Override the location with CAREERGAP_SECRETS_PATH; the default
+# path is kept for existing local setups, and a missing file
+# falls back to the project-root .env as before.
+DEFAULT_SECRETS_PATH = r"C:\Users\ASUS\OneDrive\Documents\careergap_secrets\.env"
+SECRETS_PATH = Path(os.environ.get("CAREERGAP_SECRETS_PATH", DEFAULT_SECRETS_PATH))
 if SECRETS_PATH.exists():
     load_dotenv(SECRETS_PATH)
 else:
