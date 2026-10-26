@@ -1108,7 +1108,8 @@ def get_analyses(
 ):
     try:
         return get_analysis_history(
-            credentials.credentials
+            credentials.credentials,
+            user_id=claims["sub"],
         )
 
     except Exception:
@@ -1898,6 +1899,7 @@ def delete_analysis_route(
     try:
         delete_analysis(
             access_token=credentials.credentials,
+            user_id=claims["sub"],
             analysis_id=analysis_id,
         )
 

@@ -4,6 +4,7 @@ from fastapi import HTTPException
 
 import auth
 import backend
+import database
 
 
 client = TestClient(backend.app)
@@ -41,10 +42,18 @@ def test_analyses_returns_history(
         }
     ]
 
+    captured = {}
+
+    def fake_get_analysis_history(access_token, user_id):
+        captured["access_token"] = access_token
+        captured["user_id"] = user_id
+
+        return expected_history
+
     monkeypatch.setattr(
         backend,
         "get_analysis_history",
-        lambda access_token: expected_history,
+        fake_get_analysis_history,
     )
 
     response = client.get(
@@ -56,6 +65,10 @@ def test_analyses_returns_history(
 
     assert response.status_code == 200
     assert response.json() == expected_history
+    assert captured["access_token"] == (
+        "test-access-token"
+    )
+    assert captured["user_id"] == "test-user-id"
 
 
 def test_analyses_rejects_invalid_token(
@@ -80,4 +93,83 @@ def test_analyses_rejects_invalid_token(
     assert response.status_code == 401
     assert response.json()["detail"] == (
         "Invalid or expired authentication token."
+    )
+
+
+class _FakeSupabaseResponse:
+    """Minimal requests.Response stand-in for param verification."""
+
+    ok = True
+    status_code = 200
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return []
+
+
+def test_get_analysis_history_filters_by_user_id(monkeypatch):
+    """The history read must scope the PostgREST query to the caller."""
+
+    captured = {}
+
+    def fake_get(url, headers=None, params=None, timeout=None):
+        captured["url"] = url
+        captured["params"] = params
+
+        return _FakeSupabaseResponse()
+
+    monkeypatch.setattr(
+        database.requests,
+        "get",
+        fake_get,
+    )
+
+    database.get_analysis_history(
+        "test-access-token",
+        "test-user-id",
+    )
+
+    assert captured["url"].endswith("/career_analyses")
+
+    assert captured["params"]["user_id"] == (
+        "eq.test-user-id"
+    )
+
+    assert captured["params"]["order"] == (
+        "created_at.desc"
+    )
+
+
+def test_delete_analysis_filters_by_user_id_and_analysis_id(
+    monkeypatch,
+):
+    """The delete must scope to both the caller and one analysis id."""
+
+    captured = {}
+
+    def fake_delete(url, headers=None, params=None, timeout=None):
+        captured["params"] = params
+
+        return _FakeSupabaseResponse()
+
+    monkeypatch.setattr(
+        database.requests,
+        "delete",
+        fake_delete,
+    )
+
+    database.delete_analysis(
+        "test-access-token",
+        "test-user-id",
+        "test-analysis-id",
+    )
+
+    assert captured["params"]["user_id"] == (
+        "eq.test-user-id"
+    )
+
+    assert captured["params"]["id"] == (
+        "eq.test-analysis-id"
     )

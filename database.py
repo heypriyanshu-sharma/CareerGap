@@ -473,7 +473,17 @@ def save_analysis(
         timeout=10,
     )
 
-def get_analysis_history(access_token):
+def get_analysis_history(
+    access_token,
+    user_id,
+):
+    """Return the caller's own saved analyses, newest first.
+
+    The user_id filter mirrors _owned_params for resumes and
+    interview_sessions: ownership is also enforced by RLS, but the
+    filter keeps the intent explicit in the request.
+    """
+
     response = requests.get(
         f"{SUPABASE_URL}/rest/v1/career_analyses",
         headers={
@@ -481,6 +491,7 @@ def get_analysis_history(access_token):
             "Authorization": f"Bearer {access_token}",
         },
         params={
+            "user_id": f"eq.{user_id}",
             "select": "id,job_description,analysis,created_at",
             "order": "created_at.desc",
         },
@@ -737,8 +748,16 @@ def get_interview_session(
 
 def delete_analysis(
     access_token,
-    analysis_id
+    user_id,
+    analysis_id,
 ):
+    """Delete one of the caller's own analyses by id.
+
+    Both the user_id and id filters scope the delete, mirroring
+    _owned_params for resumes and interview_sessions: ownership is
+    also enforced by RLS, but the filters keep the intent explicit.
+    """
+
     response = requests.delete(
         f"{SUPABASE_URL}/rest/v1/career_analyses",
         headers={
@@ -746,7 +765,8 @@ def delete_analysis(
             "Authorization": f"Bearer {access_token}",
         },
         params={
-            "id": f"eq.{analysis_id}"
+            "user_id": f"eq.{user_id}",
+            "id": f"eq.{analysis_id}",
         },
         timeout=10,
     )

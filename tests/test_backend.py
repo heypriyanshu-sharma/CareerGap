@@ -378,6 +378,7 @@ def test_delete_analysis(monkeypatch):
     assert called["access_token"] == (
         "test-access-token"
     )
+    assert called["user_id"] == "test-user-id"
     assert called["analysis_id"] == (
         "test-analysis-id"
     )
