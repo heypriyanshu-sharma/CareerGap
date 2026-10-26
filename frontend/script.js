@@ -3944,6 +3944,49 @@ analysisHistoryList.innerHTML =
 }
 
         // =================================================
+        // SAVE WARNING
+        // =================================================
+
+        function createSaveWarning(
+            result
+        ) {
+
+// A backend-reported save failure (the server message) is
+// shown at the top of the report instead of being silently
+// ignored. The message text stays server-owned, exactly like
+// the advisor failure. Analyses saved successfully never
+// carry the field, so normal reports render nothing here.
+            const message =
+                typeof result.analysis_save_error ===
+                    "string"
+                    ? result.analysis_save_error.trim()
+                    : "";
+
+            if (!message) {
+                return "";
+            }
+
+            return `
+                <div
+                    class="result-error save-warning"
+                >
+
+                    <h3>
+                        Analysis saved to your screen, not
+                        your history.
+                    </h3>
+
+                    <p>
+                        ${escapeHTML(
+                            message
+                        )}
+                    </p>
+
+                </div>
+            `;
+        }
+
+        // =================================================
         // BUILD COMPLETE DASHBOARD
         // =================================================
 
@@ -3998,6 +4041,9 @@ analysisHistoryList.innerHTML =
                 );
 
             return (
+                createSaveWarning(
+                    result
+                ) +
                 top +
                 projects +
                 atsKeywords +
