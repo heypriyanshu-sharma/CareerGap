@@ -62,6 +62,16 @@ document.addEventListener("DOMContentLoaded", function () {
         "password confirmation"
     );
 
+    // =================================================
+    // PASSWORD POLICY
+    // Matches reset-password.js: the minimum length is
+    // checked before submit so the user gets a clear
+    // message; Supabase Auth remains the authoritative
+    // server-side validator.
+    // =================================================
+
+    const MIN_PASSWORD_LENGTH = 6;
+
     signupForm.addEventListener("submit", async function (event) {
         event.preventDefault();
 
@@ -71,6 +81,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!email || !password || !confirmPassword) {
             alert("Please complete all fields.");
+            return;
+        }
+
+        if (password.length < MIN_PASSWORD_LENGTH) {
+            alert(
+                "Password must be at least " +
+                    MIN_PASSWORD_LENGTH +
+                    " characters."
+            );
             return;
         }
 

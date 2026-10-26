@@ -23,6 +23,8 @@ LOGIN_JS = FRONTEND_DIR / "login.js"
 LOGIN_CSS = FRONTEND_DIR / "login.css"
 RESET_HTML = FRONTEND_DIR / "reset-password.html"
 RESET_JS = FRONTEND_DIR / "reset-password.js"
+SIGNUP_HTML = FRONTEND_DIR / "signup.html"
+SIGNUP_JS = FRONTEND_DIR / "signup.js"
 PROFILE_HTML = FRONTEND_DIR / "profile.html"
 PROFILE_JS = FRONTEND_DIR / "profile.js"
 STYLE_CSS = FRONTEND_DIR / "style.css"
@@ -285,6 +287,84 @@ class TestResetPasswordPage:
 
         assert "create_client" not in source
         assert "createClient" not in source
+
+
+# ============================================================
+# SIGNUP — PASSWORD POLICY
+# ============================================================
+
+class TestSignupPasswordPolicy:
+    """The signup page mirrors reset-password.js's minimum
+    length check so a too-short password is rejected with a
+    clear message before Supabase Auth is called. Supabase
+    remains the authoritative server-side validator."""
+
+    def test_signup_page_exists(self):
+        assert SIGNUP_HTML.exists()
+        assert SIGNUP_JS.exists()
+
+    def test_signup_defines_the_same_minimum_as_reset(self):
+        signup = _read(SIGNUP_JS)
+        reset = _read(RESET_JS)
+
+        assert "MIN_PASSWORD_LENGTH" in signup
+        assert "MIN_PASSWORD_LENGTH" in reset
+
+        assert "constMIN_PASSWORD_LENGTH=6;" in _compact(signup)
+        assert "constMIN_PASSWORD_LENGTH=6;" in _compact(reset)
+
+    def test_signup_enforces_minimum_length(self):
+        source = _read(SIGNUP_JS)
+
+        assert "password.length<MIN_PASSWORD_LENGTH" in (
+            _compact(source)
+        )
+
+    def test_signup_length_check_runs_before_supabase(self):
+        """Ordering guarantee: a short password is rejected
+        client-side and never reaches auth.signUp."""
+
+        compact = _compact(_read(SIGNUP_JS))
+
+        length_check = compact.index(
+            "password.length<MIN_PASSWORD_LENGTH"
+        )
+
+        supabase_call = compact.index(
+            "careerGapSupabase.auth.signUp"
+        )
+
+        alert = compact.index(
+            "Passwordmustbeatleast"
+        )
+
+        assert length_check < supabase_call
+        assert length_check < alert < supabase_call
+
+    def test_signup_rejects_too_short_passwords_with_clear_message(self):
+        source = _read(SIGNUP_JS)
+
+        assert "Password must be at least" in source
+        assert "characters." in source
+
+    def test_signup_has_no_maximum_length_check(self):
+        """Passwords that meet the minimum must face no
+        client-side cap: only the minimum is enforced
+        before Supabase receives them."""
+
+        compact = _compact(_strip_strings(_read(SIGNUP_JS)))
+
+        assert "password.length>" not in compact
+
+    def test_signup_still_calls_supabase_auth_with_password(self):
+        """Valid-length passwords still reach Supabase Auth,
+        which remains the authoritative validator."""
+
+        compact = _compact(_read(SIGNUP_JS))
+
+        assert "careerGapSupabase.auth.signUp" in compact
+        assert "email:email" in compact
+        assert "password:password" in compact
 
 
 # ============================================================
