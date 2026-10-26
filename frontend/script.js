@@ -94,6 +94,52 @@ document.addEventListener(
             );
 
         // =================================================
+        // THEME TOGGLE
+        // =================================================
+
+        const themeToggle = document.getElementById("theme-toggle");
+
+        // Initialize theme before any rendering to avoid flash
+        function initTheme() {
+            let savedTheme = null;
+            try {
+                savedTheme = localStorage.getItem("theme");
+            } catch (_) {
+                // Private browsing or storage disabled — ignore
+            }
+            const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+            const theme = savedTheme || (prefersDark ? "dark" : "light");
+            applyTheme(theme);
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute("data-theme", theme);
+            try {
+                localStorage.setItem("theme", theme);
+            } catch (_) {
+                // Private browsing or storage disabled — ignore
+            }
+            if (themeToggle) {
+                themeToggle.setAttribute("aria-pressed", theme === "dark");
+                themeToggle.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+            }
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute("data-theme") || "light";
+            const newTheme = currentTheme === "dark" ? "light" : "dark";
+            applyTheme(newTheme);
+        }
+
+        // Initialize immediately
+        initTheme();
+
+        // Toggle handler
+        if (themeToggle) {
+            themeToggle.addEventListener("click", toggleTheme);
+        }
+
+        // =================================================
         // INTERVIEW STUDIO ELEMENTS
         // =================================================
 
