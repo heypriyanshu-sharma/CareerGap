@@ -151,6 +151,14 @@ The API will run at:
 http://127.0.0.1:8000
 ```
 
+On Render, the start command must bind to `0.0.0.0` on the port from
+the `$PORT` environment variable (default `10000`); if Render cannot
+detect your bound port, the deploy fails:
+
+```bash
+python -m uvicorn backend:app --host 0.0.0.0 --port $PORT
+```
+
 Interactive API documentation is available at:
 
 ```text

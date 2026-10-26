@@ -13,6 +13,7 @@ from datetime import datetime
 import os
 import json
 import asyncio
+import ipaddress
 import requests
 from supabase import create_client
 from pathlib import Path
@@ -357,7 +358,32 @@ class BodySizeLimitMiddleware:
 # Rate limiter
 # ---------------------------------------------------------------------------
 
-limiter = Limiter(key_func=get_remote_address)
+def get_client_key(request):
+    """Rate-limit key for one request.
+
+    On Render every public request transits Cloudflare (Render's DDoS
+    protection provider), which supplies CF-Connecting-IP as a single
+    edge-computed value. X-Forwarded-For is deliberately never key
+    material: Render appends to it without clearing client-supplied
+    values, so it is spoofable there and any XFF-derived key would let
+    one client rotate its own limit bucket. The header value must parse
+    as an IP address, so an invalid or malicious value can never become
+    a limiter key (it falls back instead). Without the header (local
+    development, private-network or health-check traffic) the true peer
+    address is used, matching the pre-fix behavior.
+    """
+    cf_ip = request.headers.get("cf-connecting-ip", "").strip()
+
+    if cf_ip:
+        try:
+            return str(ipaddress.ip_address(cf_ip))
+        except ValueError:
+            pass  # not an IP: never use it as a limiter key
+
+    return get_remote_address(request)
+
+
+limiter = Limiter(key_func=get_client_key)
 
 
 # ---------------------------------------------------------------------------
