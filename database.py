@@ -455,6 +455,12 @@ def save_analysis(
     projects,
     analysis,
 ):
+    """Persist one analysis for the caller.
+
+    Raises DatabaseRequestError on an HTTP error response so a failed
+    save is observable by the caller instead of being silently
+    discarded.
+    """
     response = requests.post(
         f"{SUPABASE_URL}/rest/v1/career_analyses",
         headers={
@@ -471,6 +477,11 @@ def save_analysis(
             "analysis": analysis,
         },
         timeout=10,
+    )
+
+    _raise_for_database_response(
+        response,
+        "Unable to save the analysis.",
     )
 
 def get_analysis_history(

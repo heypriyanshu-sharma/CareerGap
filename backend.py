@@ -1179,14 +1179,36 @@ def analyze(
             )
             results["ats_scorecard"] = None
 
-        save_analysis(
-            access_token=credentials.credentials,
-            user_id=claims["sub"],
-            resume=career_gap_request.resume,
-            job_description=career_gap_request.job_description,
-            projects=projects,
-            analysis=results,
-        )
+        # Persist the analysis for the caller's history. A failed or
+        # timed-out save must not destroy the completed analysis (the
+        # deterministic result is the source of truth), so the failure
+        # is logged and reported in-band instead of failing the request.
+        try:
+            save_analysis(
+                access_token=credentials.credentials,
+                user_id=claims["sub"],
+                resume=career_gap_request.resume,
+                job_description=career_gap_request.job_description,
+                projects=projects,
+                analysis=results,
+            )
+
+        except Exception as error:
+            # safe_error_detail strips the Gemini API key from exception
+            # text (the project-wide redaction standard shared with the
+            # handlers above). In this path the realistic errors carry
+            # no keys — DatabaseRequestError messages are hardcoded
+            # strings and requests errors never embed headers — so this
+            # is defense-in-depth for the log.
+            print(
+                "ANALYSIS SAVE ERROR:",
+                type(error).__name__,
+                safe_error_detail(error),
+            )
+            results["analysis_save_error"] = (
+                "Your analysis is complete, but saving it to your "
+                "history failed. It is not available in Saved Analyses."
+            )
 
         return results
 
