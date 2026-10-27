@@ -394,10 +394,35 @@ limiter = Limiter(key_func=get_client_key)
 # Application
 # ---------------------------------------------------------------------------
 
+def api_docs_urls():
+    """Return the interactive documentation URLs for this environment.
+
+    The docs enumerate every route, including request schemas, so they
+    are disabled in production. Render sets RENDER=true in its runtime,
+    which turns off /docs, /redoc and /openapi.json there; local
+    development keeps the documented
+    http://127.0.0.1:8000/docs workflow.
+    """
+
+    if os.getenv("RENDER"):
+        return {
+            "docs_url": None,
+            "redoc_url": None,
+            "openapi_url": None,
+        }
+
+    return {
+        "docs_url": "/docs",
+        "redoc_url": "/redoc",
+        "openapi_url": "/openapi.json",
+    }
+
+
 app = FastAPI(
     title="CareerGap API",
     description="Evidence-Based Career Readiness Engine",
     version="1.0.0",
+    **api_docs_urls(),
 )
 
 app.state.limiter = limiter

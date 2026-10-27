@@ -165,6 +165,10 @@ Interactive API documentation is available at:
 http://127.0.0.1:8000/docs
 ```
 
+The interactive docs are disabled in production: Render sets
+`RENDER=true`, which turns off `/docs`, `/redoc` and `/openapi.json`
+there. Local development keeps them enabled.
+
 ### 5. Start the frontend
 
 Open another terminal:
@@ -191,7 +195,7 @@ http://localhost:5500
   - `/auth/delete-account` — 3/minute
   - `/resumes` (POST/PUT), `/interview/{id}` (GET) — 30/minute
 
-  - **Verified locally (pytest):** `get_client_key` logic (9 unit tests), limiter wiring (`limiter._key_func == get_client_key`), per-client isolation via `CF-Connecting-IP` (integration test). All 713 tests pass.
+  - **Verified locally (pytest):** `get_client_key` logic (9 unit tests), limiter wiring (`limiter._key_func == get_client_key`), per-client isolation via `CF-Connecting-IP` (integration test). All 721 tests pass.
   - **Deferred live verification:** Production Cloudflare/Render header handling has not been end-to-end tested. The following are **assumptions, not confirmed facts**:
     1. Cloudflare overwrites `CF-Connecting-IP` with the true client IP (Render's DDoS protection).
     2. `X-Forwarded-For` is not trusted as a rate-limit key (Render appends without clearing client-supplied values).
