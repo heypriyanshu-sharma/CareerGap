@@ -364,6 +364,15 @@ a {
 
 }
 
+.form-hint {
+    margin-top: 8px;
+
+    color: var(--olive-soft);
+
+    font-size: 0.78rem;
+    line-height: 1.4;
+}
+
 .password-input-wrap {
     position: relative;
     width: 100%;

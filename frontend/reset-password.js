@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // password is never requested, read or displayed.
     // =================================================
 
-    const MIN_PASSWORD_LENGTH = 6;
+    const MIN_PASSWORD_LENGTH = 8;
 
     const form =
         document.getElementById("reset-password-form");

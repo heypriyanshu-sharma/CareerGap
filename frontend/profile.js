@@ -447,7 +447,7 @@ document.addEventListener(
         // only allows setting a new one.
         // =================================================
 
-        const MIN_PASSWORD_LENGTH = 6;
+        const MIN_PASSWORD_LENGTH = 8;
 
         const changePasswordButton =
             document.getElementById(

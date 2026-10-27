@@ -111,6 +111,8 @@
                         name="password"
                         placeholder="Create a password"
                         autocomplete="new-password"
+                        minlength="8"
+                        aria-describedby="password-hint"
                         required
                     >
 
@@ -154,6 +156,10 @@
                     </button>
 
                 </div>
+
+                <p class="form-hint" id="password-hint">
+                    At least 8 characters.
+                </p>
 
             </div>
 
