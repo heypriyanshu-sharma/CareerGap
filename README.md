@@ -206,6 +206,7 @@ http://localhost:5500
 
 - **Request size limits** — Uploaded files are capped at 5 MB with extracted text capped at 50,000 characters; resume-write endpoints additionally enforce a 256 KB body limit via middleware.
 - **CORS** — A fixed allowlist only: the local development origins (`http://localhost:5500`, `http://127.0.0.1:5500`) and the production origin `https://careergap.pages.dev`.
+- **Security headers** — `frontend/_headers` sets them for Cloudflare Pages: a report-only Content-Security-Policy, `X-Frame-Options: DENY`, a `Permissions-Policy` that denies camera/microphone/geolocation and similar features, and HSTS (`max-age=31536000; includeSubDomains`). `frame-ancestors` is ignored in report-only mode, so `X-Frame-Options` is the clickjacking control until the CSP is enforced in a follow-up. The inline theme bootstrap in `index.html` is allowed by SHA-256 hash, not `'unsafe-inline'`.
 - **Migrations are manual** — SQL files under `supabase/migrations/` are proposals intended to be reviewed and applied manually (dashboard SQL editor or `supabase db push`); nothing in the repo applies them automatically. The `career_analyses` table is managed directly in the dashboard and is deliberately excluded from repo migrations (guarded by automated tests).
 
 ## Testing

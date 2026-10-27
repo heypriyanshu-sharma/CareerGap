@@ -1,0 +1,5 @@
+/*
+  Content-Security-Policy-Report-Only: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://cdn.jsdelivr.net 'sha256-1CkI8h/ypnpRBQpXc4t80Vu67/D6OEV4oEUY46hdExY=' 'sha256-HbtfYdWSvQMpTBW+2QUACaA0V+688tIEvo6RPcu/ylE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://careergap.onrender.com https://lbtndermohgljdtlluxp.supabase.co
+  X-Frame-Options: DENY
+  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
