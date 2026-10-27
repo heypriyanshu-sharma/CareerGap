@@ -1981,6 +1981,52 @@ analysisHistoryList.innerHTML =
             result
         ) {
 
+            // job_skills is the list of skills the backend
+            // recognized in the job description. An empty list
+            // means nothing was recognized, not that the
+            // candidate matches 0% of the role. A 0% ring and an
+            // encouraging score message would both be misleading,
+            // so an explicit "score unavailable" state is shown
+            // instead. A missing job_skills list (older saved
+            // rows) falls through to normal rendering.
+            const jobSkills =
+                Array.isArray(
+                    result.job_skills
+                )
+                    ? result.job_skills
+                    : null;
+
+            if (
+                jobSkills &&
+                jobSkills.length === 0
+            ) {
+
+                return `
+                <article
+                    class="dashboard-card score-card"
+                >
+
+                    <div class="score-copy">
+
+                        <h3>
+                            Score unavailable
+                        </h3>
+
+                        <p>
+                            No recognizable skills were
+                            detected in the job description,
+                            so a skill match score cannot be
+                            calculated. Add the specific
+                            skills or requirements the role
+                            calls for, then analyze again.
+                        </p>
+
+                    </div>
+
+                </article>
+            `;
+            }
+
             const score =
                 Number(result.score || 0);
 
