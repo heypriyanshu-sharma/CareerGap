@@ -185,7 +185,21 @@ http://localhost:5500
 - **Authentication** — Every data endpoint requires a Supabase Auth JWT (`HTTPBearer`). Identity is always derived server-side from the verified token's claims; user IDs sent in a client payload are never trusted.
 - **Data isolation** — PostgreSQL Row Level Security (owner-only policies) is the enforcement authority for all user tables. On top of RLS, application-level PostgREST queries also scope every request with an explicit `user_id=eq.<token-subject>` filter.
 - **Service-role key discipline** — `SUPABASE_SERVICE_KEY` bypasses RLS. It is used server-side only, and only for privileged operations: the `SECURITY DEFINER` interview RPC `submit_interview_answers` (execute granted solely to `service_role`) and account deletion. It must never be embedded in or shipped to the frontend.
-- **Rate limiting** — Endpoints are rate-limited with slowapi (HTTP 429 when exceeded), e.g. `/upload` and `/interview/generate` at 5/minute, `/analyze` and other analysis, ATS, and interview endpoints at 10/minute, `/auth/delete-account` at 3/minute, and resume create/update routes at 30/minute.
+- **Rate limiting** — Endpoints are rate-limited with slowapi (HTTP 429 when exceeded):
+  - `/upload` and `/interview/generate` — 5/minute
+  - `/analyze`, `/ats/analyze-resume`, `/interview/{id}/answer`, `/interview/{id}` (DELETE), `/auth/profile` — 10/minute
+  - `/auth/delete-account` — 3/minute
+  - `/resumes` (POST/PUT), `/interview/{id}` (GET) — 30/minute
+
+  - **Verified locally (pytest):** `get_client_key` logic (9 unit tests), limiter wiring (`limiter._key_func == get_client_key`), per-client isolation via `CF-Connecting-IP` (integration test). All 713 tests pass.
+  - **Deferred live verification:** Production Cloudflare/Render header handling has not been end-to-end tested. The following are **assumptions, not confirmed facts**:
+    1. Cloudflare overwrites `CF-Connecting-IP` with the true client IP (Render's DDoS protection).
+    2. `X-Forwarded-For` is not trusted as a rate-limit key (Render appends without clearing client-supplied values).
+    3. Render is configured for one instance with autoscaling off; runtime single-instance behavior is unverified.
+    4. Fixed-window reset behaves as expected across deploys.
+
+  A live spoof test requires an authenticated production request; no automated token path exists without browser automation or a debug endpoint. Documented here to track the gap.
+
 - **Request size limits** — Uploaded files are capped at 5 MB with extracted text capped at 50,000 characters; resume-write endpoints additionally enforce a 256 KB body limit via middleware.
 - **CORS** — A fixed allowlist only: the local development origins (`http://localhost:5500`, `http://127.0.0.1:5500`) and the production origin `https://careergap.pages.dev`.
 - **Migrations are manual** — SQL files under `supabase/migrations/` are proposals intended to be reviewed and applied manually (dashboard SQL editor or `supabase db push`); nothing in the repo applies them automatically. The `career_analyses` table is managed directly in the dashboard and is deliberately excluded from repo migrations (guarded by automated tests).
