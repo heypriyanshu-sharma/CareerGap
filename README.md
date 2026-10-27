@@ -135,7 +135,7 @@ Notes:
 - **`GEMINI_MODEL`** is optional; a sensible default is used when it is not set.
 - **`GEMINI_API_KEY`** and **`GITHUB_TOKEN`** enable AI advice and GitHub resource search, respectively.
 
-**Secrets-file precedence:** the backend modules first load an optional developer-local secrets file (found via `SECRETS_PATH` in `backend.py` and `auth.py`, overridable with the `CAREERGAP_SECRETS_PATH` environment variable) and then this root `.env`. On machines where that external file does not exist, the root `.env` documented above is what gets loaded. If you edit the root `.env` on the developer machine and nothing changes, check whether the external secrets file is shadowing it.
+**Secrets-file precedence:** `backend.py`, `auth.py`, and `ai_advisor.py` load an optional external secrets file only when the `CAREERGAP_SECRETS_PATH` environment variable is set; there is no built-in default path. When it is unset (or points at a missing file), the project-root `.env` documented above is loaded. Set `CAREERGAP_SECRETS_PATH` if you keep secrets outside the repository — no personal filesystem paths are compiled into the code.
 
 Never commit `.env` or expose API keys publicly.
 

@@ -1,10 +1,10 @@
 """Tests for the configurable secrets-file path (Item 4e).
 
-The secrets file location must come from SECRETS_PATH in auth.py
-and backend.py, overridable with the CAREERGAP_SECRETS_PATH
-environment variable, keeping the original path as the default
-and the project-root .env fallback. No secret values are read
-here: these tests assert the resolution wiring only.
+The secrets file location must come only from the
+CAREERGAP_SECRETS_PATH environment variable, with the
+project-root .env as the fallback. No personal filesystem path
+may be baked into the source. No secret values are read here:
+these tests assert the resolution wiring only.
 """
 
 import re
@@ -14,6 +14,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 AUTH_PY = ROOT / "auth.py"
 BACKEND_PY = ROOT / "backend.py"
+AI_ADVISOR_PY = ROOT / "ai_advisor.py"
+
+FILES = (BACKEND_PY, AUTH_PY, AI_ADVISOR_PY)
+
+ENV_VAR = "CAREERGAP_SECRETS_PATH"
+
+LOADING_BLOCK = re.compile(
+    r"# Load the external secrets file.*?load_dotenv\(\)",
+    re.S,
+)
 
 
 def _read(path):
@@ -24,55 +34,64 @@ def _compact(source):
     return re.sub(r"\s+", "", source)
 
 
-FILES = (AUTH_PY, BACKEND_PY)
-
-
 class TestSecretsPath:
 
-    def test_both_files_exist(self):
-        assert AUTH_PY.exists()
-        assert BACKEND_PY.exists()
+    def test_every_module_exists_and_reads_the_override(self):
+        for path in FILES:
+            assert path.is_file()
+            assert ENV_VAR in _read(path), path.name
 
-    def test_both_files_expose_the_override_variable(self):
+    def test_no_module_hardcodes_a_personal_path(self):
+        """The leak this item fixes: no drive letter, home
+        directory, OneDrive path or old default constant."""
+
         for path in FILES:
             source = _read(path)
 
-            assert "CAREERGAP_SECRETS_PATH" in source
-            assert "DEFAULT_SECRETS_PATH" in source
+            assert not re.search(r"[A-Za-z]:\\", source), path.name
+            assert "OneDrive" not in source, path.name
+            assert "careergap_secrets" not in source, path.name
+            assert "DEFAULT_SECRETS_PATH" not in source, path.name
 
-    def test_secrets_path_resolves_through_the_env_var(self):
-        """SECRETS_PATH must be resolved through the env var,
-        falling back to DEFAULT_SECRETS_PATH."""
+    def test_resolution_is_env_only(self):
+        """The env lookup must not carry a second argument
+        that would restore a built-in default path."""
+
+        expected = (
+            "SECRETS_PATH="
+            'os.environ.get("CAREERGAP_SECRETS_PATH")'
+        )
+
+        for path in FILES:
+            assert expected in _compact(_read(path)), path.name
+
+    def test_missing_file_or_unset_override_falls_back_to_root_env(self):
+        """An unset variable or a missing file still loads the
+        project-root .env through bare load_dotenv()."""
 
         for path in FILES:
             compact = _compact(_read(path))
 
             assert (
-                "SECRETS_PATH=Path("
-                'os.environ.get("'
-                'CAREERGAP_SECRETS_PATH",DEFAULT_SECRETS_PATH))'
-            ) in compact
-
-    def test_default_path_is_the_original_location(self):
-        """Existing local setups keep working: the prior
-        hardcoded location stays as the default."""
-
-        for path in FILES:
-            compact = _compact(_read(path))
-
-            assert "OneDrive\\Documents\\careergap_secrets\\.env" in compact
-            assert "DEFAULT_SECRETS_PATH=r" in compact
-
-    def test_missing_file_falls_back_to_root_env(self):
-        """The exists-check and bare load_dotenv() fallback
-        must be preserved in both modules."""
-
-        for path in FILES:
-            compact = _compact(_read(path))
-
-            assert "ifSECRETS_PATH.exists():" in compact
+                "ifSECRETS_PATHandPath(SECRETS_PATH).exists():"
+                in compact
+            )
             assert "load_dotenv(SECRETS_PATH)" in compact
             assert "else:load_dotenv()" in compact
+
+    def test_all_modules_share_the_same_loading_block(self):
+        """One copy of the logic, so a change to one module
+        cannot silently drift from the others."""
+
+        blocks = []
+
+        for path in FILES:
+            match = LOADING_BLOCK.search(_read(path))
+
+            assert match, path.name
+            blocks.append(_compact(match.group(0)))
+
+        assert len(set(blocks)) == 1
 
     def test_backend_loads_secrets_before_importing_auth(self):
         """backend.py's env must be ready before the
@@ -85,12 +104,12 @@ class TestSecretsPath:
 
         assert dots < auth_import
 
-    def test_path_call_consumes_the_env_lookup_not_the_literal(self):
-        """The Path(...) call must consume the env lookup,
-        never the raw literal directly."""
+    def test_fallback_still_calls_bare_load_dotenv(self):
+        """The root .env is discovered by python-dotenv rather
+        than by reimplementing its lookup here."""
 
         for path in FILES:
-            compact = _compact(_read(path))
+            source = _read(path)
 
-            assert 'Path(r"C:\\Users' not in compact
-            assert "os.environ.get" in compact
+            assert "    load_dotenv()" in source
+            assert "find_dotenv" not in source

@@ -20,12 +20,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load the external secrets file used by local development.
-# Override the location with CAREERGAP_SECRETS_PATH; the default
-# path is kept for existing local setups, and a missing file
-# falls back to the project-root .env as before.
-DEFAULT_SECRETS_PATH = r"C:\Users\ASUS\OneDrive\Documents\careergap_secrets\.env"
-SECRETS_PATH = Path(os.environ.get("CAREERGAP_SECRETS_PATH", DEFAULT_SECRETS_PATH))
-if SECRETS_PATH.exists():
+# The location is read only from CAREERGAP_SECRETS_PATH; when it
+# is unset (or the file is missing), the project-root .env is
+# loaded instead.
+SECRETS_PATH = os.environ.get("CAREERGAP_SECRETS_PATH")
+if SECRETS_PATH and Path(SECRETS_PATH).exists():
     load_dotenv(SECRETS_PATH)
 else:
     load_dotenv()
