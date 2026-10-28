@@ -9321,6 +9321,13 @@ textarea:focus,
     min-height: 300px;
 }
 
+/* Signed-out prompt replaces the builder layout, so it takes the same
+   width the layout would have occupied. */
+.resume-signed-out {
+    width: min(1280px, 92%);
+    margin: 0 auto;
+}
+
 .resume-editor-empty-icon {
     font-size: 3.5rem;
     margin-bottom: 16px;

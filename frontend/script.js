@@ -4791,6 +4791,7 @@ analysisHistoryList.innerHTML =
             selectedResumeId: null,
             selectedResume: null,
             viewMode: "empty",
+            signedIn: false,
         };
 
         // ATS Check modal state
@@ -4809,6 +4810,8 @@ analysisHistoryList.innerHTML =
             loading: document.getElementById("resume-list-loading"),
             error: document.getElementById("resume-list-error"),
             createBtn: document.getElementById("create-resume-btn"),
+            signedOut: document.getElementById("resume-signed-out"),
+            layout: document.querySelector(".resume-builder-layout"),
             view: document.getElementById("resume-view"),
             viewTitle: document.getElementById("resume-view-title"),
             preview: document.getElementById("resume-preview"),
@@ -4913,17 +4916,41 @@ analysisHistoryList.innerHTML =
             }
         }
 
+        // The builder only works with a session, so the signed-out state is a
+        // first-class view instead of an API error: the prompt replaces the
+        // layout and creation is disabled rather than failing at save time.
+        function setResumeSignedOut(isSignedOut) {
+            resumeBuilderState.signedIn = !isSignedOut;
+
+            resumeElements.signedOut?.classList.toggle("hidden", !isSignedOut);
+            resumeElements.layout?.classList.toggle("hidden", isSignedOut);
+
+            if (resumeElements.createBtn) {
+                resumeElements.createBtn.disabled = isSignedOut;
+            }
+        }
+
         async function loadResumes() {
             resumeElements.loading.classList.remove("hidden");
             resumeElements.list.classList.add("hidden");
             resumeElements.empty.classList.add("hidden");
             resumeElements.error.classList.add("hidden");
 
+            // A list load must not force a login redirect, the same way
+            // loadAnalysisHistory reads the session without redirecting.
+            // Without a session the signed-out prompt is shown instead of
+            // claiming the user has no resumes.
+            const accessToken = await getAccessToken(false);
+
+            if (!accessToken) {
+                resumeElements.loading.classList.add("hidden");
+                setResumeSignedOut(true);
+                return;
+            }
+
+            setResumeSignedOut(false);
+
             try {
-                // A list load must not force a login redirect, the same way
-                // loadAnalysisHistory reads the session without redirecting.
-                // Without a session the panel is left in its loading state
-                // rather than claiming the user has no resumes.
                 const data = await apiRequest("/resumes?limit=50", {}, false);
 
                 if (!data) {
@@ -5270,6 +5297,13 @@ analysisHistoryList.innerHTML =
         }
 
         function createResume() {
+            // Defense in depth: the button is disabled while signed out, but a
+            // programmatic click must not open an editor that cannot save.
+            if (!resumeBuilderState.signedIn) {
+                window.location.href = "login.html";
+                return;
+            }
+
             resumeBuilderState.selectedResumeId = null;
             resumeBuilderState.selectedResume = null;
             resumeBuilderState.viewMode = "edit";
@@ -5468,16 +5502,19 @@ analysisHistoryList.innerHTML =
 
             try {
                 let savedResume;
+
+                // Saving never redirects on a missing session: the typed form
+                // must survive so the user can sign in and press Save again.
                 if (resumeId) {
                     savedResume = await apiRequest(`/resumes/${encodeURIComponent(resumeId)}`, {
                         method: "PUT",
                         body: JSON.stringify(payload),
-                    });
+                    }, false);
                 } else {
                     savedResume = await apiRequest("/resumes", {
                         method: "POST",
                         body: JSON.stringify(payload),
-                    });
+                    }, false);
                 }
 
                 await loadResumes();

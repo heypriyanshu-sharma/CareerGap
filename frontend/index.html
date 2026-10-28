@@ -1169,6 +1169,16 @@
     class="workspace-section hidden"
     aria-labelledby="resume-builder-heading"
 >
+    <!-- Signed-out state: the builder is hidden until a session exists. -->
+    <div
+        id="resume-signed-out"
+        class="resume-editor-empty resume-signed-out hidden"
+    >
+        <h3>Sign in to build your resume</h3>
+        <p>You need to sign in to manage resumes.</p>
+        <a class="resume-action-btn primary" href="login.html">Sign in</a>
+    </div>
+
     <div class="resume-builder-layout">
 
         <!-- LEFT: LIST PANEL -->

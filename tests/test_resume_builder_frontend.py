@@ -102,6 +102,10 @@ def _read_script_js() -> str:
     return SCRIPT_JS.read_text(encoding="utf-8")
 
 
+def _read_index_html() -> str:
+    return (FRONTEND_DIR / "index.html").read_text(encoding="utf-8")
+
+
 # ============================================================
 # NODE-BASED ADD SKILL REGRESSION TEST
 # ============================================================
@@ -579,6 +583,107 @@ def test_initresumebuilder_calls_setupatsmodallisteners():
 
     # The call should be inside the atsCheckBtn conditional
     assert 'if (resumeElements.atsCheckBtn)' in init_fn
+
+
+def test_signed_out_prompt_markup_and_layout_width():
+    """The signed-out prompt must replace the builder layout, not sit inside it."""
+    html = _read_index_html()
+
+    section_pos = html.index('id="resume-builder"')
+    prompt_pos = html.index('id="resume-signed-out"', section_pos)
+    layout_pos = html.index('class="resume-builder-layout"', section_pos)
+
+    assert prompt_pos < layout_pos, (
+        "the signed-out prompt must come before the builder layout so it can "
+        "replace it"
+    )
+
+    prompt = html[prompt_pos:layout_pos]
+    assert 'href="login.html"' in prompt, "the prompt needs a route to sign in"
+    assert ">Sign in</a>" in prompt
+    assert "resume-editor-empty" in prompt, "reuse the existing empty-state card"
+    assert "hidden" in prompt, "the prompt starts hidden until auth resolves"
+
+    css = (FRONTEND_DIR / "style.css").read_text(encoding="utf-8")
+    rule_start = css.index(".resume-signed-out {")
+    rule = css[rule_start:css.index("}", rule_start)]
+    assert "width: min(1280px, 92%);" in rule, (
+        "the prompt must occupy the width the builder layout would have used"
+    )
+    assert "margin: 0 auto;" in rule
+
+
+def test_signed_out_prompt_reuses_existing_sign_in_wording():
+    """The reviewed sign-in sentence must not drift between prompt and API."""
+    html = _read_index_html()
+    source = _read_script_js()
+
+    sentence = "You need to sign in to manage resumes."
+
+    assert f"<p>{sentence}</p>" in html
+    assert f'throw new Error("{sentence}");' in source
+    assert source.count(sentence) == 1, (
+        "the sign-in sentence must exist once in script.js so the prompt and "
+        "the API guard cannot drift apart"
+    )
+
+
+def test_signed_out_state_hides_layout_and_disables_create():
+    """setResumeSignedOut must swap the layout for the prompt and block creation."""
+    source = _read_script_js()
+
+    elements = _extract_braced_block(source, "const resumeElements =")
+    assert 'signedOut: document.getElementById("resume-signed-out"),' in elements
+    assert 'layout: document.querySelector(".resume-builder-layout"),' in elements
+
+    helper = _extract_braced_block(source, "function setResumeSignedOut(")
+    assert "resumeBuilderState.signedIn = !isSignedOut;" in helper
+    assert 'resumeElements.signedOut?.classList.toggle("hidden", !isSignedOut);' in helper
+    assert 'resumeElements.layout?.classList.toggle("hidden", isSignedOut);' in helper
+    assert "resumeElements.createBtn.disabled = isSignedOut;" in helper
+
+
+def test_loadresumes_checks_session_before_requesting():
+    """A signed-out list load must show the prompt instead of an API error."""
+    source = _read_script_js()
+    load_fn = _extract_braced_block(source, "async function loadResumes(")
+
+    token_pos = load_fn.index("await getAccessToken(false)")
+    guard_pos = load_fn.index("setResumeSignedOut(true)")
+    request_pos = load_fn.index('apiRequest("/resumes?limit=50"')
+
+    assert token_pos < guard_pos < request_pos, (
+        "the session must be checked before the request and before the error path"
+    )
+    assert "return;" in load_fn[guard_pos:request_pos], (
+        "a missing session must return before calling the API"
+    )
+
+
+def test_createresume_guards_when_signed_out():
+    """A programmatic click must not open an editor that cannot save."""
+    source = _read_script_js()
+    create_fn = _extract_braced_block(source, "function createResume(")
+
+    guard_pos = create_fn.index("if (!resumeBuilderState.signedIn)")
+    edit_pos = create_fn.index('resumeBuilderState.viewMode = "edit"')
+
+    assert guard_pos < edit_pos, "the guard must run before the editor opens"
+    guard = create_fn[guard_pos:edit_pos]
+    assert '"login.html"' in guard
+    assert "return;" in guard
+
+
+def test_saveresume_does_not_redirect_when_session_is_missing():
+    """Save must keep the typed form instead of navigating to login."""
+    source = _read_script_js()
+    save_fn = _extract_braced_block(source, "async function saveResume(")
+
+    assert save_fn.count("}, false);") == 2, (
+        "both the PUT and POST resume calls must pass redirectIfMissing=false"
+    )
+    assert "apiRequest(`/resumes/" in save_fn
+    assert 'apiRequest("/resumes", {' in save_fn
 
 
 if __name__ == "__main__":
