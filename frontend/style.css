@@ -323,6 +323,8 @@ a {
 
     justify-content: space-between;
 
+    gap: 12px;
+
 }
 
 
@@ -435,7 +437,7 @@ a {
     width: 40px;
     height: 40px;
     padding: 0;
-    margin-left: 8px;
+    margin-left: auto;
 
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -8161,7 +8163,8 @@ textarea:focus,
 
 /* Desktop-first reference layout. Below 900px the navbar becomes a
    two-row shell: brand plus controls first, then a horizontally
-   scrollable tab row. */
+   scrollable tab row. DOM order is also the focus order, so the
+   markup already lists the tabs last - no visual reordering. */
 
 @media (max-width: 900px) {
 
@@ -8172,36 +8175,6 @@ textarea:focus,
         padding: 14px 0;
 
         flex-wrap: wrap;
-
-        gap: 12px;
-
-    }
-
-    /* Keep the tabs after the controls so the first row stays
-       brand + theme toggle + profile, and the nav wraps below. */
-    .brand {
-
-        order: 1;
-
-    }
-
-    .theme-toggle {
-
-        order: 2;
-
-        margin-left: auto;
-
-    }
-
-    .account-area {
-
-        order: 3;
-
-    }
-
-    .primary-nav {
-
-        order: 4;
 
     }
 

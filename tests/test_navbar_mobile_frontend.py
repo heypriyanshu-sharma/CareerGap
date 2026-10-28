@@ -1,9 +1,10 @@
 """Regression tests for the mobile navbar shell.
 
-The mobile navbar is pure CSS: a wrapping flex row whose order
-decides whether the tabs share a row with the controls or get
-their own scrollable line. These tests pin the two-row layout,
-its scroll affordances, and the desktop rules it must not change.
+The mobile navbar is a wrapping flex row: DOM order is the focus
+order and the visual order, so the brand and controls share the
+first line and the tabs get their own scrollable line. These tests
+pin the two-row layout, its scroll affordances, and the desktop
+rules it must not change.
 """
 
 import re
@@ -64,18 +65,20 @@ def _rule(text: str, selector: str) -> str:
     return text[start:close_index + 1]
 
 
-def test_mobile_nav_puts_tabs_after_brand_and_controls():
+def test_mobile_nav_dom_order_matches_visual_order():
+    html = _read(INDEX_HTML)
     css = _read(STYLE_CSS)
-    block = _block_with(css, 900, ".primary-nav")
 
-    assert "order: 1;" in _rule(block, ".brand")
-    assert "order: 2;" in _rule(block, ".theme-toggle")
-    assert "margin-left: auto;" in _rule(block, ".theme-toggle")
-    assert "order: 3;" in _rule(block, ".account-area")
-    assert "order: 4;" in _rule(block, ".primary-nav")
+    brand = html.index('class="brand"')
+    theme = html.index('id="theme-toggle"')
+    account = html.index('id="account-area"')
+    nav = html.index('class="primary-nav"')
 
-    # Exactly four ordering rules, all in the wrapping breakpoint.
-    assert len(re.findall(r"^\s*order:", css, re.MULTILINE)) == 4
+    # Markup order is the focus order: brand + controls first, tabs last.
+    assert brand < theme < account < nav
+
+    # No CSS reordering anywhere, so focus order always matches paint order.
+    assert not re.findall(r"^\s*order:", css, re.MULTILINE)
 
 
 def test_mobile_nav_row_is_horizontally_scrollable():
