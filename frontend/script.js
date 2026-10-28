@@ -4467,7 +4467,7 @@ analysisHistoryList.innerHTML =
                                 false;
 
                             deleteButton.textContent =
-                                "A-";
+                                "×";
 
                             await loadAnalysisHistory();
 
