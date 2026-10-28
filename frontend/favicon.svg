@@ -7,5 +7,5 @@
   <rect class="t" width="40" height="40" rx="9"/>
   <g transform="translate(20 20) scale(1.05) translate(-20 -20)">
   <rect class="b" x="19" y="16.5" width="15" height="7" rx="3.5"/>
-  <path class="r" d="M28.7 10.34A13 13 0 1 0 33 20"/></g>
+  <path class="r" d="M28.7 10.34A13 13 0 1 0 28.7 29.66"/></g>
 </svg>
