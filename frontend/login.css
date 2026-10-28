@@ -197,13 +197,57 @@ a {
 
 }
 
-.brand-logo-bar {
+.brand-logo-track {
 
-    fill: var(--pistachio);
+    fill: none;
+
+    stroke-linecap: round;
+
+    stroke-dasharray: 44.3 1000;
+
+    stroke-dashoffset: 0;
+
+}
+
+.brand-logo-track-edge {
 
     stroke: var(--olive);
 
-    stroke-width: 1.8;
+    stroke-width: 8.8;
+
+}
+
+.brand-logo-track-fill {
+
+    stroke: var(--pistachio);
+
+    stroke-width: 5.2;
+
+}
+
+.brand-logo.is-tracing .brand-logo-track {
+
+    animation: brand-logo-trace 2.6s cubic-bezier(0.45, 0, 0.55, 1) 1;
+
+}
+
+@keyframes brand-logo-trace {
+
+    from {
+        stroke-dashoffset: 0;
+    }
+
+    to {
+        stroke-dashoffset: -955.7;
+    }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .brand-logo.is-tracing .brand-logo-track {
+        animation: none;
+    }
 
 }
 
