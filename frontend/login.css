@@ -171,11 +171,33 @@ a {
 }
 
 
-.brand-leaf {
+.brand-logo {
 
-    width: 27px;
+    width: 30px;
 
-    height: 27px;
+    height: 30px;
+
+    flex-shrink: 0;
+
+    overflow: visible;
+
+    transition: transform 0.25s ease;
+
+}
+
+.brand-logo-ring {
+
+    fill: none;
+
+    stroke: var(--olive-dark);
+
+    stroke-width: 7;
+
+    stroke-linecap: round;
+
+}
+
+.brand-logo-bar {
 
     fill: var(--pistachio);
 
@@ -183,12 +205,10 @@ a {
 
     stroke-width: 1.8;
 
-    transition: transform 0.25s ease;
-
 }
 
 
-.brand:hover .brand-leaf {
+.brand:hover .brand-logo {
 
     transform:
         rotate(-8deg)

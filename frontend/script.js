@@ -99,6 +99,9 @@ document.addEventListener(
 
         const themeToggle = document.getElementById("theme-toggle");
 
+        let currentTheme = "light";
+        let themeTransitionToken = 0;
+
         // Initialize theme before any rendering to avoid flash
         function initTheme() {
             let savedTheme = null;
@@ -113,6 +116,7 @@ document.addEventListener(
         }
 
         function applyTheme(theme) {
+            currentTheme = theme;
             document.documentElement.setAttribute("data-theme", theme);
             try {
                 localStorage.setItem("theme", theme);
@@ -125,10 +129,102 @@ document.addEventListener(
             }
         }
 
-        function toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute("data-theme") || "light";
+        function prefersReducedMotion() {
+            return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        }
+
+        function sweepThemeFromToggle(toggle, newTheme) {
+            const root = document.documentElement;
+            const rect = toggle.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const radius =
+                Math.hypot(
+                    Math.max(centerX, window.innerWidth - centerX),
+                    Math.max(centerY, window.innerHeight - centerY)
+                ) + 32;
+
+            const token = ++themeTransitionToken;
+
+            root.classList.remove("theme-to-dark", "theme-to-light");
+            root.classList.add(
+                newTheme === "dark" ? "theme-to-dark" : "theme-to-light"
+            );
+
+            let transition;
+            try {
+                transition = document.startViewTransition(function () {
+                    root.classList.add("theme-sweeping");
+                    applyTheme(newTheme);
+                });
+            } catch (_) {
+                root.classList.remove(
+                    "theme-sweeping",
+                    "theme-to-dark",
+                    "theme-to-light"
+                );
+                applyTheme(newTheme);
+                return;
+            }
+
+            transition.ready
+                .then(function () {
+                    if (token !== themeTransitionToken) {
+                        return;
+                    }
+                    root.animate(
+                        {
+                            clipPath: [
+                                "circle(0px at " + centerX + "px " + centerY + "px)",
+                                "circle(" + radius + "px at " + centerX + "px " + centerY + "px)"
+                            ]
+                        },
+                        {
+                            duration: 750,
+                            easing: "cubic-bezier(0.65, 0, 0.35, 1)",
+                            pseudoElement: "::view-transition-new(root)"
+                        }
+                    );
+                })
+                .catch(function () {
+                    // A skipped transition rejects ready; the theme is applied.
+                });
+
+            transition.updateCallbackDone.catch(function () {
+                // Keep an unlikely callback rejection from going unhandled.
+            });
+
+            function cleanUp() {
+                if (token !== themeTransitionToken) {
+                    return;
+                }
+                root.classList.remove(
+                    "theme-sweeping",
+                    "theme-to-dark",
+                    "theme-to-light"
+                );
+            }
+
+            transition.finished.then(cleanUp).catch(cleanUp);
+        }
+
+        function toggleTheme(event) {
             const newTheme = currentTheme === "dark" ? "light" : "dark";
-            applyTheme(newTheme);
+            currentTheme = newTheme;
+
+            const toggle =
+                event && event.currentTarget ? event.currentTarget : themeToggle;
+
+            if (
+                !toggle ||
+                typeof document.startViewTransition !== "function" ||
+                prefersReducedMotion()
+            ) {
+                applyTheme(newTheme);
+                return;
+            }
+
+            sweepThemeFromToggle(toggle, newTheme);
         }
 
         // Initialize immediately
