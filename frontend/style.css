@@ -830,6 +830,19 @@ a {
 }
 
 
+/* The chart needs a wide column: below this width it sits on top of
+   the headline. It is decorative, so hide it rather than reflow it. */
+@media (max-width: 1100px) {
+
+    .hero-illustration {
+
+        display: none;
+
+    }
+
+}
+
+
 
 
 
@@ -4029,7 +4042,9 @@ textarea:focus,
 
     .hero {
 
-        min-height: 570px;
+        min-height: 0;
+
+        padding: 40px 0 48px;
 
     }
 
@@ -8144,8 +8159,9 @@ textarea:focus,
 
 }
 
-/* Desktop-first reference layout. Below 700px the rows wrap and the
-   secondary nav scrolls horizontally instead of stacking tall. */
+/* Desktop-first reference layout. Below 900px the navbar becomes a
+   two-row shell: brand plus controls first, then a horizontally
+   scrollable tab row. */
 
 @media (max-width: 900px) {
 
@@ -8161,6 +8177,34 @@ textarea:focus,
 
     }
 
+    /* Keep the tabs after the controls so the first row stays
+       brand + theme toggle + profile, and the nav wraps below. */
+    .brand {
+
+        order: 1;
+
+    }
+
+    .theme-toggle {
+
+        order: 2;
+
+        margin-left: auto;
+
+    }
+
+    .account-area {
+
+        order: 3;
+
+    }
+
+    .primary-nav {
+
+        order: 4;
+
+    }
+
 }
 
 @media (max-width: 700px) {
@@ -8169,9 +8213,36 @@ textarea:focus,
 
         width: 100%;
 
+        /* A flex scroll container must be allowed to shrink below
+           its content width. */
+        min-width: 0;
+
         overflow-x: auto;
 
         padding-bottom: 4px;
+
+        /* Touch-scrollable tab row: hide the native scrollbar and
+           fade the right edge. The mask is painted after scrolling,
+           so the fade stays pinned to the viewport in both themes. */
+        scrollbar-width: none;
+
+        -webkit-mask-image: linear-gradient(
+            to right,
+            #000 calc(100% - 24px),
+            transparent
+        );
+
+        mask-image: linear-gradient(
+            to right,
+            #000 calc(100% - 24px),
+            transparent
+        );
+
+    }
+
+    .primary-nav::-webkit-scrollbar {
+
+        display: none;
 
     }
 
