@@ -1154,6 +1154,19 @@ document.addEventListener(
                 await getAccessToken(false);
 
             if (!accessToken) {
+
+                // Signed out is not an empty history: show the only action
+                // that can help, and drop any cached rows so a previous
+                // session's analyses cannot linger in the DOM.
+                analysisHistoryData = [];
+
+                analysisHistoryList.innerHTML = `
+                    <div class="empty-state">
+                        <p>Sign in to see your saved analyses.</p>
+                        <a class="resume-action-btn primary" href="login.html">Sign in</a>
+                    </div>
+                `;
+
                 return;
             }
 
@@ -4442,10 +4455,22 @@ analysisHistoryList.innerHTML =
 
                     try {
 
+                        // Deleting must not redirect away: a missing session
+                        // re-renders the signed-out prompt in place instead of
+                        // abandoning the view mid-action.
                         const accessToken =
-                            await getAccessToken();
+                            await getAccessToken(false);
 
                         if (!accessToken) {
+
+                            deleteButton.disabled =
+                                false;
+
+                            deleteButton.textContent =
+                                "A-";
+
+                            await loadAnalysisHistory();
+
                             return;
                         }
 
