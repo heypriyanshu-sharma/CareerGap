@@ -6,9 +6,12 @@ from dotenv import load_dotenv
 from google import genai
 
 
-# Load the external secrets file used by local development
-SECRETS_PATH = Path(r"C:\Users\ASUS\OneDrive\Documents\careergap_secrets\.env")
-if SECRETS_PATH.exists():
+# Load the external secrets file used by local development.
+# The location is read only from CAREERGAP_SECRETS_PATH; when it
+# is unset (or the file is missing), the project-root .env is
+# loaded instead.
+SECRETS_PATH = os.environ.get("CAREERGAP_SECRETS_PATH")
+if SECRETS_PATH and Path(SECRETS_PATH).exists():
     load_dotenv(SECRETS_PATH)
 else:
     load_dotenv()

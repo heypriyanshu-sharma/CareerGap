@@ -135,7 +135,7 @@ Notes:
 - **`GEMINI_MODEL`** is optional; a sensible default is used when it is not set.
 - **`GEMINI_API_KEY`** and **`GITHUB_TOKEN`** enable AI advice and GitHub resource search, respectively.
 
-**Secrets-file precedence:** the backend modules first load an optional developer-local secrets file (found via `SECRETS_PATH` in `backend.py` and `auth.py`, overridable with the `CAREERGAP_SECRETS_PATH` environment variable) and then this root `.env`. On machines where that external file does not exist, the root `.env` documented above is what gets loaded. If you edit the root `.env` on the developer machine and nothing changes, check whether the external secrets file is shadowing it.
+**Secrets-file precedence:** `backend.py`, `auth.py`, and `ai_advisor.py` load an optional external secrets file only when the `CAREERGAP_SECRETS_PATH` environment variable is set; there is no built-in default path. When it is unset (or points at a missing file), the project-root `.env` documented above is loaded. Set `CAREERGAP_SECRETS_PATH` if you keep secrets outside the repository — no personal filesystem paths are compiled into the code.
 
 Never commit `.env` or expose API keys publicly.
 
@@ -165,6 +165,10 @@ Interactive API documentation is available at:
 http://127.0.0.1:8000/docs
 ```
 
+The interactive docs are disabled in production: Render sets
+`RENDER=true`, which turns off `/docs`, `/redoc` and `/openapi.json`
+there. Local development keeps them enabled.
+
 ### 5. Start the frontend
 
 Open another terminal:
@@ -191,7 +195,7 @@ http://localhost:5500
   - `/auth/delete-account` — 3/minute
   - `/resumes` (POST/PUT), `/interview/{id}` (GET) — 30/minute
 
-  - **Verified locally (pytest):** `get_client_key` logic (9 unit tests), limiter wiring (`limiter._key_func == get_client_key`), per-client isolation via `CF-Connecting-IP` (integration test). All 713 tests pass.
+  - **Verified locally (pytest):** `get_client_key` logic (9 unit tests), limiter wiring (`limiter._key_func == get_client_key`), per-client isolation via `CF-Connecting-IP` (integration test). All 807 tests pass.
   - **Deferred live verification:** Production Cloudflare/Render header handling has not been end-to-end tested. The following are **assumptions, not confirmed facts**:
     1. Cloudflare overwrites `CF-Connecting-IP` with the true client IP (Render's DDoS protection).
     2. `X-Forwarded-For` is not trusted as a rate-limit key (Render appends without clearing client-supplied values).
@@ -202,6 +206,7 @@ http://localhost:5500
 
 - **Request size limits** — Uploaded files are capped at 5 MB with extracted text capped at 50,000 characters; resume-write endpoints additionally enforce a 256 KB body limit via middleware.
 - **CORS** — A fixed allowlist only: the local development origins (`http://localhost:5500`, `http://127.0.0.1:5500`) and the production origin `https://careergap.pages.dev`.
+- **Security headers** — `frontend/_headers` sets them for Cloudflare Pages: a report-only Content-Security-Policy, `X-Frame-Options: DENY`, a `Permissions-Policy` that denies camera/microphone/geolocation and similar features, and HSTS (`max-age=31536000; includeSubDomains`). `frame-ancestors` is ignored in report-only mode, so `X-Frame-Options` is the clickjacking control until the CSP is enforced in a follow-up. The inline theme bootstrap in `index.html` is allowed by SHA-256 hash, not `'unsafe-inline'`.
 - **Migrations are manual** — SQL files under `supabase/migrations/` are proposals intended to be reviewed and applied manually (dashboard SQL editor or `supabase db push`); nothing in the repo applies them automatically. The `career_analyses` table is managed directly in the dashboard and is deliberately excluded from repo migrations (guarded by automated tests).
 
 ## Testing

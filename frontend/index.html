@@ -76,46 +76,6 @@
 
         </a>
 
-
-        <nav class="primary-nav" aria-label="Primary navigation">
-
-            <button
-                type="button"
-                id="nav-analyze"
-                class="primary-nav-btn active"
-                data-view="analyze"
-            >
-                Analyze
-            </button>
-
-            <button
-                type="button"
-                id="nav-resume-builder"
-                class="primary-nav-btn"
-                data-view="resume-builder"
-            >
-                Resume Builder
-            </button>
-
-            <button
-                type="button"
-                id="nav-saved-analyses"
-                class="primary-nav-btn"
-                data-view="saved-analyses"
-            >
-                Saved Analyses
-            </button>
-
-            <button
-                type="button"
-                id="nav-interview-studio"
-                class="primary-nav-btn"
-                data-view="interview-studio"
-            >
-                Interview Studio
-            </button>
-
-        </nav>
         <button
             type="button"
             id="theme-toggle"
@@ -245,6 +205,46 @@
                 </button>
             </div>
         </div>
+
+        <nav class="primary-nav" aria-label="Primary navigation">
+
+            <button
+                type="button"
+                id="nav-analyze"
+                class="primary-nav-btn active"
+                data-view="analyze"
+            >
+                Analyze
+            </button>
+
+            <button
+                type="button"
+                id="nav-resume-builder"
+                class="primary-nav-btn"
+                data-view="resume-builder"
+            >
+                Resume Builder
+            </button>
+
+            <button
+                type="button"
+                id="nav-saved-analyses"
+                class="primary-nav-btn"
+                data-view="saved-analyses"
+            >
+                Saved Analyses
+            </button>
+
+            <button
+                type="button"
+                id="nav-interview-studio"
+                class="primary-nav-btn"
+                data-view="interview-studio"
+            >
+                Interview Studio
+            </button>
+
+        </nav>
 
     </div>
 
@@ -965,7 +965,9 @@
 
 
         <p class="input-note">
-            Your information is used only for this analysis.
+            Your resume, job description and results are saved to your
+            account and appear in Saved Analyses. The derived results
+            are also sent to Google Gemini to generate the AI advice.
         </p>
 
     </div>
@@ -1167,6 +1169,16 @@
     class="workspace-section hidden"
     aria-labelledby="resume-builder-heading"
 >
+    <!-- Signed-out state: the builder is hidden until a session exists. -->
+    <div
+        id="resume-signed-out"
+        class="resume-editor-empty resume-signed-out hidden"
+    >
+        <h3>Sign in to build your resume</h3>
+        <p>You need to sign in to manage resumes.</p>
+        <a class="resume-action-btn primary" href="login.html">Sign in</a>
+    </div>
+
     <div class="resume-builder-layout">
 
         <!-- LEFT: LIST PANEL -->
@@ -1350,7 +1362,7 @@
                                         <input type="radio" name="ats-source" value="upload">
                                         <span class="ats-source-label">
                                             <strong>Upload New PDF</strong>
-                                            <span class="ats-source-desc">Analyze a PDF file without saving it to your account.</span>
+                                            <span class="ats-source-desc">Analyze a PDF. This check does not save the file, its extracted text or the ATS result to your account.</span>
                                         </span>
                                     </label>
                                 </div>

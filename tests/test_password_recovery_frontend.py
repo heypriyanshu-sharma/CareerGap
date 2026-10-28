@@ -89,6 +89,20 @@ def _extract_function(source, name):
     return ""
 
 
+def _min_password_length(path):
+    """Return the MIN_PASSWORD_LENGTH constant declared in a
+    frontend script, so tests never duplicate the number."""
+
+    match = re.search(
+        r"MIN_PASSWORD_LENGTH\s*=\s*(\d+)",
+        _read(path),
+    )
+
+    assert match, f"{path.name} has no MIN_PASSWORD_LENGTH"
+
+    return int(match.group(1))
+
+
 # ============================================================
 # LOGIN — FORGOT PASSWORD
 # ============================================================
@@ -310,8 +324,8 @@ class TestSignupPasswordPolicy:
         assert "MIN_PASSWORD_LENGTH" in signup
         assert "MIN_PASSWORD_LENGTH" in reset
 
-        assert "constMIN_PASSWORD_LENGTH=6;" in _compact(signup)
-        assert "constMIN_PASSWORD_LENGTH=6;" in _compact(reset)
+        assert "constMIN_PASSWORD_LENGTH=8;" in _compact(signup)
+        assert "constMIN_PASSWORD_LENGTH=8;" in _compact(reset)
 
     def test_signup_enforces_minimum_length(self):
         source = _read(SIGNUP_JS)
@@ -365,6 +379,46 @@ class TestSignupPasswordPolicy:
         assert "careerGapSupabase.auth.signUp" in compact
         assert "email:email" in compact
         assert "password:password" in compact
+
+    def test_signup_shows_an_accessible_minimum_length_hint(self):
+        """The rule is visible before submit, and the password
+        field is associated with it for screen readers."""
+
+        html = _read(SIGNUP_HTML)
+        length = _min_password_length(SIGNUP_JS)
+
+        assert 'class="form-hint"' in html
+        assert 'id="password-hint"' in html
+        assert f"At least {length} characters." in html
+        assert 'aria-describedby="password-hint"' in html
+
+    def test_signup_password_input_minlength_matches_the_constant(self):
+        """Native validation must agree with the JS check."""
+
+        html = _read(SIGNUP_HTML)
+        length = _min_password_length(SIGNUP_JS)
+
+        assert f'minlength="{length}"' in html
+
+    def test_all_three_password_flows_share_the_minimum(self):
+        """Signup, reset and change-password must accept the same
+        passwords as the Supabase Auth policy."""
+
+        assert {
+            _min_password_length(SIGNUP_JS),
+            _min_password_length(RESET_JS),
+            _min_password_length(PROFILE_JS),
+        } == {8}
+
+    def test_password_messages_interpolate_the_constant(self):
+        """No flow may hardcode a different number in its message."""
+
+        pattern = re.compile(
+            r'"Password must be at least "\s*\+\s*MIN_PASSWORD_LENGTH'
+        )
+
+        for path in (SIGNUP_JS, RESET_JS, PROFILE_JS):
+            assert pattern.search(_read(path)), path.name
 
 
 # ============================================================

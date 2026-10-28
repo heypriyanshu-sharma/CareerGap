@@ -20,12 +20,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load the external secrets file used by local development.
-# Override the location with CAREERGAP_SECRETS_PATH; the default
-# path is kept for existing local setups, and a missing file
-# falls back to the project-root .env as before.
-DEFAULT_SECRETS_PATH = r"C:\Users\ASUS\OneDrive\Documents\careergap_secrets\.env"
-SECRETS_PATH = Path(os.environ.get("CAREERGAP_SECRETS_PATH", DEFAULT_SECRETS_PATH))
-if SECRETS_PATH.exists():
+# The location is read only from CAREERGAP_SECRETS_PATH; when it
+# is unset (or the file is missing), the project-root .env is
+# loaded instead.
+SECRETS_PATH = os.environ.get("CAREERGAP_SECRETS_PATH")
+if SECRETS_PATH and Path(SECRETS_PATH).exists():
     load_dotenv(SECRETS_PATH)
 else:
     load_dotenv()
@@ -394,10 +393,35 @@ limiter = Limiter(key_func=get_client_key)
 # Application
 # ---------------------------------------------------------------------------
 
+def api_docs_urls():
+    """Return the interactive documentation URLs for this environment.
+
+    The docs enumerate every route, including request schemas, so they
+    are disabled in production. Render sets RENDER=true in its runtime,
+    which turns off /docs, /redoc and /openapi.json there; local
+    development keeps the documented
+    http://127.0.0.1:8000/docs workflow.
+    """
+
+    if os.getenv("RENDER"):
+        return {
+            "docs_url": None,
+            "redoc_url": None,
+            "openapi_url": None,
+        }
+
+    return {
+        "docs_url": "/docs",
+        "redoc_url": "/redoc",
+        "openapi_url": "/openapi.json",
+    }
+
+
 app = FastAPI(
     title="CareerGap API",
     description="Evidence-Based Career Readiness Engine",
     version="1.0.0",
+    **api_docs_urls(),
 )
 
 app.state.limiter = limiter

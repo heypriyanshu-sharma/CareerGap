@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // server-side validator.
     // =================================================
 
-    const MIN_PASSWORD_LENGTH = 6;
+    const MIN_PASSWORD_LENGTH = 8;
 
     signupForm.addEventListener("submit", async function (event) {
         event.preventDefault();

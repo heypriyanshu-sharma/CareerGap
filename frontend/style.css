@@ -53,6 +53,30 @@
 
     --navbar-bg: rgba(255, 248, 225, 0.92);
 
+    /* Floating frosted bar + the active-tab lift. Both are redefined in
+       the dark theme so the navbar never depends on a light-only shadow. */
+    --navbar-shadow:
+        0 8px 24px rgba(75, 96, 67, 0.07);
+
+    --nav-pill-shadow:
+        0 6px 16px rgba(46, 96, 56, 0.28);
+
+    /* Hero accent glow and call-to-action lift. Both are redefined in
+       the dark theme so the glow never washes out the dark canvas and
+       the CTA keeps a visible shadow on it. */
+    --hero-glow: rgba(198, 216, 167, 0.28);
+
+    --hero-cta-shadow:
+        0 14px 30px rgba(46, 96, 56, 0.18);
+
+    --hero-cta-shadow-hover:
+        0 20px 38px rgba(46, 96, 56, 0.26);
+
+    /* Softer than the headline but dark enough for AA body text on the
+       page background. Redefined in dark mode where --olive-soft is
+       already well above the threshold. */
+    --hero-description: #62735A;
+
     --btn-danger-bg: var(--error-red);
 
     /* Constant solid-accent surface for components that pair a deep-olive
@@ -67,6 +91,12 @@
     /* Error/danger token (was referenced but never defined) */
     --error-red: #A45747;
     --danger-soft: #fdeae8;
+
+    /* Analyze form fields. The placeholder and ring are redefined in
+       the dark theme so the tinted field surface keeps AA text and a
+       visible focus ring in both modes. */
+    --field-focus-ring: 0 0 0 4px rgba(46, 96, 56, 0.16);
+    --field-placeholder: #5F7158;
 
     /* Native widgets (scrollbars, checkboxes, date pickers) follow the theme */
     color-scheme: light;
@@ -113,6 +143,12 @@
     --shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.35);
     --shadow-pop: 0 18px 45px rgba(0, 0, 0, 0.45);
     --navbar-bg: rgba(26, 31, 24, 0.92);
+    --navbar-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --nav-pill-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+    --hero-glow: rgba(168, 196, 136, 0.10);
+    --hero-cta-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+    --hero-cta-shadow-hover: 0 20px 38px rgba(0, 0, 0, 0.55);
+    --hero-description: var(--olive-soft);
     /* Lifted deep olive: solid accent fills stay dark and keep warm-white
        text at AA contrast while remaining clearly visible on the page. */
     --accent-solid: #5A7650;
@@ -122,6 +158,8 @@
     --on-accent-track: rgba(255, 255, 255, 0.22);
     --error-red: #D98B7A;
     --danger-soft: rgba(217, 139, 122, 0.14);
+    --field-focus-ring: 0 0 0 4px rgba(168, 196, 136, 0.22);
+    --field-placeholder: var(--olive-soft);
     --btn-danger-bg: var(--error-red);
     /* Native widgets (scrollbars, checkboxes, date pickers) follow the theme */
     color-scheme: dark;
@@ -131,7 +169,6 @@
    surfaces. Re-surface chips on the sage-dark tile; their text tokens
    (--olive-dark / --olive) then keep full contrast automatically. */
 [data-theme="dark"] .profile-menu-avatar,
-[data-theme="dark"] .input-number,
 [data-theme="dark"] .skill-pill,
 [data-theme="dark"] .compatibility.already,
 [data-theme="dark"] .next-number,
@@ -172,6 +209,32 @@
 html {
 
     scroll-behavior: smooth;
+
+}
+
+/* Site-wide reduced-motion fallback. The component-scoped blocks below
+   strip individual hover lifts and transitions; this guard covers
+   everything else once (spinners, menus, theme switch, smooth
+   scrolling), so no animated control is missed. */
+@media (prefers-reduced-motion: reduce) {
+
+    html {
+
+        scroll-behavior: auto !important;
+
+    }
+
+    * {
+
+        animation-duration: 0.01ms !important;
+
+        animation-iteration-count: 1 !important;
+
+        transition-duration: 0.01ms !important;
+
+        scroll-behavior: auto !important;
+
+    }
 
 }
 
@@ -323,6 +386,8 @@ a {
 
     justify-content: space-between;
 
+    gap: 12px;
+
 }
 
 
@@ -435,7 +500,7 @@ a {
     width: 40px;
     height: 40px;
     padding: 0;
-    margin-left: 8px;
+    margin-left: auto;
 
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -454,7 +519,7 @@ a {
 }
 
 .theme-toggle:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -549,7 +614,7 @@ a {
 }
 
 .profile-trigger:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -651,7 +716,7 @@ a {
 }
 
 .profile-menu-item:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: -2px;
     border-radius: 8px;
 }
@@ -705,13 +770,64 @@ a {
 
 }
 
+/* Soft green glow behind the artwork. It is painted inside the hero
+   box, sits under the copy and the chart, and disappears with the
+   illustration at 1100px. */
+
+.hero::before {
+
+    content: "";
+
+    position: absolute;
+
+    top: 50%;
+    right: -40px;
+    width: 560px;
+    height: 560px;
+    transform: translateY(-50%);
+
+    background: radial-gradient(
+        circle,
+        var(--hero-glow),
+        transparent 70%
+    );
+
+    pointer-events: none;
+
+    z-index: 0;
+
+}
+
 
 
 
 
 .hero-content {
 
+    position: relative;
+
+    z-index: 1;
+
     max-width: 720px;
+
+}
+
+/* Badge treatment for the hero eyebrow only. The other four section
+   eyebrows inherit the shared .eyebrow rule above unchanged. */
+
+.hero .eyebrow {
+
+    display: inline-block;
+
+    padding: 7px 14px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 999px;
+
+    background: var(--pistachio-soft);
+
+    color: var(--olive);
 
 }
 
@@ -727,9 +843,11 @@ a {
 
         clamp(3.2rem, 7vw, 6rem);
 
-    line-height: 0.98;
+    line-height: 0.94;
 
-    letter-spacing: -0.055em;
+    letter-spacing: -0.06em;
+
+    font-weight: 800;
 
     color: var(--olive-dark);
 
@@ -741,13 +859,15 @@ a {
 
 .hero-description {
 
-    max-width: 580px;
+    max-width: 560px;
 
     margin-top: 28px;
 
-    font-size: 1.12rem;
+    font-size: 1.18rem;
 
-    color: var(--olive-soft);
+    line-height: 1.7;
+
+    color: var(--hero-description);
 
 }
 
@@ -767,7 +887,7 @@ a {
 
     padding: 17px 25px;
 
-    border-radius: 16px;
+    border-radius: 999px;
 
     background: var(--accent-solid);
 
@@ -775,13 +895,13 @@ a {
 
     font-weight: 700;
 
-    box-shadow: var(--shadow-pop);
+    box-shadow: var(--hero-cta-shadow);
 
     transition:
 
-        transform 0.2s ease,
+        transform 0.18s ease,
 
-        box-shadow 0.2s ease;
+        box-shadow 0.18s ease;
 
 }
 
@@ -793,9 +913,15 @@ a {
 
     transform: translateY(-3px);
 
-    box-shadow:
+    box-shadow: var(--hero-cta-shadow-hover);
 
-        0 22px 45px rgba(75, 96, 67, 0.2);
+}
+
+.hero-button:focus-visible {
+
+    outline: 3px solid var(--ref-green-primary);
+
+    outline-offset: 2px;
 
 }
 
@@ -822,11 +948,48 @@ a {
     height: 520px;
     max-width: 45%;
     pointer-events: none;
+    z-index: 1;
 }
 
 .hero-illustration svg {
     width: 100%;
     height: 100%;
+}
+
+
+/* The chart needs a wide column: below this width it sits on top of
+   the headline. It is decorative, so hide it rather than reflow it.
+   The glow is tied to the artwork, so it goes with it. */
+@media (max-width: 1100px) {
+
+    .hero-illustration {
+
+        display: none;
+
+    }
+
+    .hero::before {
+
+        display: none;
+
+    }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .hero-button {
+
+        transition: none;
+
+    }
+
+    .hero-button:hover {
+
+        transform: none;
+
+    }
+
 }
 
 
@@ -873,6 +1036,15 @@ a {
 
 }
 
+/* The pillar grid needs more air under its heading than the shared
+   default, which is tuned for tighter sections. */
+
+.pillars .section-heading {
+
+    margin-bottom: 28px;
+
+}
+
 
 
 
@@ -885,7 +1057,7 @@ a {
 
         repeat(3, 1fr);
 
-    gap: 14px;
+    gap: 20px;
 
 }
 
@@ -895,11 +1067,11 @@ a {
 
 .pillar-card {
 
-    padding: 16px 20px;
+    padding: 26px;
 
     border-radius: var(--radius-lg);
 
-    background: var(--pistachio-light);
+    background: var(--white);
 
     border: 1px solid var(--border);
 
@@ -907,9 +1079,9 @@ a {
 
     transition:
 
-        transform 0.25s ease,
+        transform 0.18s ease,
 
-        box-shadow 0.25s ease;
+        box-shadow 0.18s ease;
 
 }
 
@@ -919,7 +1091,7 @@ a {
 
 .pillar-card:hover {
 
-    transform: translateY(-5px);
+    transform: translateY(-4px);
 
     box-shadow: var(--shadow-pop);
 
@@ -959,9 +1131,11 @@ a {
 
 .pillar-card h3 {
 
-    margin-top: 10px;
+    margin-top: 14px;
 
-    font-size: 1.15rem;
+    font-size: 1.25rem;
+
+    letter-spacing: -0.01em;
 
 }
 
@@ -971,13 +1145,31 @@ a {
 
 .pillar-card p {
 
-    margin-top: 5px;
+    margin-top: 8px;
 
     color: var(--olive-soft);
 
-    font-size: 0.88rem;
+    font-size: 0.92rem;
 
-    line-height: 1.5;
+    line-height: 1.6;
+
+}
+
+/* The cards are presentation only, but the lift is motion all the same. */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .pillar-card {
+
+        transition: none;
+
+    }
+
+    .pillar-card:hover {
+
+        transform: none;
+
+    }
 
 }
 
@@ -1048,7 +1240,7 @@ a {
 
     margin-top: 22px;
 
-    color: var(--olive-soft);
+    color: var(--olive);
 
 }
 
@@ -1062,7 +1254,7 @@ a {
 
     border-radius: 32px;
 
-    background: var(--cream);
+    background: var(--white);
 
     border: 1px solid var(--border);
 
@@ -1102,9 +1294,9 @@ a {
 
 .input-number {
 
-    width: 38px;
+    width: 42px;
 
-    height: 38px;
+    height: 42px;
 
     display: flex;
 
@@ -1114,13 +1306,13 @@ a {
 
     border-radius: 50%;
 
-    background: var(--pistachio);
+    background: var(--accent-solid);
 
-    color: var(--olive);
+    color: var(--on-accent);
 
-    font-size: 0.75rem;
+    font-size: 0.8rem;
 
-    font-weight: 800;
+    font-weight: 700;
 
 }
 
@@ -1130,7 +1322,9 @@ a {
 
 .input-heading h3 {
 
-    font-size: 1.15rem;
+    font-size: 1.25rem;
+
+    letter-spacing: -0.01em;
 
 }
 
@@ -1142,7 +1336,7 @@ a {
 
     display: block;
 
-    font-size: 0.8rem;
+    font-size: 0.82rem;
 
     color: var(--olive-soft);
 
@@ -1215,6 +1409,36 @@ textarea:focus,
     box-shadow:
 
         0 0 0 4px rgba(198, 216, 167, 0.25);
+
+}
+
+/* Analyze form fields (Part 2, section 4). The card is white, so the
+   fields sit on a very light green surface and take a green border plus
+   a soft ring when focused. Scoped so no other form changes. */
+
+.analysis-card textarea,
+
+.analysis-card .project-name {
+
+    background: var(--pistachio-soft);
+
+}
+
+.analysis-card textarea::placeholder,
+
+.analysis-card .project-name::placeholder {
+
+    color: var(--field-placeholder);
+
+}
+
+.analysis-card textarea:focus,
+
+.analysis-card .project-name:focus {
+
+    border-color: var(--ref-green-primary);
+
+    box-shadow: var(--field-focus-ring);
 
 }
 
@@ -1326,7 +1550,7 @@ textarea:focus,
 
 .upload-button:focus-visible {
 
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
 
     outline-offset: 2px;
 
@@ -1412,7 +1636,7 @@ textarea:focus,
 
     margin-top: 6px;
 
-    font-size: 0.68rem;
+    font-size: 0.72rem;
 
     color: var(--olive-soft);
 
@@ -1548,7 +1772,7 @@ textarea:focus,
 
     border-radius: 12px;
 
-    background: var(--cream);
+    background: var(--pistachio-soft);
 
     color: var(--olive);
 
@@ -1578,7 +1802,7 @@ textarea:focus,
 
 .add-project-button:hover {
 
-    background: var(--pistachio-soft);
+    background: var(--pistachio-light);
 
     border-color: var(--pistachio);
 
@@ -1596,7 +1820,7 @@ textarea:focus,
 
 .remove-project-button:focus-visible {
 
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
 
     outline-offset: 2px;
 
@@ -1622,21 +1846,23 @@ textarea:focus,
 
     border: none;
 
-    border-radius: 17px;
+    border-radius: 999px;
 
     background: var(--accent-solid);
 
-    color: var(--white);
+    color: var(--on-accent);
 
     font-weight: 800;
 
     font-size: 1rem;
 
-    box-shadow: var(--shadow-soft);
+    box-shadow: var(--hero-cta-shadow);
 
     transition:
 
-        transform 0.2s ease,
+        transform 0.18s ease,
+
+        box-shadow 0.18s ease,
 
         opacity 0.2s ease;
 
@@ -1660,7 +1886,17 @@ textarea:focus,
 
 .analyze-button:hover {
 
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+
+    box-shadow: var(--hero-cta-shadow-hover);
+
+}
+
+.analyze-button:focus-visible {
+
+    outline: 3px solid var(--ref-green-primary);
+
+    outline-offset: 2px;
 
 }
 
@@ -1682,13 +1918,46 @@ textarea:focus,
 
 .input-note {
 
-    margin-top: 15px;
+    margin-top: 18px;
 
     text-align: center;
 
     font-size: 0.75rem;
 
+    line-height: 1.6;
+
     color: var(--olive-soft);
+
+}
+
+/* The form controls animate only their lift, so reduced-motion users
+   keep every state change except the movement. */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .upload-button,
+
+    .add-project-button,
+
+    .remove-project-button,
+
+    .analyze-button {
+
+        transition: none;
+
+    }
+
+    .upload-button:hover,
+
+    .add-project-button:hover,
+
+    .remove-project-button:hover,
+
+    .analyze-button:hover {
+
+        transform: none;
+
+    }
 
 }
 
@@ -3212,23 +3481,31 @@ textarea:focus,
 
 .site-footer {
 
-    width: min(1180px, 90%);
+    width: 100%;
 
-    margin: auto;
+    margin: 0;
 
-    padding: 30px 0;
+    padding: 36px max(5%, calc((100% - 1180px) / 2)) 40px;
 
     display: flex;
 
+    flex-wrap: wrap;
+
+    align-items: center;
+
     justify-content: space-between;
 
-    color: var(--olive-soft);
+    gap: 16px 28px;
 
-    font-size: 0.78rem;
+    background: var(--accent-solid);
 
-    border-top:
+    color: var(--on-accent);
 
-        1px solid var(--border);
+    font-size: 0.82rem;
+
+    border-top: 1px solid var(--on-accent-track);
+
+    border-radius: 32px 32px 0 0;
 
 }
 
@@ -3240,6 +3517,8 @@ textarea:focus,
 
     display: flex;
 
+    align-items: center;
+
     gap: 14px;
 
 }
@@ -3250,7 +3529,24 @@ textarea:focus,
 
 .site-footer strong {
 
-    color: var(--olive-dark);
+    color: var(--on-accent);
+
+    font-size: 1.05rem;
+
+    font-weight: 800;
+
+    letter-spacing: -0.01em;
+
+}
+
+
+
+
+.site-footer > span {
+
+    font-size: 0.78rem;
+
+    letter-spacing: 0.01em;
 
 }
 
@@ -3263,31 +3559,55 @@ textarea:focus,
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    color: var(--olive-dark);
-    background: var(--cream);
-    border: 1px solid var(--border);
-    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    color: var(--on-accent);
+    background: var(--on-accent-icon-bg);
+    border: 1px solid var(--on-accent-track);
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .github-link:hover {
-    background: var(--pistachio-soft);
-    border-color: var(--pistachio);
-    color: var(--olive);
+    background: var(--on-accent);
+    border-color: var(--on-accent);
+    color: var(--accent-solid);
     transform: translateY(-1px);
 }
 
+.github-link:active {
+    transform: translateY(0);
+}
+
 .github-link:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
-    outline-offset: 2px;
+    outline: 3px solid var(--on-accent);
+    outline-offset: 3px;
 }
 
 .github-icon {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     flex-shrink: 0;
+}
+
+/* The footer link is the only moving part down here, so reduced-motion
+   users keep the colour change but lose the lift and transitions. */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .github-link {
+
+        transition: none;
+
+    }
+
+    .github-link:hover,
+    .github-link:active {
+
+        transform: none;
+
+    }
+
 }
 
 
@@ -3591,8 +3911,7 @@ textarea:focus,
 
 .password-toggle:focus-visible {
 
-    outline: 3px solid
-        rgba(198, 216, 167, 0.5);
+    outline: 3px solid var(--ref-green-primary);
 
     outline-offset: 2px;
 
@@ -3734,7 +4053,7 @@ textarea:focus,
 .account-secondary-button:focus-visible,
 .account-danger-button:focus-visible {
 
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
 
     outline-offset: 2px;
 
@@ -4029,7 +4348,9 @@ textarea:focus,
 
     .hero {
 
-        min-height: 570px;
+        min-height: 0;
+
+        padding: 40px 0 48px;
 
     }
 
@@ -4157,13 +4478,28 @@ textarea:focus,
 
 
 
-    .results-footer,
+    .results-footer {
+
+        flex-direction: column;
+
+        gap: 12px;
+
+    }
+
+
+
 
     .site-footer {
 
         flex-direction: column;
 
-        gap: 12px;
+        align-items: flex-start;
+
+        gap: 16px;
+
+        padding: 30px 5% 34px;
+
+        border-radius: 26px 26px 0 0;
 
     }
 
@@ -4245,19 +4581,10 @@ textarea:focus,
 
    SCORE METER
 
+The ring always sits on the accent-painted score card, so its colors
+are defined once with the rest of the results-card overrides below.
+
 ========================================================= */
-
-.score-ring-track {
-
-    stroke: var(--on-accent-track);
-
-}
-
-.score-ring-progress {
-
-    stroke: #C6E8B5;
-
-}
 
 
 
@@ -4953,7 +5280,7 @@ textarea:focus,
 }
 
 .analysis-history-item .history-view-button:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -4997,111 +5324,11 @@ textarea:focus,
     cursor: wait;
 }
 
-.history-view-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 9px 15px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--accent-solid);
-    color: var(--on-accent);
-    font: inherit;
-    font-size: 0.76rem;
-    font-weight: 750;
-    cursor: pointer;
-    box-shadow: 0 5px 14px rgba(75, 96, 67, 0.10);
-    transition:
-        background 0.2s ease,
-        border-color 0.2s ease,
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
-}
-
-.history-view-button:hover {
-    background: var(--olive-dark);
-    border-color: var(--olive-dark);
-    transform: translateY(-1px);
-    box-shadow: 0 8px 18px rgba(75, 96, 67, 0.14);
-}
-
-.history-view-button:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
-    outline-offset: 2px;
-}
-
-.history-delete-button {
-    width: 30px;
-    height: 30px;
-
-    padding: 0;
-
-    border: 1px solid var(--border);
-    border-radius: 50%;
-
-    background: transparent;
-    color: var(--olive-soft);
-
-    font: inherit;
-    font-size: 1rem;
-    font-weight: 700;
-
-    line-height: 1;
-
-    cursor: pointer;
-
-    transition:
-        background 0.2s ease,
-        color 0.2s ease,
-        border-color 0.2s ease,
-        transform 0.2s ease;
-}
-
-.history-delete-button:hover {
-    background: rgba(164, 87, 71, 0.08);
-    border-color: rgba(164, 87, 71, 0.25);
-    color: var(--error-red);
-
-    transform: translateY(-1px);
-}
-
-.history-delete-button:disabled {
-    opacity: 0.5;
-    cursor: wait;
-}
-
 .analysis-history-actions {
     display: flex;
     align-items: center;
     gap: 10px;
     margin-left: 20px;
-}
-
-.history-view-button {
-    padding: 9px 14px;
-
-    border: 1px solid var(--border);
-    border-radius: 10px;
-
-    background: var(--cream);
-    color: var(--olive);
-
-    font: inherit;
-    font-size: 0.78rem;
-    font-weight: 750;
-
-    cursor: pointer;
-
-    transition:
-        background 0.2s ease,
-        border-color 0.2s ease,
-        transform 0.2s ease;
-}
-
-.history-view-button:hover {
-    background: var(--pistachio-soft);
-    border-color: var(--pistachio);
-    transform: translateY(-1px);
 }
 
 /* =========================================================
@@ -5199,7 +5426,7 @@ textarea:focus,
 }
 
 .custom-select-trigger:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -5352,7 +5579,7 @@ textarea:focus,
 }
 
 .interview-generate-btn:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -5466,7 +5693,7 @@ textarea:focus,
 }
 
 .interview-restart-btn:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -5618,7 +5845,7 @@ textarea:focus,
 }
 
 .interview-save-draft-btn:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -5643,7 +5870,7 @@ textarea:focus,
 }
 
 .interview-submit-btn:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -5803,7 +6030,7 @@ textarea:focus,
 }
 
 .interview-modal-close:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -6197,7 +6424,7 @@ textarea:focus,
 }
 
 .interview-history-delete:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -6318,7 +6545,7 @@ textarea:focus,
 }
 
 .interview-review-back:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -6634,7 +6861,7 @@ textarea:focus,
 }
 
 .interview-history-card:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -6710,7 +6937,7 @@ textarea:focus,
 }
 
 .back-to-current-button:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -6757,6 +6984,13 @@ textarea:focus,
 .analysis-tab:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+}
+
+/* Keyboard parity with the pointer states above; the ring token is
+   bright enough on both the tab fill and the page behind it. */
+.analysis-tab:focus-visible {
+    outline: 3px solid var(--ref-green-primary);
+    outline-offset: 2px;
 }
 
 .saved-analysis-header {
@@ -7898,6 +8132,79 @@ textarea:focus,
 
 }
 
+/* Homepage tab pill (Part 2, section 1).
+
+   Scoped to bodies without .account-page so the single "Back to
+   CareerGap" nav on profile.html and settings.html keeps its current
+   look, including the flat bar. The pill surface is reset again in the
+   700px scroll row below, where the right-edge fade would otherwise
+   clip its background. */
+
+body:not(.account-page) .navbar {
+
+    box-shadow: var(--navbar-shadow);
+
+}
+
+body:not(.account-page) .primary-nav {
+
+    gap: 2px;
+
+    padding: 4px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 999px;
+
+    background: var(--cream);
+
+}
+
+body:not(.account-page) .primary-nav .primary-nav-btn {
+
+    border-color: transparent;
+
+    border-radius: 999px;
+
+    background: transparent;
+
+    color: var(--ref-green-dark);
+
+    transition:
+        background 0.18s ease,
+        color 0.18s ease,
+        box-shadow 0.18s ease;
+
+}
+
+body:not(.account-page) .primary-nav .primary-nav-btn:hover {
+
+    border-color: transparent;
+
+    background: var(--pistachio-soft);
+
+}
+
+body:not(.account-page) .primary-nav .primary-nav-btn.active {
+
+    border-color: var(--ref-green-primary);
+
+    background: var(--ref-green-primary);
+
+    color: var(--white);
+
+    box-shadow: var(--nav-pill-shadow);
+
+}
+
+body:not(.account-page) .primary-nav .primary-nav-btn:focus-visible {
+
+    outline: 3px solid var(--ref-green-primary);
+
+    outline-offset: 2px;
+
+}
+
 .dashboard-concept-badge {
 
     padding: 5px 11px;
@@ -7927,7 +8234,10 @@ textarea:focus,
 
 .page-intro {
 
-    padding: 8px 0 4px;
+    /* Generous but consistent with the 24-40px scale the sections above
+        use; the analyzer's eyebrow sat only ~4px under this intro text
+        before, reading as one jumbled block. */
+    padding: 28px 0 20px;
 
 }
 
@@ -8055,6 +8365,17 @@ textarea:focus,
 
 }
 
+/* Keyboard parity with the pointer and active states above. The ring
+   keeps working when the active (filled) tab is focused, because the
+   outline sits 2px outside the tab on the darker strip. */
+.analysis-subnav-tab:focus-visible {
+
+    outline: 3px solid var(--ref-green-primary);
+
+    outline-offset: 2px;
+
+}
+
 .analysis-subnav-hint {
 
     margin: 14px 0 0;
@@ -8067,7 +8388,9 @@ textarea:focus,
 
 .workspace-section {
 
-    padding: 24px 0 8px;
+    /* 40px matches the pillars' bottom margin, so signed-in panels no
+       longer end just 8px above the footer band. */
+    padding: 24px 0 40px;
 
 }
 
@@ -8144,8 +8467,10 @@ textarea:focus,
 
 }
 
-/* Desktop-first reference layout. Below 700px the rows wrap and the
-   secondary nav scrolls horizontally instead of stacking tall. */
+/* Desktop-first reference layout. Below 900px the navbar becomes a
+   two-row shell: brand plus controls first, then a horizontally
+   scrollable tab row. DOM order is also the focus order, so the
+   markup already lists the tabs last - no visual reordering. */
 
 @media (max-width: 900px) {
 
@@ -8157,8 +8482,6 @@ textarea:focus,
 
         flex-wrap: wrap;
 
-        gap: 12px;
-
     }
 
 }
@@ -8169,9 +8492,52 @@ textarea:focus,
 
         width: 100%;
 
+        /* A flex scroll container must be allowed to shrink below
+           its content width. */
+        min-width: 0;
+
         overflow-x: auto;
 
         padding-bottom: 4px;
+
+        /* Touch-scrollable tab row: hide the native scrollbar and
+           fade the right edge. The mask is painted after scrolling,
+           so the fade stays pinned to the viewport in both themes. */
+        scrollbar-width: none;
+
+        -webkit-mask-image: linear-gradient(
+            to right,
+            #000 calc(100% - 24px),
+            transparent
+        );
+
+        mask-image: linear-gradient(
+            to right,
+            #000 calc(100% - 24px),
+            transparent
+        );
+
+    }
+
+    /* The fade mask also fades backgrounds, so the pill surface is
+       dropped here and the tabs keep scrolling edge-to-edge. */
+    body:not(.account-page) .primary-nav {
+
+        gap: 10px;
+
+        padding: 0 0 4px;
+
+        border: 0;
+
+        border-radius: 0;
+
+        background: transparent;
+
+    }
+
+    .primary-nav::-webkit-scrollbar {
+
+        display: none;
 
     }
 
@@ -8520,7 +8886,7 @@ textarea:focus,
 }
 
 .resume-action-btn:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -8897,7 +9263,7 @@ textarea:focus,
 }
 
 .resume-add-link-btn:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -8931,7 +9297,7 @@ textarea:focus,
 }
 
 .rb-icon-btn:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -9001,7 +9367,7 @@ textarea:focus,
 }
 
 .rb-add-btn:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -9218,7 +9584,7 @@ textarea:focus,
 }
 
 .resume-section-select-trigger:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -9319,6 +9685,13 @@ textarea:focus,
     border: 1px solid var(--ref-green-border);
     border-radius: var(--radius-lg);
     min-height: 300px;
+}
+
+/* Signed-out prompt replaces the builder layout, so it takes the same
+   width the layout would have occupied. */
+.resume-signed-out {
+    width: min(1280px, 92%);
+    margin: 0 auto;
 }
 
 .resume-editor-empty-icon {
@@ -9426,7 +9799,7 @@ textarea:focus,
 }
 
 .resume-section-item-btn:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -9533,7 +9906,7 @@ textarea:focus,
 }
 
 .resume-bullet-add:focus-visible {
-    outline: 3px solid rgba(198, 216, 167, 0.45);
+    outline: 3px solid var(--ref-green-primary);
     outline-offset: 2px;
 }
 
@@ -9707,13 +10080,17 @@ textarea:focus,
    persists after blur). Desktop typography is unchanged. */
 @media (pointer: coarse) {
 
-    .input-number,
+    .account-field input,
+
+    .account-field select,
 
     .interview-field-group input,
 
     .interview-answer-input,
 
     .ats-job-description-field textarea,
+
+    .resume-field input,
 
     .resume-field textarea,
 
