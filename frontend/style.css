@@ -416,11 +416,33 @@ a {
 
 
 
-.brand-leaf {
+.brand-logo {
 
-    width: 27px;
+    width: 30px;
 
-    height: 27px;
+    height: 30px;
+
+    flex-shrink: 0;
+
+    overflow: visible;
+
+    transition: transform 0.25s ease;
+
+}
+
+.brand-logo-ring {
+
+    fill: none;
+
+    stroke: var(--olive-dark);
+
+    stroke-width: 7;
+
+    stroke-linecap: round;
+
+}
+
+.brand-logo-bar {
 
     fill: var(--pistachio);
 
@@ -428,15 +450,13 @@ a {
 
     stroke-width: 1.8;
 
-    transition: transform 0.25s ease;
-
 }
 
 
 
 
 
-.brand:hover .brand-leaf {
+.brand:hover .brand-logo {
 
     transform: rotate(-8deg) translateY(-2px);
 
@@ -538,12 +558,31 @@ a {
         transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.theme-icon-sun {
+    view-transition-name: theme-sun;
+}
+
+.theme-halo {
+    position: absolute;
+    inset: -5px;
+
+    border: 2px solid var(--pistachio);
+    border-radius: 16px;
+
+    opacity: 0;
+    pointer-events: none;
+
+    view-transition-name: theme-halo;
+}
+
 /* Action-style iconography: the icon shows the mode you will switch TO.
    Light mode shows the moon (click switches to dark); dark mode shows
    the sun (click switches to light). */
 .theme-icon-moon {
     opacity: 1;
     transform: rotate(0deg) scale(1);
+
+    view-transition-name: theme-moon;
 }
 
 [data-theme="dark"] .theme-icon-moon {
@@ -554,6 +593,115 @@ a {
 [data-theme="dark"] .theme-icon-sun {
     opacity: 1;
     transform: rotate(0deg) scale(1);
+}
+
+/* The theme sweep: the new page is revealed by a circle growing from the
+   toggle instead of the default crossfade. Named icon groups keep the sun
+   and moon above the snapshots so their spin stays visible. */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+    z-index: 1;
+}
+
+::view-transition-new(root) {
+    z-index: 2;
+}
+
+::view-transition-group(theme-sun),
+::view-transition-group(theme-moon),
+::view-transition-group(theme-halo) {
+    animation: none;
+    z-index: 3;
+}
+
+::view-transition-group(theme-halo) {
+    transform-origin: center;
+}
+
+::view-transition-old(theme-halo) {
+    animation: none;
+    opacity: 0;
+}
+
+html.theme-sweeping .theme-halo {
+    opacity: 1;
+}
+
+html.theme-sweeping::view-transition-new(theme-halo) {
+    animation: theme-halo-pulse 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+html.theme-to-dark::view-transition-old(theme-moon),
+html.theme-to-light::view-transition-old(theme-sun) {
+    animation: theme-icon-out 0.42s ease-in both;
+}
+
+html.theme-to-dark::view-transition-new(theme-sun),
+html.theme-to-light::view-transition-new(theme-moon) {
+    animation: theme-icon-in 0.52s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+html.theme-to-dark::view-transition-old(theme-sun),
+html.theme-to-dark::view-transition-new(theme-moon),
+html.theme-to-light::view-transition-old(theme-moon),
+html.theme-to-light::view-transition-new(theme-sun) {
+    animation: none;
+    opacity: 0;
+}
+
+@keyframes theme-halo-pulse {
+    from {
+        opacity: 0.55;
+        transform: scale(0.7);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(1.9);
+    }
+}
+
+@keyframes theme-icon-out {
+    from {
+        opacity: 1;
+        transform: rotate(0deg) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: rotate(-90deg) scale(0.4);
+    }
+}
+
+@keyframes theme-icon-in {
+    0% {
+        opacity: 0;
+        transform: rotate(90deg) scale(0.4);
+    }
+
+    70% {
+        opacity: 1;
+        transform: rotate(-6deg) scale(1.08);
+    }
+
+    100% {
+        opacity: 1;
+        transform: rotate(0deg) scale(1);
+    }
+}
+
+/* Suppress the usual color transitions while the sweep runs so the new
+   snapshot is captured at its final colors and does not fade twice. */
+html.theme-sweeping,
+html.theme-sweeping *,
+html.theme-sweeping *::before,
+html.theme-sweeping *::after {
+    transition: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
