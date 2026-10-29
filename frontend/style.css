@@ -10563,3 +10563,23 @@ body:not(.account-page) .primary-nav .primary-nav-btn:focus-visible {
 #about-careergap-dialog::backdrop {
     background: rgba(0, 0, 0, 0.35);
 }
+
+/* Compact phone analysis navigation; preserve placement and desktop layout. */
+@media (max-width: 700px) {
+    .analysis-subnav-inner {
+        padding: 6px;
+        border-radius: 16px;
+    }
+    .analysis-subnav-heading,
+    .analysis-subnav-hint {
+        display: none;
+    }
+    .analysis-subnav-tabs {
+        gap: 4px;
+    }
+    .analysis-subnav-tab {
+        min-height: 44px;
+        padding: 10px 14px;
+        white-space: nowrap;
+    }
+}

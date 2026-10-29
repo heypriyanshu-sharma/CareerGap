@@ -55,11 +55,11 @@ class TestAnalyzeDisclosure:
             in text
         )
 
-    def test_discloses_gemini_processing_of_derived_results(self):
+    def test_discloses_groq_processing_of_derived_results(self):
         text = _compact(_read(INDEX))
 
         assert (
-            "The derived results are also sent to Google Gemini to "
+            "The derived results are also sent to Groq to "
             "generate the AI advice."
             in text
         )

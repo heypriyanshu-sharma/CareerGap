@@ -929,6 +929,11 @@ document.addEventListener(
                     "hidden",
                     !hasNavigableSections
                 );
+                // Measure the compact bar as soon as it is revealed,
+                // before the report or a section is scrolled into view.
+                if (hasNavigableSections) {
+                    syncStickyOffsets();
+                }
             }
         }
 
