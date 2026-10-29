@@ -40,6 +40,22 @@ def _read(path):
     return path.read_text(encoding="utf-8")
 
 
+def _without_theme_boot_script(path):
+    """Return the page HTML with the shared pre-paint theme boot
+    script removed, so control-surface assertions are not tripped
+    by its legitimate ``data-theme`` references."""
+
+    html = _read(path)
+
+    return re.sub(
+        r"<script>\s*/\* Apply the saved theme[\s\S]*?</script>",
+        "",
+        html,
+        count=1,
+    )
+
+
+
 def _extract_braced_block(
     source,
     start_marker,
@@ -655,7 +671,15 @@ class TestProfilePage:
         assert 'value="principal"' not in html
 
     def test_page_has_no_theme_or_billing_controls(self):
-        html = _read(PROFILE_HTML).lower()
+        """No interactive theme picker or billing UI ships here.
+
+        The shared pre-paint theme boot script is required for
+        dark-mode continuity and is covered by
+        tests/test_theme_continuity_frontend.py; it is stripped
+        before scanning so the original intent (no theme/billing
+        controls in the page) is preserved."""
+
+        html = _without_theme_boot_script(PROFILE_HTML).lower()
 
         for forbidden in (
             "theme",
@@ -781,7 +805,10 @@ class TestSettingsPage:
         assert "danger zone" not in html
 
     def test_has_no_unnecessary_settings_sections(self):
-        html = _read(SETTINGS_HTML).lower()
+        """Same contract as the profile page: the shared theme boot
+        script is stripped before scanning for forbidden sections."""
+
+        html = _without_theme_boot_script(SETTINGS_HTML).lower()
 
         for forbidden in (
             "theme",

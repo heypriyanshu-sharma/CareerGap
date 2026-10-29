@@ -20,6 +20,28 @@
 
     <title>My Profile — CareerGap</title>
 
+    <script>
+        /* Apply the saved theme before first paint to avoid a light flash
+           for users who prefer dark mode. Mirrors initTheme() in script.js. */
+        (function () {
+            var theme = "light";
+            try {
+                var saved = localStorage.getItem("theme");
+                if (saved === "dark" || saved === "light") {
+                    theme = saved;
+                } else if (
+                    window.matchMedia &&
+                    window.matchMedia("(prefers-color-scheme: dark)").matches
+                ) {
+                    theme = "dark";
+                }
+            } catch (_) {
+                /* Storage unavailable (private browsing) — use light default */
+            }
+            document.documentElement.setAttribute("data-theme", theme);
+        })();
+    </script>
+
     <link
         rel="stylesheet"
         href="style.css"

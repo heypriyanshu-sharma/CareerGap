@@ -171,6 +171,7 @@
    surfaces. Re-surface chips on the sage-dark tile; their text tokens
    (--olive-dark / --olive) then keep full contrast automatically. */
 [data-theme="dark"] .profile-menu-avatar,
+[data-theme="dark"] .profile-page-avatar,
 [data-theme="dark"] .skill-pill,
 [data-theme="dark"] .compatibility.already,
 [data-theme="dark"] .next-number,
@@ -738,9 +739,10 @@ html.theme-sweeping *::after {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
+    gap: 6px;
+    min-width: 40px;
     height: 40px;
-    padding: 0;
+    padding: 0 10px;
 
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -767,6 +769,24 @@ html.theme-sweeping *::after {
     outline-offset: 2px;
 }
 
+.profile-trigger[aria-expanded="true"] {
+    background: var(--pistachio-soft);
+    border-color: var(--pistachio);
+    color: var(--olive);
+}
+
+.profile-caret {
+    width: 14px;
+    height: 14px;
+    color: currentColor;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.profile-trigger[aria-expanded="true"] .profile-caret {
+    transform: rotate(180deg);
+}
+
 .profile-icon {
     width: 20px;
     height: 20px;
@@ -780,16 +800,33 @@ html.theme-sweeping *::after {
     right: 0;
     z-index: 200;
 
-    min-width: 240px;
+    min-width: 248px;
     max-width: 300px;
 
+    padding: 6px;
+
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: 16px;
 
     background: var(--cream);
     box-shadow: var(--shadow-pop);
 
     overflow: hidden;
+
+    transform-origin: top right;
+    animation: profile-menu-in 0.18s ease-out;
+}
+
+@keyframes profile-menu-in {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 .profile-menu.hidden {
@@ -799,10 +836,16 @@ html.theme-sweeping *::after {
 .profile-menu-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 14px 16px;
+    gap: 12px;
+    padding: 12px;
+    margin-bottom: 4px;
 
-    border-bottom: 1px solid var(--border);
+    border-radius: 11px;
+    background: var(--pistachio-soft);
+}
+
+.profile-menu-header > div {
+    min-width: 0;
 }
 
 .profile-menu-avatar {
@@ -820,6 +863,7 @@ html.theme-sweeping *::after {
     overflow: hidden;
     background-size: cover;
     background-position: center;
+    box-shadow: 0 0 0 2px var(--pistachio);
 }
 
 .profile-menu-name {
@@ -827,18 +871,24 @@ html.theme-sweeping *::after {
     font-size: 0.9rem;
     color: var(--olive-dark);
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .profile-menu-email {
     font-size: 0.72rem;
     color: var(--olive-soft);
     margin: 2px 0 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .profile-menu-divider {
     height: 1px;
     background: var(--border);
-    margin: 4px 0;
+    margin: 4px 8px;
 }
 
 .profile-menu-item {
@@ -846,9 +896,10 @@ html.theme-sweeping *::after {
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 10px 14px;
+    padding: 10px;
 
     border: none;
+    border-radius: 10px;
     background: transparent;
     color: var(--olive-dark);
 
@@ -862,6 +913,10 @@ html.theme-sweeping *::after {
 
 .profile-menu-item:hover {
     background: var(--pistachio-soft);
+}
+
+.profile-menu-item:active {
+    background: var(--pistachio-light);
 }
 
 .profile-menu-item:focus-visible {
@@ -10451,6 +10506,10 @@ body:not(.account-page) .primary-nav .primary-nav-btn:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .profile-menu {
+        animation: none;
+    }
+
     .profile-trigger,
     .profile-caret,
     .profile-menu-item,
