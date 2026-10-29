@@ -97,6 +97,7 @@
        visible focus ring in both modes. */
     --field-focus-ring: 0 0 0 4px rgba(46, 96, 56, 0.16);
     --field-placeholder: #5F7158;
+    --resume-placeholder: var(--olive-soft);
 
     /* Native widgets (scrollbars, checkboxes, date pickers) follow the theme */
     color-scheme: light;
@@ -160,6 +161,7 @@
     --danger-soft: rgba(217, 139, 122, 0.14);
     --field-focus-ring: 0 0 0 4px rgba(168, 196, 136, 0.22);
     --field-placeholder: var(--olive-soft);
+    --resume-placeholder: #8A9A7C;
     --btn-danger-bg: var(--error-red);
     /* Native widgets (scrollbars, checkboxes, date pickers) follow the theme */
     color-scheme: dark;
@@ -177,8 +179,7 @@
 [data-theme="dark"] .ats-badge--preferred,
 [data-theme="dark"] .ats-job-badge,
 [data-theme="dark"] .resume-list-item-badge.updated,
-[data-theme="dark"] .resume-preview-skill,
-[data-theme="dark"] .resume-section-item-type {
+[data-theme="dark"] .resume-preview-skill {
     background: var(--pistachio-light);
 }
 
@@ -9549,7 +9550,8 @@ body:not(.account-page) .primary-nav .primary-nav-btn:focus-visible {
 
 .resume-field input::placeholder,
 .resume-field textarea::placeholder {
-    color: var(--olive-soft);
+    color: var(--resume-placeholder);
+    font-style: italic;
 }
 
 .resume-field-hint {
@@ -9681,6 +9683,46 @@ body:not(.account-page) .primary-nav .primary-nav-btn:focus-visible {
     color: var(--error-red);
 }
 
+/* Labeled remove button: the trash icon alone read as removing the row above
+   it, so entry/link removes get visible text naming their scope. */
+.rb-remove-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+    height: 36px;
+    padding: 0 14px;
+    border: 1px solid rgba(164, 87, 71, 0.22);
+    border-radius: 999px;
+    background: rgba(164, 87, 71, 0.05);
+    color: var(--error-red);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.rb-remove-btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.rb-remove-btn:hover:not(:disabled) {
+    background: rgba(164, 87, 71, 0.08);
+    border-color: rgba(164, 87, 71, 0.4);
+}
+
+.rb-remove-btn:focus-visible {
+    outline: 3px solid var(--ref-green-primary);
+    outline-offset: 2px;
+}
+
 /* ---- Navigation/Reorder (chevron) ---- */
 .rb-icon-btn.nav {
     color: var(--ref-green-dark);
@@ -9696,25 +9738,23 @@ body:not(.account-page) .primary-nav .primary-nav-btn:focus-visible {
 .rb-add-btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border: 1px dashed var(--ref-green-border);
-    border-radius: 10px;
+    gap: 6px;
+    padding: 6px 2px;
+    border: none;
+    border-radius: 6px;
     background: transparent;
     color: var(--ref-green-dark);
     font: inherit;
     font-size: 0.82rem;
     font-weight: 650;
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease,
-                color 0.15s ease, transform 0.15s ease, border-style 0.15s ease;
+    opacity: 0.85;
+    transition: color 0.15s ease, opacity 0.15s ease;
 }
 
 .rb-add-btn:hover:not(:disabled) {
-    background: var(--ref-green-pale);
-    border-color: var(--ref-green-primary);
-    border-style: solid;
-    transform: translateY(-1px);
+    color: var(--ref-green-primary);
+    opacity: 1;
 }
 
 .rb-add-btn:focus-visible {
@@ -9737,34 +9777,6 @@ body:not(.account-page) .primary-nav .primary-nav-btn:focus-visible {
     stroke-linecap: round;
     stroke-linejoin: round;
     flex-shrink: 0;
-}
-
-/* ---- Section item header controls ---- */
-.resume-section-item-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
-    flex-wrap: wrap;
-}
-
-.resume-section-item-type {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--pistachio);
-    color: var(--olive-dark);
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: capitalize;
-}
-
-.resume-section-item-actions {
-    display: inline-flex;
-    gap: 6px;
 }
 
 /* ---- Bullet/skill rows ---- */
@@ -9794,7 +9806,8 @@ body:not(.account-page) .primary-nav .primary-nav-btn:focus-visible {
 }
 
 .resume-bullet-row input::placeholder {
-    color: var(--olive-soft);
+    color: var(--resume-placeholder);
+    font-style: italic;
 }
 
 /* ---- Entry remove button ---- */
@@ -9827,11 +9840,9 @@ body:not(.account-page) .primary-nav .primary-nav-btn:focus-visible {
 .resume-editor-bottom-bar {
     display: flex;
     justify-content: flex-end;
-    padding: 16px 22px 22px;
+    margin: 0 32px 28px;
+    padding: 20px 0 0;
     border-top: 1px solid var(--ref-green-border);
-    background: var(--ref-green-pale);
-    margin: 0 -22px -22px;
-    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 .resume-editor-bottom-bar .resume-action-btn.primary {
@@ -9839,43 +9850,12 @@ body:not(.account-page) .primary-nav .primary-nav-btn:focus-visible {
     justify-content: center;
 }
 
-/* ---- Responsive ---- */
-@media (max-width: 700px) {
-    .resume-section-item-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .resume-section-item-actions {
-        width: 100%;
-        justify-content: flex-end;
-    }
-
-    .resume-link-row {
-        grid-template-columns: 1fr;
-    }
-
-    .rb-add-btn {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .resume-editor-bottom-bar {
-        padding: 16px;
-        margin: 0 -22px -22px;
-    }
-
-    .resume-editor-bottom-bar .resume-action-btn.primary {
-        width: 100%;
-    }
-}
 
 /* ---- Reduced motion ---- */
 @media (prefers-reduced-motion: reduce) {
     .rb-icon-btn,
     .rb-add-btn,
     .resume-bullet-row input,
-    .resume-section-item-type,
     .resume-field input,
     .resume-field select,
     .resume-field textarea {
@@ -10079,12 +10059,16 @@ body:not(.account-page) .primary-nav .primary-nav-btn:focus-visible {
 }
 
 .resume-section-item {
-    border: 1px solid var(--ref-green-border);
-    border-radius: var(--radius-sm);
-    background: var(--ref-page);
-    padding: 16px;
-    margin-bottom: 12px;
+    padding: 0 0 4px;
+    margin-bottom: 26px;
     position: relative;
+}
+
+/* Sections are separated by a hairline and whitespace instead of
+   nested cards, so fields read as controls, not boxes-in-boxes. */
+.resume-section-item + .resume-section-item {
+    border-top: 1px solid var(--ref-green-border);
+    padding-top: 22px;
 }
 
 .resume-section-item-header {
@@ -10096,17 +10080,33 @@ body:not(.account-page) .primary-nav .primary-nav-btn:focus-visible {
     flex-wrap: wrap;
 }
 
-.resume-section-item-type {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--pistachio);
+.resume-section-heading-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 4px 8px 4px 0;
+    border: none;
+    border-bottom: 1px solid transparent;
+    border-radius: 0;
+    background: transparent;
     color: var(--olive-dark);
-    font-size: 0.7rem;
+    font: inherit;
+    font-size: 1rem;
     font-weight: 700;
-    text-transform: capitalize;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.resume-section-heading-input::placeholder {
+    color: var(--olive-soft);
+    font-style: normal;
+}
+
+.resume-section-heading-input:hover {
+    border-bottom-color: var(--ref-green-border);
+}
+
+.resume-section-heading-input:focus {
+    border-bottom-color: var(--pistachio);
 }
 
 .resume-section-item-actions {
@@ -10179,21 +10179,70 @@ body:not(.account-page) .primary-nav .primary-nav-btn:focus-visible {
     min-height: 72px;
 }
 
-/* Section-specific field layouts */
-.section-skills .resume-field-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+/* Inside de-nested sections, field outlines step back so labels and
+   headings carry the structure. */
+.resume-section-item .resume-field input,
+.resume-section-item .resume-field textarea,
+.resume-section-item .resume-bullet-row input {
+    border-color: color-mix(in srgb, var(--ref-green-border) 55%, transparent);
 }
 
-.section-skills .resume-field input {
+.resume-section-item .resume-field input:focus,
+.resume-section-item .resume-field textarea:focus,
+.resume-section-item .resume-bullet-row input:focus {
+    border-color: var(--pistachio);
+}
+
+/* Entry field layout: one column on narrow screens, two on desktop.
+   Long text (textarea), bullets and the remove action always span
+   the full width. */
+.resume-section-fields-item .resume-field input,
+.resume-section-fields-item .resume-field textarea {
     width: 100%;
 }
 
-.section-education .resume-field-grid,
-.section-experience .resume-field-grid,
-.section-projects .resume-field-grid,
-.section-certifications .resume-field-grid,
-.section-custom .resume-field-grid {
-    grid-template-columns: 1fr;
+@media (min-width: 900px) {
+    .resume-section-fields-item {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        column-gap: 14px;
+        align-items: start;
+    }
+
+    .resume-section-fields-item .resume-field:has(textarea),
+    .resume-section-fields-item .resume-bullets,
+    .resume-section-fields-item .resume-entry-remove {
+        grid-column: 1 / -1;
+    }
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 700px) {
+    .resume-section-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .resume-section-item-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .resume-link-row {
+        grid-template-columns: 1fr;
+    }
+
+    /* Ghost add actions stay left-aligned text buttons; the
+       full-width treatment is reserved for the solid Save button. */
+    .rb-add-btn {
+        width: auto;
+        justify-content: flex-start;
+    }
+
+
+    .resume-editor-bottom-bar .resume-action-btn.primary {
+        width: 100%;
+    }
 }
 
 .resume-bullets {
@@ -10228,7 +10277,8 @@ body:not(.account-page) .primary-nav .primary-nav-btn:focus-visible {
 }
 
 .resume-bullet-row input::placeholder {
-    color: var(--olive-soft);
+    color: var(--resume-placeholder);
+    font-style: italic;
 }
 
 .resume-bullet-add {

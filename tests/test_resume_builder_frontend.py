@@ -955,3 +955,449 @@ def test_abort_translation_covers_every_apirequest_error_display():
     assert source.count("describeRequestError(error") >= 12, (
         "the translator should cover resume, interview, analysis and upload paths"
     )
+
+
+# ============================================================
+# NODE-BASED ENTER-TO-ADD-SKILL REGRESSION TESTS
+# ============================================================
+
+_NODE_ENTER_TEST_TEMPLATE = r"""
+'use strict';
+
+class Element {}
+
+class FakeElement extends Element {
+    constructor(classes, dataset) {
+        super();
+        this.classList = new Set(classes || []);
+        this.dataset = dataset || {};
+        this.children = [];
+        this.parent = null;
+        this.insertedHTML = [];
+        this.value = '';
+        this.name = '';
+        this.focused = false;
+    }
+
+    get lastElementChild() {
+        return this.children.length
+            ? this.children[this.children.length - 1]
+            : null;
+    }
+
+    appendChild(child) {
+        child.parent = this;
+        this.children.push(child);
+        return child;
+    }
+
+    focus() {
+        this.focused = true;
+    }
+
+    matches(selector) {
+        if (selector.startsWith('.')) {
+            return this.classList.has(selector.slice(1));
+        }
+        const match = selector.match(/^\[([a-zA-Z-]+)(?:="([^"]*)")?\]$/);
+        if (match) {
+            const attr = match[1];
+            const expected = match[2];
+            if (attr.startsWith('data-')) {
+                const key = attr.slice(5).replace(
+                    /-([a-z])/g,
+                    (_, c) => c.toUpperCase()
+                );
+                if (expected === undefined) {
+                    return key in this.dataset;
+                }
+                return this.dataset[key] === expected;
+            }
+            if (attr === 'name') {
+                return this.name === expected;
+            }
+            return false;
+        }
+        return false;
+    }
+
+    closest(selector) {
+        let node = this;
+        while (node) {
+            if (node.matches && node.matches(selector)) {
+                return node;
+            }
+            node = node.parent;
+        }
+        return null;
+    }
+
+    querySelector(selector) {
+        for (const child of this.children) {
+            if (child.matches(selector)) {
+                return child;
+            }
+            const found = child.querySelector(selector);
+            if (found) {
+                return found;
+            }
+        }
+        return null;
+    }
+
+    insertAdjacentHTML(position, html) {
+        this.insertedHTML.push({ position, html });
+    }
+}
+
+function el(classes, dataset) {
+    return new FakeElement(classes, dataset);
+}
+
+__ESCAPE_HTML__
+
+__BUILD_SKILL_ROW__
+
+const runSkillEnterHandler =
+__ENTER_HANDLER__;
+
+function buildSkillsSection(skills) {
+    const sectionItem = el(
+        ['resume-section-item', 'section-skills'],
+        { sectionType: 'skills' }
+    );
+    const skillsList = el(['resume-bullets']);
+    const inputs = [];
+    for (const skill of skills) {
+        const row = el(['resume-bullet-row']);
+        const input = el([]);
+        input.name = 'skill[]';
+        input.value = skill;
+        row.appendChild(input);
+        skillsList.appendChild(row);
+        inputs.push(input);
+    }
+    sectionItem.appendChild(skillsList);
+    return { sectionItem, skillsList, inputs };
+}
+
+function makeEvent(target, overrides) {
+    const event = Object.assign(
+        {
+            key: 'Enter',
+            isComposing: false,
+            target,
+            defaultPrevented: false,
+            preventDefault() {
+                this.defaultPrevented = true;
+            },
+        },
+        overrides || {}
+    );
+    return event;
+}
+
+function fail(message) {
+    console.error('ASSERTION FAILED: ' + message);
+    process.exit(1);
+}
+
+// 1. Enter on a filled skill input inserts exactly one new row
+//    and prevents the default keypress behavior.
+const filled = buildSkillsSection(['Python']);
+const enterEvent = makeEvent(filled.inputs[0]);
+runSkillEnterHandler(enterEvent);
+
+if (filled.skillsList.insertedHTML.length !== 1) {
+    fail('expected one insertion after Enter on a filled skill input');
+}
+if (!filled.skillsList.insertedHTML[0].html.includes('name="skill[]"')) {
+    fail('inserted row is not a skill input row');
+}
+if (!enterEvent.defaultPrevented) {
+    fail('Enter default was not prevented for a handled skill input');
+}
+
+// 2. Enter on an empty skill input adds nothing (no empty-row chains).
+const empty = buildSkillsSection(['']);
+const emptyEvent = makeEvent(empty.inputs[0]);
+runSkillEnterHandler(emptyEvent);
+
+if (empty.skillsList.insertedHTML.length !== 0) {
+    fail('Enter on an empty skill input must not add a row');
+}
+if (emptyEvent.defaultPrevented) {
+    fail('unhandled Enter must not be default-prevented');
+}
+
+// 3. Enter during IME composition adds nothing.
+const ime = buildSkillsSection(['Python']);
+const imeEvent = makeEvent(ime.inputs[0], { isComposing: true });
+runSkillEnterHandler(imeEvent);
+
+if (ime.skillsList.insertedHTML.length !== 0) {
+    fail('IME composition Enter must not add a row');
+}
+
+// 4. Enter outside a skill input adds nothing.
+const other = buildSkillsSection(['Python']);
+const headingInput = el([]);
+headingInput.name = 'heading';
+other.sectionItem.appendChild(headingInput);
+const otherEvent = makeEvent(headingInput);
+runSkillEnterHandler(otherEvent);
+
+if (other.skillsList.insertedHTML.length !== 0) {
+    fail('Enter on a non-skill input must not add a row');
+}
+if (otherEvent.defaultPrevented) {
+    fail('Enter on a non-skill input must keep its default behavior');
+}
+
+console.log('skill enter handler OK');
+"""
+
+
+def _run_node_skill_enter_test() -> subprocess.CompletedProcess:
+    source = _read_script_js()
+
+    escape_html = _extract_braced_block(
+        source, "function escapeHTML(value)"
+    )
+    build_skill_row = _extract_braced_block(
+        source, "function buildResumeSkillRowHtml(skill)"
+    )
+    # Slice from the keydown registration so the extractor returns
+    # exactly the arrow function `(event) => { ... }`.
+    keydown_at = source.index('"keydown",' + chr(10) + '                (event) =>')
+    enter_handler = _extract_braced_block(
+        source[keydown_at:], "(event) =>"
+    )
+
+    node_script = (
+        _NODE_ENTER_TEST_TEMPLATE
+        .replace("__ESCAPE_HTML__", escape_html)
+        .replace("__BUILD_SKILL_ROW__", build_skill_row)
+        .replace("__ENTER_HANDLER__", enter_handler)
+    )
+
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".js", delete=False, encoding="utf-8"
+    ) as handle:
+        handle.write(node_script)
+        tmp_path = handle.name
+
+    try:
+        return subprocess.run(
+            ["node", tmp_path],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+
+@pytest.mark.skipif(
+    shutil.which("node") is None,
+    reason="node is required to run the frontend handler test",
+)
+def test_skill_enter_appends_row_only_for_filled_skill_inputs():
+    """Enter inside a filled skill input appends one editable skill
+    row and swallows the default keypress; Enter on an empty row,
+    during IME composition, or in a non-skill input does nothing.
+
+    The user asked for type-one-skill-then-Enter to open the next
+    skill row. Without the empty-input and composition guards the
+    same handler would chain empty rows and fight IMEs.
+    """
+    result = _run_node_skill_enter_test()
+
+    assert result.returncode == 0, (
+        "Skill Enter handler test failed:\n"
+        f"{result.stdout}\n{result.stderr}"
+    )
+    assert "skill enter handler OK" in result.stdout
+
+
+# ============================================================
+# REMOVE-BUTTON SCOPE LABELS + PLACEHOLDER STYLING
+# ============================================================
+
+def test_remove_buttons_name_their_scope_in_visible_text():
+    """Entry, link and section removes must carry visible text, not
+    only a trash icon: adjacent icon-only buttons read as removing
+    the row above them on touchscreens (no hover)."""
+    source = _read_script_js()
+
+    assert "<span>Remove entry</span>" in source, (
+        "entry remove button must show the text 'Remove entry'"
+    )
+    assert "<span>Remove link</span>" in source, (
+        "link remove button must show the text 'Remove link'"
+    )
+    assert "<span>Remove section</span>" in source, (
+        "section remove button must show the text 'Remove section'"
+    )
+
+
+def test_placeholders_use_the_dimmed_placeholder_token():
+    """Resume Builder placeholders must use the muted, Resume
+    Builder-scoped --resume-placeholder token, not the bright
+    --olive-soft accent that made examples look like saved input.
+    The dimming stays scoped so unrelated fields are unchanged."""
+    css = (FRONTEND_DIR / "style.css").read_text(encoding="utf-8")
+
+    resume_placeholder_rules = re.findall(
+        r"\.resume-(?:field|bullet-row)[^{]*::placeholder\s*\{([^}]*)\}",
+        css,
+    )
+
+    assert resume_placeholder_rules, (
+        "expected resume placeholder rules in style.css"
+    )
+
+    for rule in resume_placeholder_rules:
+        assert "var(--resume-placeholder)" in rule, (
+            "resume placeholder rule must use the Resume Builder "
+            "scoped --resume-placeholder token: " + rule
+        )
+        assert "--olive-soft" not in rule, (
+            "resume placeholder rule must not use the bright "
+            "--olive-soft accent: " + rule
+        )
+
+
+def test_add_entry_button_label_is_accurate_for_first_entry():
+    """The entry button read 'Add Another Entry' even when a section
+    had no entries yet; the label must be 'Add Entry'."""
+    source = _read_script_js()
+
+    assert "Add Another Entry" not in source
+    assert "Add Entry" in source
+
+
+# ============================================================
+# COMBINED HIERARCHY UPGRADE REGRESSION TESTS
+# ============================================================
+
+def test_section_heading_is_inline_and_editable_in_header():
+    """addSectionItem must render the editable heading input
+    inside .resume-section-item-header (no separate Section
+    Heading field, no type pill)."""
+    source = _read_script_js()
+
+    # The heading input lives in the header markup with an
+    # accessible label and the same name the save path reads.
+    header_block = source.split("resume-section-item-header", 1)[1]
+    assert 'name="heading"' in header_block
+    assert "resume-section-heading-input" in header_block
+    assert 'aria-label="Section heading"' in header_block
+    assert 'maxlength="120"' in header_block
+
+    # The old type pill and standalone heading field are gone.
+    assert "resume-section-item-type" not in source
+    assert "Section Heading" not in source
+
+    # buildSectionFields no longer emits its own heading input.
+    fields_fn = source.split("function buildSectionFields", 1)[1]
+    fields_fn = fields_fn.split("\n        function ", 1)[0]
+    assert 'name="heading"' not in fields_fn
+
+
+def test_save_path_still_reads_heading_from_section_item():
+    """The save serialization must keep reading the heading
+    input by name from inside the section item."""
+    source = _read_script_js()
+    assert "[name=\"heading\"]" in source or "['name=\"heading\"']" in source \
+        or 'querySelector(\'[name="heading"]\')' in source \
+        or '[name="heading"]' in source
+
+
+def test_de_nesting_and_ghost_actions_in_css():
+    """style.css must de-nest section cards, separate sections
+    with a hairline, style the inline heading, and keep add
+    actions as quiet ghost buttons."""
+    css = (FRONTEND_DIR / "style.css").read_text(encoding="utf-8")
+
+    # Inline editable heading input styling exists.
+    assert ".resume-section-heading-input" in css
+
+    # Sections are no longer boxed cards; a hairline separates
+    # consecutive sections instead.
+    card = re.search(
+        r"\.resume-section-item\s*\{([^}]*)\}", css
+    )
+    assert card, "expected a .resume-section-item rule"
+    assert "border" not in card.group(1)
+    assert "background" not in card.group(1)
+    assert (
+        ".resume-section-item + .resume-section-item" in css
+    ), "expected hairline divider between sections"
+
+    # Add actions are ghost text buttons (no border box).
+    add_btn = re.search(r"\.rb-add-btn\s*\{([^}]*)\}", css)
+    assert add_btn, "expected a .rb-add-btn rule"
+    assert "border: none" in add_btn.group(1)
+
+    # The dead type-pill rules are gone.
+    assert ".resume-section-item-type" not in css
+
+
+def test_mobile_header_rules_come_after_consolidated_base_rules():
+    """The max-700px media block must follow the consolidated
+    .resume-section-item-header base rule, or equal-specificity
+    source order silently re-centers the mobile section header.
+
+    Regression: the de-nesting pass left a duplicate base rule
+    AFTER the media block, so phone widths computed
+    align-items: center instead of flex-start."""
+    css = (FRONTEND_DIR / "style.css").read_text(encoding="utf-8")
+
+    # Exactly one base (non-media) header rule may exist.
+    base_rule_count = len(
+        re.findall(r"^\.resume-section-item-header \{", css, re.M)
+    )
+    assert base_rule_count == 1, (
+        f"expected 1 base .resume-section-item-header rule, "
+        f"found {base_rule_count} (duplicates flip precedence)"
+    )
+
+    base_pos = re.search(
+        r"^\.resume-section-item-header \{", css, re.M
+    ).start()
+
+    # Find the max-700px media block that contains the header
+    # override (other components have their own 700px blocks).
+    media_pos = None
+    for match in re.finditer(r"@media \(max-width: 700px\)", css):
+        window = css[match.start() : match.start() + 3000]
+        if ".resume-section-item-header" in window:
+            media_pos = match.start()
+            break
+    assert media_pos is not None, (
+        "no max-700px media block overrides "
+        ".resume-section-item-header"
+    )
+    assert media_pos > base_pos, (
+        "the mobile media block must come after the consolidated "
+        "base header rule so its align-items: flex-start wins"
+    )
+
+
+def test_desktop_entries_use_two_columns():
+    """Entry fields pair up on wide screens while textareas,
+    bullets and the remove action span the full width."""
+    css = (FRONTEND_DIR / "style.css").read_text(encoding="utf-8")
+
+    desktop = re.search(
+        r"@media \(min-width: 900px\) \{(.*?)\n\}", css, re.S
+    )
+    assert desktop, "expected a min-width:900px media block"
+    block = desktop.group(1)
+    assert ".resume-section-fields-item" in block
+    assert "grid-template-columns: 1fr 1fr" in block
+    assert ".resume-field:has(textarea)" in block
+    assert ".resume-bullets" in block
+    assert ".resume-entry-remove" in block
+    assert "grid-column: 1 / -1" in block

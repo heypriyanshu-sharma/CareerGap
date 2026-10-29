@@ -6223,14 +6223,15 @@ analysisHistoryList.innerHTML =
                     <label>URL</label>
                     <input type="url" name="contact.links[].url" maxlength="500" placeholder="https://github.com/username" value="${escapeHTML(url)}">
                 </div>
-                <button type="button" class="rb-icon-btn danger" aria-label="Remove link">
+                <button type="button" class="rb-remove-btn" aria-label="Remove link">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <polyline points="3 6 5 6 21 6"/>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                     </svg>
+                    <span>Remove link</span>
                 </button>
             `;
-            row.querySelector(".rb-icon-btn").addEventListener("click", () => row.remove());
+            row.querySelector(".rb-remove-btn").addEventListener("click", () => row.remove());
             resumeElements.linksContainer.appendChild(row);
         }
 
@@ -6240,14 +6241,24 @@ analysisHistoryList.innerHTML =
             item.className = `resume-section-item section-${section.type}`;
             item.dataset.sectionType = section.type;
 
-            const typeLabel =
-                RESUME_SECTION_HEADINGS[section.type] || section.type;
+            const headingPlaceholder =
+                RESUME_SECTION_HEADINGS[section.type] || "Section";
+            const headingValue =
+                typeof section.heading === "string" ? section.heading : "";
 
             const fieldsHtml = buildSectionFields(section);
 
             item.innerHTML = `
                 <div class="resume-section-item-header">
-                    <span class="resume-section-item-type">${escapeHTML(typeLabel)}</span>
+                    <input
+                        type="text"
+                        class="resume-section-heading-input"
+                        name="heading"
+                        maxlength="120"
+                        aria-label="Section heading"
+                        placeholder="${escapeHTML(headingPlaceholder)}"
+                        value="${escapeHTML(headingValue)}"
+                    >
                     <div class="resume-section-item-actions">
                         <button type="button" class="rb-icon-btn nav" data-move-up aria-label="Move section up">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -6259,11 +6270,12 @@ analysisHistoryList.innerHTML =
                                 <polyline points="6 9 12 15 18 9"/>
                             </svg>
                         </button>
-                        <button type="button" class="rb-icon-btn danger" data-remove-section aria-label="Remove section">
+                        <button type="button" class="rb-remove-btn" data-remove-section aria-label="Remove section">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <polyline points="3 6 5 6 21 6"/>
                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                             </svg>
+                            <span>Remove section</span>
                         </button>
                     </div>
                 </div>
@@ -6481,7 +6493,7 @@ analysisHistoryList.innerHTML =
 
                     <button
                         type="button"
-                        class="rb-icon-btn danger resume-entry-remove"
+                        class="rb-remove-btn resume-entry-remove"
                         data-remove-entry
                         aria-label="Remove entry"
                     >
@@ -6489,6 +6501,7 @@ analysisHistoryList.innerHTML =
                             <polyline points="3 6 5 6 21 6"/>
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                         </svg>
+                        <span>Remove entry</span>
                     </button>
 
                 </div>
@@ -6551,30 +6564,11 @@ analysisHistoryList.innerHTML =
         function buildSectionFields(section) {
             const type = section.type;
             const items = Array.isArray(section.items) ? section.items : [];
-            const heading =
-                typeof section.heading === "string"
-                    ? section.heading
-                    : "";
 
-            // The section heading is the only supported place for a custom
-            // section title, so it is offered for every section type.
-            const headingField = `
-                <div class="resume-field full-width">
-                    <label>Section Heading</label>
-                    <input
-                        type="text"
-                        name="heading"
-                        maxlength="120"
-                        placeholder="${escapeHTML(
-                            RESUME_SECTION_HEADINGS[type] || "Section"
-                        )}"
-                        value="${escapeHTML(heading)}"
-                    >
-                </div>
-            `;
-
+            // The editable section heading lives inline in the section
+            // header (see addSectionItem); these are only the body fields.
             if (type === "skills") {
-                return headingField + buildSkillsFieldHtml(section);
+                return buildSkillsFieldHtml(section);
             }
 
             const entries = items
@@ -6585,8 +6579,6 @@ analysisHistoryList.innerHTML =
                 .join("");
 
             return `
-                ${headingField}
-
                 <div class="resume-section-entries">
                     ${entries}
                 </div>
@@ -6600,7 +6592,7 @@ analysisHistoryList.innerHTML =
                         <line x1="12" y1="5" x2="12" y2="19"/>
                         <line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
-                    Add Another Entry
+                    Add Entry
                 </button>
             `;
         }
@@ -7289,6 +7281,57 @@ analysisHistoryList.innerHTML =
 
             resumeElements.titleInput.addEventListener("input", updateTitleCount);
 
+            // Enter inside a skill input appends the next skill row and moves
+            // focus to it, matching how the Add Skill button behaves.
+            resumeElements.sectionsContainer.addEventListener(
+                "keydown",
+                (event) => {
+                    // Enter also confirms an IME composition candidate;
+                    // never add a row for that keypress.
+                    if (event.key !== "Enter" || event.isComposing) {
+                        return;
+                    }
+
+                    const input =
+                        event.target instanceof Element &&
+                        event.target.matches('[name="skill[]"]') &&
+                        event.target.closest(".section-skills")
+                            ? event.target
+                            : null;
+
+                    if (!input) {
+                        return;
+                    }
+
+                    // A new row only follows a filled one, so repeated
+                    // Enter on an empty row cannot chain empty rows.
+                    if (!input.value.trim()) {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    const skillsList = input.closest(".resume-bullets");
+
+                    if (!skillsList) {
+                        return;
+                    }
+
+                    skillsList.insertAdjacentHTML(
+                        "beforeend",
+                        buildResumeSkillRowHtml("")
+                    );
+
+                    const newSkillInput = skillsList.lastElementChild?.querySelector(
+                        '[name="skill[]"]'
+                    );
+
+                    if (newSkillInput) {
+                        newSkillInput.focus();
+                    }
+                }
+            );
+
             resumeElements.sectionsContainer.addEventListener("click", (event) => {
                 const target =
                     event.target instanceof Element
@@ -7376,6 +7419,14 @@ analysisHistoryList.innerHTML =
                         "beforeend",
                         buildResumeSkillRowHtml("")
                     );
+
+                    const newSkillInput = skillsList.lastElementChild?.querySelector(
+                        'input[name="skill[]"]'
+                    );
+
+                    if (newSkillInput) {
+                        newSkillInput.focus();
+                    }
 
                     return;
                 }
