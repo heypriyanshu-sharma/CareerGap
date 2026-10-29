@@ -1201,3 +1201,73 @@ def test_interview_get_session_requires_authentication():
     # Restore auth
     backend.app.dependency_overrides[backend.get_current_user] = lambda: {"sub": "test-user-id", "email": "test@example.com"}
     backend.app.dependency_overrides[backend.security] = lambda: HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-access-token")
+
+
+def test_interview_generate_timeout_returns_504(monkeypatch):
+    """Regression: generation timeout must map to 504, not 500.
+
+    The RuntimeError message is "Question generation timed out after 35 seconds.";
+    the mapping previously matched only "timeout" and never fired.
+    """
+    def raise_timeout(*args, **kwargs):
+        raise RuntimeError("Question generation timed out after 35 seconds.")
+
+    monkeypatch.setattr(backend, "generate_interview_questions", raise_timeout)
+
+    def mock_profile_get(*args, **kwargs):
+        class MockResp:
+            ok = True
+            def json(self): return []
+        return MockResp()
+
+    monkeypatch.setattr(requests, "get", mock_profile_get)
+    backend.limiter._storage.reset()
+
+    response = client.post(
+        "/interview/generate",
+        json={"mode": "quick", "target_role": "Backend Engineer", "resume_id": None},
+    )
+
+    assert response.status_code == 504
+    assert response.json()["detail"] == "AI request timed out."
+
+
+def test_interview_answer_timeout_returns_504(monkeypatch):
+    """Regression: feedback timeout must map to 504, not 500.
+
+    The RuntimeError message is "Feedback generation timed out after 30 seconds.";
+    the mapping previously matched only "timeout" and never fired.
+    """
+    questions = [
+        {"type": "technical", "text": f"Question {i}?"} for i in range(5)
+    ]
+
+    def mock_session_get(*args, **kwargs):
+        class MockResp:
+            ok = True
+            def json(self):
+                return [{
+                    "id": "123e4567-e89b-12d3-a456-426614174000",
+                    "mode": "quick",
+                    "target_role": "Backend Engineer",
+                    "resume_id": None,
+                    "questions": questions,
+                    "status": "pending",
+                }]
+        return MockResp()
+
+    monkeypatch.setattr(requests, "get", mock_session_get)
+
+    def raise_timeout(*args, **kwargs):
+        raise RuntimeError("Feedback generation timed out after 30 seconds.")
+
+    monkeypatch.setattr(backend, "evaluate_interview_answers", raise_timeout)
+    backend.limiter._storage.reset()
+
+    response = client.post(
+        "/interview/123e4567-e89b-12d3-a456-426614174000/answer",
+        json={"answers": ["answer"] * 5},
+    )
+
+    assert response.status_code == 504
+    assert response.json()["detail"] == "AI request timed out."

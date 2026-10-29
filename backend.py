@@ -1723,7 +1723,7 @@ async def interview_generate(
     except RuntimeError as e:
         if "GEMINI_API_KEY" in str(e):
             raise HTTPException(status_code=503, detail="AI service unavailable: API key not configured.")
-        if "timeout" in str(e).lower():
+        if "timed out" in str(e).lower() or "timeout" in str(e).lower():
             raise HTTPException(status_code=504, detail="AI request timed out.")
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
@@ -1848,7 +1848,7 @@ async def interview_answer(
     except RuntimeError as e:
         if "GEMINI_API_KEY" in str(e):
             raise HTTPException(status_code=503, detail="AI service unavailable: API key not configured.")
-        if "timeout" in str(e).lower():
+        if "timed out" in str(e).lower() or "timeout" in str(e).lower():
             raise HTTPException(status_code=504, detail="AI request timed out.")
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
