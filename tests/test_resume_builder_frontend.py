@@ -689,3 +689,28 @@ def test_saveresume_does_not_redirect_when_session_is_missing():
 if __name__ == "__main__":
     import pytest
     pytest.main([__file__, "-v"])
+
+
+# ============================================================
+# OPENING A RESUME SCROLLS ITS PANEL INTO VIEW (stacked layout)
+# ============================================================
+
+def test_reveal_resume_panel_respects_sticky_navbar_and_reduced_motion():
+    js = _read_script_js()
+    body = _extract_braced_block(js, "function revealResumePanel")
+    assert "window.innerHeight" in body
+    assert '.navbar' in body
+    assert "prefersReducedMotion()" in body
+    assert '"smooth"' in body and '"auto"' in body
+
+
+def test_new_resume_and_list_click_reveal_panel_but_save_does_not():
+    js = _read_script_js()
+    create = _extract_braced_block(js, "function createResume")
+    assert "revealResumePanel()" in create
+    start = js.index("async function selectResume")
+    select = js[start:js.index("function updateViewMode", start)]
+    assert "options.reveal" in select
+    assert "selectResume(resumeId, { reveal: true })" in js
+    # The post-save refresh calls selectResume without reveal.
+    assert "await selectResume(savedResume.id);" in js

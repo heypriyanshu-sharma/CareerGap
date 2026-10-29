@@ -5136,7 +5136,7 @@ analysisHistoryList.innerHTML =
             resumeElements.list.querySelectorAll(".resume-list-item").forEach((item) => {
                 item.addEventListener("click", () => {
                     const resumeId = item.dataset.resumeId;
-                    selectResume(resumeId);
+                    selectResume(resumeId, { reveal: true });
                 });
             });
         }
@@ -5151,7 +5151,45 @@ analysisHistoryList.innerHTML =
             );
         }
 
-        async function selectResume(resumeId) {
+        // Brings the freshly opened resume panel into view on stacked
+        // (mobile) layouts. The destination clears the sticky navbar plus a
+        // small gap. When the panel is already in place, as on the
+        // side-by-side desktop layout, nothing moves.
+        function revealResumePanel() {
+            const panel = resumeBuilderState.viewMode === "edit"
+                ? resumeElements.editor
+                : resumeElements.view;
+
+            if (!panel) {
+                return;
+            }
+
+            requestAnimationFrame(() => {
+                const navbar = document.querySelector(".navbar");
+                const stickyBottom = navbar
+                    ? navbar.getBoundingClientRect().bottom
+                    : 76;
+                const top = panel.getBoundingClientRect().top;
+
+                // Already visible near the top, as on the side-by-side
+                // desktop layout: leave the page where it is.
+                if (
+                    top >= stickyBottom &&
+                    top <= stickyBottom + window.innerHeight * 0.35
+                ) {
+                    return;
+                }
+
+                const delta = top - stickyBottom - 16;
+
+                window.scrollTo({
+                    top: Math.max(0, window.scrollY + delta),
+                    behavior: prefersReducedMotion() ? "auto" : "smooth",
+                });
+            });
+        }
+
+        async function selectResume(resumeId, options = {}) {
             const summary = resumeBuilderState.resumes.find((r) => r.id === resumeId);
             if (!summary) {
                 return;
@@ -5167,6 +5205,10 @@ analysisHistoryList.innerHTML =
             resumeBuilderState.selectedResumeId = resumeId;
             resumeBuilderState.viewMode = "view";
             updateViewMode();
+
+            if (options.reveal) {
+                revealResumePanel();
+            }
 
             resumeElements.preview.innerHTML =
                 '<div class="resume-loading"><div class="loading-orbit-small"></div><p>Loading...</p></div>';
@@ -5431,6 +5473,7 @@ analysisHistoryList.innerHTML =
             updateViewMode();
             resetEditorForm();
             renderResumeList();
+            revealResumePanel();
         }
 
         function resetEditorForm() {
