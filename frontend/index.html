@@ -219,7 +219,13 @@
             </div>
         </div>
 
+        <div class="primary-nav-scroll">
         <nav class="primary-nav" aria-label="Primary navigation">
+
+            <span
+                class="primary-nav-glider"
+                aria-hidden="true"
+            ></span>
 
             <button
                 type="button"
@@ -227,6 +233,7 @@
                 class="primary-nav-btn active"
                 data-view="analyze"
             >
+                <svg class="primary-nav-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="1.5" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22.5"/><line x1="1.5" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22.5" y2="12"/></svg>
                 Analyze
             </button>
 
@@ -236,6 +243,7 @@
                 class="primary-nav-btn"
                 data-view="resume-builder"
             >
+                <svg class="primary-nav-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 Resume Builder
             </button>
 
@@ -245,6 +253,7 @@
                 class="primary-nav-btn"
                 data-view="saved-analyses"
             >
+                <svg class="primary-nav-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                 Saved Analyses
             </button>
 
@@ -254,10 +263,12 @@
                 class="primary-nav-btn"
                 data-view="interview-studio"
             >
+                <svg class="primary-nav-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="22"/></svg>
                 Interview Studio
             </button>
 
         </nav>
+        </div>
 
     </div>
 
@@ -276,9 +287,24 @@
 
     <div class="hero-content">
 
-        <p class="eyebrow">
+        <button
+            type="button"
+            class="eyebrow"
+            id="about-careergap-trigger"
+            aria-haspopup="dialog"
+            aria-controls="about-careergap-dialog"
+        >
             CAREER READINESS ENGINE
-        </p>
+        </button>
+
+        <dialog
+            id="about-careergap-dialog"
+            aria-label="About CareerGap"
+            aria-describedby="about-careergap-description"
+            tabindex="-1"
+        >
+            <p id="about-careergap-description">CareerGap compares your resume with a job description to show where your skills match and where you can improve. It suggests learning resources and ways to strengthen your existing projects. You can also build resumes and practise interview questions.</p>
+        </dialog>
 
         <h1>
             Build a career<br>

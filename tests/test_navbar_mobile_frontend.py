@@ -2,9 +2,12 @@
 
 The mobile navbar is a wrapping flex row: DOM order is the focus
 order and the visual order, so the brand and controls share the
-first line and the tabs get their own scrollable line. These tests
-pin the two-row layout, its scroll affordances, and the desktop
-rules it must not change.
+first line and the tabs get their own line. On phones (700px and
+narrower) the tabs live in one rounded capsule whose scroll
+viewport is a wrapper div, so the pill surface survives while the
+tabs scroll inside it with edge fades. These tests pin the two-row
+layout, the capsule scroll affordances, and the desktop rules it
+must not change.
 """
 
 import re
@@ -83,32 +86,41 @@ def test_mobile_nav_dom_order_matches_visual_order():
 
 def test_mobile_nav_row_is_horizontally_scrollable():
     css = _read(STYLE_CSS)
-    nav = _rule(_block_with(css, 700, ".primary-nav"), ".primary-nav")
+    wrap = _rule(
+        _block_with(css, 700, ".primary-nav-scroll"),
+        ".primary-nav-scroll",
+    )
 
-    assert "width: 100%;" in nav
-    assert "min-width: 0;" in nav
-    assert "overflow-x: auto;" in nav
+    assert "width: 100%;" in wrap
+    assert "min-width: 0;" in wrap
+    assert "overflow-x: auto;" in wrap
 
 
 def test_mobile_nav_hides_native_scrollbar():
     css = _read(STYLE_CSS)
-    block = _block_with(css, 700, ".primary-nav")
-    nav = _rule(block, ".primary-nav")
-    scrollbar = _rule(block, ".primary-nav::-webkit-scrollbar")
+    block = _block_with(css, 700, ".primary-nav-scroll")
+    wrap = _rule(block, ".primary-nav-scroll")
+    scrollbar = _rule(block, ".primary-nav-scroll::-webkit-scrollbar")
 
-    assert "scrollbar-width: none;" in nav
+    assert "scrollbar-width: none;" in wrap
     assert "display: none;" in scrollbar
 
 
 def test_mobile_nav_fades_right_edge():
     css = _read(STYLE_CSS)
-    block = _block_with(css, 700, ".primary-nav")
-    nav = _rule(block, ".primary-nav")
+    block = _block_with(css, 700, ".primary-nav-scroll")
+    wrap = _rule(block, ".primary-nav-scroll")
 
-    assert "mask-image: linear-gradient(" in nav
-    assert "-webkit-mask-image: linear-gradient(" in nav
-    assert "calc(100% - 24px)" in nav
-    assert "transparent" in nav
+    assert "mask-image: linear-gradient(" in wrap
+    assert "-webkit-mask-image: linear-gradient(" in wrap
+    assert "calc(100% - 24px)" in wrap
+    assert "transparent" in wrap
+
+    # Scrolled and end-of-scroll states rebalance the fades.
+    scrolled = _rule(block, ".primary-nav-scroll.nav-scrolled")
+    end = _rule(block, ".primary-nav-scroll.nav-scroll-end")
+    assert "#000 24px," in scrolled
+    assert "#000 24px" in end
 
     # The fade belongs to the scroll viewport, not the whole navbar.
     nav_inner = _rule(_block_with(css, 900, ".nav-inner"), ".nav-inner")

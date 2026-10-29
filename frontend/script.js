@@ -6,6 +6,39 @@ document.addEventListener(
     "DOMContentLoaded",
     function () {
 
+        // Compact about panel: native dialog supplies modal focus
+        // containment and Escape dismissal without extra controls.
+        const aboutTrigger = document.getElementById(
+            "about-careergap-trigger"
+        );
+        const aboutDialog = document.getElementById(
+            "about-careergap-dialog"
+        );
+
+        if (aboutTrigger && aboutDialog) {
+            aboutTrigger.addEventListener("click", function () {
+                aboutDialog.showModal();
+                aboutDialog.focus({ preventScroll: true });
+            });
+
+            aboutDialog.addEventListener("click", function (event) {
+                const bounds = aboutDialog.getBoundingClientRect();
+                if (
+                    event.target === aboutDialog &&
+                    (event.clientX < bounds.left ||
+                     event.clientX > bounds.right ||
+                     event.clientY < bounds.top ||
+                     event.clientY > bounds.bottom)
+                ) {
+                    aboutDialog.close();
+                }
+            });
+
+            aboutDialog.addEventListener("close", function () {
+                aboutTrigger.focus({ preventScroll: true });
+            });
+        }
+
         // =================================================
         // ELEMENTS
         // =================================================
@@ -337,6 +370,186 @@ document.addEventListener(
                 )
             );
 
+        // =================================================
+        // PHONE NAV CAPSULE
+        // =================================================
+        // At 700px and narrower the tabs live in one rounded
+        // capsule that scrolls sideways: a glider pill slides to
+        // the active tab and the capsule scrolls it into view.
+        // Wider screens keep the desktop pill untouched.
+
+        const primaryNavScroll =
+            document.querySelector(
+                ".primary-nav-scroll"
+            );
+
+        const primaryNavGlider =
+            document.querySelector(
+                ".primary-nav-glider"
+            );
+
+        const mobileNavQuery =
+            window.matchMedia(
+                "(max-width: 700px)"
+            );
+
+        const navMotionQuery =
+            window.matchMedia(
+                "(prefers-reduced-motion: reduce)"
+            );
+
+        function activeNavButton() {
+            return primaryNavButtons.find(
+                function (button) {
+                    return button.classList.contains(
+                        "active"
+                    );
+                }
+            );
+        }
+
+        function updatePrimaryNavGlider(animate) {
+            if (
+                !primaryNavGlider ||
+                !mobileNavQuery.matches
+            ) {
+                return;
+            }
+
+            const button = activeNavButton();
+            if (!button) {
+                return;
+            }
+
+            if (!animate) {
+                primaryNavGlider.classList.add(
+                    "no-transition"
+                );
+            }
+
+            primaryNavGlider.style.transform =
+                "translateX(" +
+                button.offsetLeft +
+                "px)";
+            primaryNavGlider.style.width =
+                button.offsetWidth + "px";
+
+            if (!animate) {
+                // Force a reflow so the next slide animates.
+                void primaryNavGlider.offsetWidth;
+                primaryNavGlider.classList.remove(
+                    "no-transition"
+                );
+            }
+        }
+
+        function scrollPrimaryNavActive() {
+            if (
+                !primaryNavScroll ||
+                !mobileNavQuery.matches
+            ) {
+                return;
+            }
+
+            const button = activeNavButton();
+            if (!button) {
+                return;
+            }
+
+            const margin = 24;
+            const viewWidth =
+                primaryNavScroll.clientWidth;
+            const buttonLeft = button.offsetLeft;
+            const buttonRight =
+                buttonLeft + button.offsetWidth;
+            const current =
+                primaryNavScroll.scrollLeft;
+
+            let target = null;
+
+            if (buttonLeft - current < margin) {
+                target = Math.max(
+                    0,
+                    buttonLeft - margin
+                );
+            } else if (
+                buttonRight - current >
+                viewWidth - margin
+            ) {
+                target =
+                    buttonRight - viewWidth + margin;
+            }
+
+            if (
+                target !== null &&
+                Math.abs(target - current) > 1
+            ) {
+                primaryNavScroll.scrollTo({
+                    left: target,
+                    behavior: navMotionQuery.matches
+                        ? "auto"
+                        : "smooth",
+                });
+            }
+        }
+
+        function updatePrimaryNavFade() {
+            if (!primaryNavScroll) {
+                return;
+            }
+
+            const maxScroll =
+                primaryNavScroll.scrollWidth -
+                primaryNavScroll.clientWidth;
+
+            primaryNavScroll.classList.toggle(
+                "nav-no-overflow",
+                maxScroll <= 4
+            );
+
+            primaryNavScroll.classList.toggle(
+                "nav-scrolled",
+                primaryNavScroll.scrollLeft > 4
+            );
+            primaryNavScroll.classList.toggle(
+                "nav-scroll-end",
+                maxScroll > 4 &&
+                primaryNavScroll.scrollLeft >=
+                    maxScroll - 4
+            );
+        }
+
+        if (primaryNavScroll) {
+            primaryNavScroll.addEventListener(
+                "scroll",
+                updatePrimaryNavFade,
+                { passive: true }
+            );
+
+            window.addEventListener(
+                "resize",
+                function () {
+                    updatePrimaryNavGlider(false);
+                    scrollPrimaryNavActive();
+                    updatePrimaryNavFade();
+                }
+            );
+
+            updatePrimaryNavGlider(false);
+            updatePrimaryNavFade();
+
+            if (document.fonts?.ready) {
+                document.fonts.ready.then(
+                    function () {
+                        updatePrimaryNavGlider(
+                            false
+                        );
+                        updatePrimaryNavFade();
+                    }
+                );
+            }
+        }
+
         const subnav =
             document.getElementById(
                 "analysis-subnav"
@@ -408,6 +621,9 @@ document.addEventListener(
                     );
                 }
             );
+
+            updatePrimaryNavGlider(true);
+            scrollPrimaryNavActive();
 
             const onAnalyze =
                 view === "analyze";

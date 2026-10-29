@@ -183,13 +183,19 @@ def test_mobile_scroll_fade_and_focus_order_preserved():
     assert "-webkit-mask-image: linear-gradient(" in nav
     assert "calc(100% - 24px)" in nav
 
+    # On phones the tabs keep the desktop pill surface inside a
+    # horizontally scrolling capsule, with the fades on the wrapper.
     reset = _rule(block, SCOPE)
     assert not _is_top_level(block, block.index(SCOPE))
-    assert "background: transparent;" in reset
-    assert "padding: 0 0 4px;" in reset
-    assert "border: 0;" in reset
-    assert "border-radius: 0;" in reset
-    assert "gap: 10px;" in reset
+    assert "width: max-content;" in reset
+    assert "position: relative;" in reset
+    assert "gap: 2px;" in reset
+    assert "padding: 4px;" in reset
+    assert "border: 1px solid var(--border);" in reset
+    assert "border-radius: 999px;" in reset
+    assert "background: var(--cream);" in reset
+    assert "overflow-x: visible;" in reset
+    assert "mask-image: none;" in reset
 
     block_start = css.index(block)
     assert css.index(SCOPE) < block_start
