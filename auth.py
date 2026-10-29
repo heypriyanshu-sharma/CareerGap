@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client, create_client
+from supabase_auth.errors import AuthApiError
 
 
 # Load the external secrets file used by local development.
@@ -79,6 +80,53 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication token does not contain a user ID.",
+            headers={
+                "WWW-Authenticate": "Bearer",
+            },
+        )
+
+    # get_claims validates the JWT locally: it proves the token is
+    # genuine and unexpired, but not that the account still exists.
+    # A deleted user's unexpired token would otherwise keep
+    # authenticating until expiry. Confirm the account with the auth
+    # server on every request, failing closed when it cannot answer.
+    try:
+        user_response = supabase.auth.get_user(
+            credentials.credentials
+        )
+    except AuthApiError as error:
+        if getattr(error, "status", 0) >= 500:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "Authentication service is temporarily "
+                    "unavailable. Please try again."
+                ),
+            ) from error
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired authentication token.",
+            headers={
+                "WWW-Authenticate": "Bearer",
+            },
+        ) from error
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Authentication service is temporarily "
+                "unavailable. Please try again."
+            ),
+        ) from error
+
+    if (
+        user_response is None
+        or user_response.user is None
+        or str(user_response.user.id) != user_id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired authentication token.",
             headers={
                 "WWW-Authenticate": "Bearer",
             },
