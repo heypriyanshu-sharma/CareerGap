@@ -56,7 +56,7 @@ Resume ──────────────┐
 - **Pydantic** — Request validation
 - **Supabase** — Postgres database (with Row Level Security) and hosted authentication
 - **GitHub REST API** — Resource discovery
-- **Google Gemini** — AI career advice
+- **Groq** - AI career advice and Interview Studio
 - **slowapi** — Per-endpoint API rate limiting
 - **HTML, CSS, JavaScript** — Frontend
 - **Pytest** — Automated testing
@@ -73,7 +73,7 @@ CareerGap/
 ├── ats_match.py              # ATS keyword matching
 ├── ats_readiness.py          # ATS readiness scoring
 ├── github_search.py          # GitHub resource discovery
-├── ai_advisor.py             # Gemini-based AI career advice
+├── ai_advisor.py             # Groq-based AI career advice
 ├── resume_builder.py         # Resume builder engine
 ├── resume_pdf.py             # Resume PDF generation
 ├── resume_serialize.py       # Resume load/save helpers
@@ -124,7 +124,7 @@ Create a `.env` file in the project root:
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 SUPABASE_SERVICE_KEY=your_supabase_service_role_key
-GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEY=your_groq_api_key
 GITHUB_TOKEN=your_github_token
 ```
 
@@ -132,8 +132,8 @@ Notes:
 
 - **`SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` are required** — the backend refuses to start without them.
 - **`SUPABASE_SERVICE_KEY`** enables submitting interview answers and account deletion (server-side privileged operations). The server starts without it, but those features return an error.
-- **`GEMINI_MODEL`** is optional; a sensible default is used when it is not set.
-- **`GEMINI_API_KEY`** and **`GITHUB_TOKEN`** enable AI advice and GitHub resource search, respectively.
+- **`GROQ_MODEL`** is optional; a sensible default is used when it is not set.
+- **`GROQ_API_KEY`** and **`GITHUB_TOKEN`** enable AI advice and GitHub resource search, respectively.
 
 **Secrets-file precedence:** `backend.py`, `auth.py`, and `ai_advisor.py` load an optional external secrets file only when the `CAREERGAP_SECRETS_PATH` environment variable is set; there is no built-in default path. When it is unset (or points at a missing file), the project-root `.env` documented above is loaded. Set `CAREERGAP_SECRETS_PATH` if you keep secrets outside the repository — no personal filesystem paths are compiled into the code.
 
@@ -216,3 +216,28 @@ Run the complete test suite:
 ```bash
 python -m pytest -q
 ```
+
+### Groq provider migration
+
+The server uses Groq's official Python client with `openai/gpt-oss-120b` as
+its default. `GROQ_MODEL` can override that model, but must support low
+reasoning effort and JSON object mode for Interview Studio. There is no
+Gemini fallback. Keep `GROQ_API_KEY` server-side only.
+
+The adapter fixes the API destination, disables redirects and retries,
+limits responses to 1 MiB, refuses compression, and uses 25-second socket
+timeouts plus a body deadline check. This is not a hard process-wide
+25-second deadline. Existing Interview Studio request timeouts remain.
+`GROQ_CUSTOM_HEADERS` is refused. Do not enable Groq SDK body debug logging.
+
+Questions must match quick/full category counts exactly. Feedback is
+validated before persistence; malformed or out-of-range output fails
+without saving a partial result. API response field names are unchanged,
+but malformed upstream output is rejected more strictly. Provider failures
+use fixed safe messages, with 429 for rate limits, 503 for missing key or
+access/connection problems, 504 for timeouts and 502 for other upstream
+failures. Career advice remains optional and does not fail core analysis.
+
+Before deployment, verify the final callers against the provider using
+fictional inputs in an isolated environment. Offline tests do not establish
+provider access or production readiness.

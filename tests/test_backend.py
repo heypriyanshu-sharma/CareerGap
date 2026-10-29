@@ -1060,7 +1060,7 @@ def test_interview_answer_handles_gemini_timeout(monkeypatch):
 
 
 def test_interview_answer_handles_missing_gemini_key(monkeypatch):
-    """Test that answer submission handles missing GEMINI_API_KEY (503) and does not persist."""
+    """Test that answer submission handles missing GROQ_API_KEY (503) and does not persist."""
     def mock_session_get(*args, **kwargs):
         class MockResp:
             ok = True
@@ -1079,7 +1079,7 @@ def test_interview_answer_handles_missing_gemini_key(monkeypatch):
     monkeypatch.setattr(backend, "get_resume", lambda *a, **k: {"plain_text": "dev", "content": {}})
 
     async def mock_evaluate_missing_key(*args, **kwargs):
-        raise RuntimeError("GEMINI_API_KEY not configured")
+        raise RuntimeError("GROQ_API_KEY not configured")
 
     monkeypatch.setattr(backend, "evaluate_interview_answers", mock_evaluate_missing_key)
 

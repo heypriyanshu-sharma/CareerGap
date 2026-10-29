@@ -147,14 +147,14 @@ def test_module_imports_without_an_api_key():
 
 def test_build_client_requires_an_api_key(monkeypatch):
     monkeypatch.delenv(
-        "GEMINI_API_KEY",
+        "GROQ_API_KEY",
         raising=False,
     )
 
     with pytest.raises(RuntimeError) as error:
         ai_advisor.build_client()
 
-    assert "GEMINI_API_KEY" in str(error.value)
+    assert error.value.category == "missing_key"
 
 
 def test_build_client_is_not_called_at_import_time():
@@ -183,7 +183,7 @@ def test_generate_career_advice_returns_model_text(monkeypatch):
     )
 
     monkeypatch.delenv(
-        "GEMINI_MODEL",
+        "GROQ_MODEL",
         raising=False,
     )
 
@@ -210,7 +210,7 @@ def test_generate_career_advice_uses_configured_model(monkeypatch):
     )
 
     monkeypatch.setenv(
-        "GEMINI_MODEL",
+        "GROQ_MODEL",
         "gemini-3.5-flash",
     )
 
@@ -272,7 +272,7 @@ def test_generate_career_advice_reports_missing_configuration(
     )
 
     monkeypatch.delenv(
-        "GEMINI_API_KEY",
+        "GROQ_API_KEY",
         raising=False,
     )
 
@@ -281,7 +281,7 @@ def test_generate_career_advice_reports_missing_configuration(
             {"score": 50.0}
         )
 
-    assert "GEMINI_API_KEY" in str(error.value)
+    assert error.value.category == "missing_key"
 
 
 # ============================================================
@@ -293,7 +293,7 @@ def test_safe_error_detail_redacts_the_api_key(monkeypatch):
     secret = "test-secret-key-value"
 
     monkeypatch.setenv(
-        "GEMINI_API_KEY",
+        "GROQ_API_KEY",
         secret,
     )
 
@@ -311,7 +311,7 @@ def test_safe_error_detail_redacts_the_api_key(monkeypatch):
 
 def test_safe_error_detail_without_a_configured_key(monkeypatch):
     monkeypatch.delenv(
-        "GEMINI_API_KEY",
+        "GROQ_API_KEY",
         raising=False,
     )
 

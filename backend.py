@@ -1,7 +1,7 @@
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field, conint, confloat, constr
+from pydantic import model_validator, BaseModel, ConfigDict, Field, conint, confloat, constr
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -32,6 +32,7 @@ else:
 from auth import get_current_user, security
 from career_gap import run_careergap
 from ai_advisor import DEFAULT_MODEL, build_client, generate_career_advice, safe_error_detail
+from groq_provider import AIProviderError
 from ats_match import extract_job_keywords, calculate_ats_scorecard, analyze_resume_pdf
 from database import (
     get_analysis_history,
@@ -549,6 +550,21 @@ class Recommendation(BaseModel):
     area: str = Field(min_length=1, max_length=120)
     action: str = Field(min_length=1, max_length=500)
     resources: List[str] = Field(default_factory=list)
+
+
+class GeneratedInterviewFeedback(BaseModel):
+    """Validate model output before it reaches persistence or route serialization."""
+    model_config = ConfigDict(extra="forbid")
+    score: Annotated[float, Field(ge=0, le=100, allow_inf_nan=False)]
+    feedback: Dict[Literal["technical", "behavioral", "project"], CategoryFeedback]
+    weak_areas: List[Annotated[str, Field(min_length=1, max_length=500)]] = Field(max_length=30)
+    recommendations: List[Recommendation] = Field(max_length=30)
+
+    @model_validator(mode="after")
+    def require_categories(self):
+        if set(self.feedback) != {"technical", "behavioral", "project"}:
+            raise ValueError("Missing feedback categories")
+        return self
 
 
 class InterviewFeedbackResponse(BaseModel):
@@ -1541,10 +1557,10 @@ def parse_gemini_json(raw: str) -> dict:
     return json.loads(raw)
 
 async def generate_interview_questions(mode: str, target_role: Optional[str], resume_text: str, job_description: str, projects: list) -> List[InterviewQuestion]:
-    """Generate interview questions via Gemini."""
+    """Generate interview questions via Groq."""
     client = build_client()
     prompt = build_interview_prompt(mode, target_role, resume_text, job_description, projects)
-    model = os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
+    model = os.getenv("GROQ_MODEL") or DEFAULT_MODEL
 
     # Set timeout based on mode: 35s for quick (5 questions), 125s for full (15 questions)
     # These are set slightly below frontend timeouts (45s/135s) so backend timeout fires first
@@ -1566,7 +1582,7 @@ async def generate_interview_questions(mode: str, target_role: Optional[str], re
         )
         raw = raw.strip() if raw else ""
         if not raw:
-            raise RuntimeError("Gemini returned no questions text.")
+            raise RuntimeError("AI provider returned no questions text.")
         return raw
 
     try:
@@ -1576,17 +1592,23 @@ async def generate_interview_questions(mode: str, target_role: Optional[str], re
         data = parse_gemini_json(raw)
         questions = [InterviewQuestion(**q) for q in data.get("questions", [])]
 
-        if not questions:
-            raise ValueError("No questions generated")
+        expected = INTERVIEW_QUESTION_CONFIG[mode]
+        counts = {kind: sum(q.type == kind for q in questions) for kind in expected}
+        if counts != expected:
+            raise ValueError("Invalid question distribution")
+        if any(not q.text.strip() for q in questions):
+            raise ValueError("Empty question text")
 
         return questions
 
+    except AIProviderError:
+        raise
     except asyncio.TimeoutError:
-        raise RuntimeError(f"Question generation timed out after {timeout_seconds} seconds.")
+        raise AIProviderError("timeout") from None
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"Failed to parse Gemini questions output: {e}")
+        raise AIProviderError("output_invalid") from None
     except Exception as e:
-        raise RuntimeError(f"Question generation failed: {safe_error_detail(e)}")
+        raise AIProviderError("output_invalid") from None
 
 
 async def evaluate_interview_answers(
@@ -1598,10 +1620,10 @@ async def evaluate_interview_answers(
     questions: List[InterviewQuestion],
     answers: List[str],
 ) -> dict:
-    """Evaluate interview answers via Gemini. Returns dict with feedback data."""
+    """Evaluate interview answers via Groq. Returns dict with feedback data."""
     client = build_client()
     prompt = build_feedback_prompt(mode, target_role, resume_text, job_description, projects, questions, answers)
-    model = os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
+    model = os.getenv("GROQ_MODEL") or DEFAULT_MODEL
 
     # Match question generation timeout: 30s for quick (5 questions), 120s for full (15 questions)
     timeout_seconds = 30 if mode == "quick" else 120
@@ -1621,7 +1643,7 @@ async def evaluate_interview_answers(
         )
         raw = raw.strip() if raw else ""
         if not raw:
-            raise RuntimeError("Gemini returned no feedback text.")
+            raise RuntimeError("AI provider returned no feedback text.")
         return raw
 
     try:
@@ -1630,19 +1652,17 @@ async def evaluate_interview_answers(
 
         data = parse_gemini_json(raw)
 
-        # Validate required keys
-        required_feedback_keys = {"technical", "behavioral", "project"}
-        if not required_feedback_keys.issubset(data.get("feedback", {}).keys()):
-            raise ValueError("Missing feedback categories")
+        validated = GeneratedInterviewFeedback.model_validate(data)
+        return validated.model_dump()
 
-        return data
-
+    except AIProviderError:
+        raise
     except asyncio.TimeoutError:
-        raise RuntimeError(f"Feedback generation timed out after {timeout_seconds} seconds.")
+        raise AIProviderError("timeout") from None
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"Failed to parse Gemini feedback output: {e}")
+        raise AIProviderError("output_invalid") from None
     except Exception as e:
-        raise RuntimeError(f"Feedback generation failed: {safe_error_detail(e)}")
+        raise AIProviderError("output_invalid") from None
 
 
 # ---------------------------------------------------------------------------
@@ -1720,8 +1740,11 @@ async def interview_generate(
             job_description=job_description,
             projects=projects,
         )
+    except AIProviderError as e:
+        status = {"missing_key":503,"rate_limit":429,"access":503,"timeout":504,"network":503}.get(e.category,502)
+        raise HTTPException(status_code=status, detail=str(e)) from None
     except RuntimeError as e:
-        if "GEMINI_API_KEY" in str(e):
+        if "GROQ_API_KEY" in str(e):
             raise HTTPException(status_code=503, detail="AI service unavailable: API key not configured.")
         if "timed out" in str(e).lower() or "timeout" in str(e).lower():
             raise HTTPException(status_code=504, detail="AI request timed out.")
@@ -1845,8 +1868,11 @@ async def interview_answer(
             questions=[InterviewQuestion(**q) for q in questions],
             answers=answer_request.answers,
         )
+    except AIProviderError as e:
+        status = {"missing_key":503,"rate_limit":429,"access":503,"timeout":504,"network":503}.get(e.category,502)
+        raise HTTPException(status_code=status, detail=str(e)) from None
     except RuntimeError as e:
-        if "GEMINI_API_KEY" in str(e):
+        if "GROQ_API_KEY" in str(e):
             raise HTTPException(status_code=503, detail="AI service unavailable: API key not configured.")
         if "timed out" in str(e).lower() or "timeout" in str(e).lower():
             raise HTTPException(status_code=504, detail="AI request timed out.")

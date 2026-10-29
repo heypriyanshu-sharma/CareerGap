@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from google import genai
+from groq_provider import GroqClient, AIProviderError
 
 
 # Load the external secrets file used by local development.
@@ -17,40 +17,35 @@ else:
     load_dotenv()
 
 
-DEFAULT_MODEL = "gemini-3.5-flash"
+DEFAULT_MODEL = "openai/gpt-oss-120b"
 
 
 def build_client():
-    """Create the Gemini client.
+    """Create the server-only Groq client.
 
     The client is built on demand so that importing this module never
     fails. AI advice is an optional layer, so a missing key is reported
     when advice is requested instead of breaking the whole application.
     """
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
 
     if not api_key:
-        raise RuntimeError(
-            "GEMINI_API_KEY is not configured."
-        )
+        raise AIProviderError("missing_key")
 
-    return genai.Client(api_key=api_key)
+    return GroqClient(api_key)
 
 
 def safe_error_detail(error):
     """Return an error message that cannot leak the API key.
 
-    SDK errors can embed the request URL, and that URL carries the key.
+    Preserve redaction for both new and legacy provider credentials.
     """
     detail = str(error)
 
-    api_key = os.getenv("GEMINI_API_KEY")
-
-    if api_key:
-        detail = detail.replace(
-            api_key,
-            "[redacted]",
-        )
+    for key_name in ("GROQ_API_KEY", "GEMINI_API_KEY"):
+        api_key = os.getenv(key_name)
+        if api_key:
+            detail = detail.replace(api_key, "[redacted]")
 
     return detail
 
@@ -110,7 +105,7 @@ def generate_career_advice(career_gap_data):
     prompt = build_advisor_prompt(career_gap_data)
 
     model = (
-        os.getenv("GEMINI_MODEL")
+        os.getenv("GROQ_MODEL")
         or DEFAULT_MODEL
     )
 
@@ -126,7 +121,7 @@ def generate_career_advice(career_gap_data):
 
     if not advice:
         raise RuntimeError(
-            "Gemini returned no advice text."
+            "AI provider returned no advice text."
         )
 
     return advice

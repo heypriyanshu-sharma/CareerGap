@@ -223,7 +223,7 @@ def test_advisor_failure_log_does_not_expose_the_api_key(
     secret = "test-secret-key-value"
 
     monkeypatch.setenv(
-        "GEMINI_API_KEY",
+        "GROQ_API_KEY",
         secret,
     )
 
@@ -254,7 +254,7 @@ def test_backend_no_longer_depends_on_the_advisor_at_import(
         backend,
         "generate_career_advice",
         _raise(
-            RuntimeError("GEMINI_API_KEY is not configured.")
+            RuntimeError("GROQ_API_KEY is not configured.")
         ),
     )
 
