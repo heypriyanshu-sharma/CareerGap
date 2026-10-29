@@ -1860,8 +1860,10 @@ analysisHistoryList.innerHTML =
 
                 setUploadStatus(
                     statusElement,
-                    error.message ||
-                    "Unable to process this file.",
+                    describeRequestError(
+                        error,
+                        "Unable to process this file."
+                    ),
                     "error"
                 );
 
@@ -2230,6 +2232,22 @@ analysisHistoryList.innerHTML =
                     "'",
                     "&#039;"
                 );
+        }
+
+        // An aborted request's raw message ("signal is aborted without
+        // reason") is browser jargon. When our own timeout abort reaches
+        // the UI, show something actionable instead. During a cold start
+        // on Render's free tier the first request can outlive the timeout
+        // while the server is still waking.
+        function describeRequestError(error, fallback) {
+            const message = error && error.message ? String(error.message) : "";
+            if (
+                (error && error.name === "AbortError") ||
+                /signal is aborted/i.test(message)
+            ) {
+                return "The request took too long. The server may still be waking up - please try again.";
+            }
+            return message || fallback || "Something went wrong. Please try again.";
         }
 
         function safeUrl(rawUrl) {
@@ -4854,8 +4872,10 @@ analysisHistoryList.innerHTML =
                         );
 
                         alert(
-                            error.message ||
-                            "Unable to delete this analysis."
+                            describeRequestError(
+                                error,
+                                "Unable to delete this analysis."
+                            )
                         );
 
                         deleteButton.disabled =
@@ -5075,7 +5095,7 @@ analysisHistoryList.innerHTML =
 
                             <p>
                                 ${escapeHTML(
-                                    error.message
+                                    describeRequestError(error)
                                 )}
                             </p>
 
@@ -5129,6 +5149,7 @@ analysisHistoryList.innerHTML =
             selectedResume: null,
             viewMode: "empty",
             signedIn: false,
+            listLoadSeq: 0,
         };
 
         // ATS Check modal state
@@ -5200,55 +5221,80 @@ analysisHistoryList.innerHTML =
                 throw new Error("You need to sign in to manage resumes.");
             }
 
-            // Create AbortController for timeout (30s default, configurable via options.timeout)
-            const timeoutMs = options.timeout ?? 30000;
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            // Create AbortController for timeout (65s default, configurable via
+            // options.timeout). The Render free instance sleeps after inactivity
+            // and a cold start was measured at ~41s, so a 30s timeout aborted
+            // the first request of a session before the backend finished
+            // waking. 65s outlasts the observed wake time with margin.
+            const timeoutMs = options.timeout ?? 65000;
+            const method = (options.method ?? "GET").toUpperCase();
+
+            // GET and HEAD are idempotent, so when OUR timeout (not the
+            // caller's signal) aborts a request while the backend is still
+            // waking, one automatic retry is safe and lands on a warm
+            // instance. Retrying non-idempotent methods could apply a POST
+            // twice, so those fail after the single longer attempt.
+            const maxAttempts = method === "GET" || method === "HEAD" ? 2 : 1;
 
             // If caller provided a signal, compose it with our timeout signal
             const externalSignal = options.signal;
-            // Define the abort callback once so we can remove it later
-            const abortCallback = () => controller.abort();
-            if (externalSignal) {
-                if (externalSignal.aborted) {
-                    controller.abort();
-                } else {
-                    externalSignal.addEventListener("abort", abortCallback, { once: true });
-                }
-            }
 
-            try {
-                const response = await fetch(`${API_BASE_URL}${path}`, {
-                    ...options,
-                    signal: controller.signal,
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${accessToken}`,
-                        ...options.headers,
-                    },
-                });
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-                if (!response.ok) {
-                    let message = "Request failed.";
-                    try {
-                        const error = await response.json();
-                        message = error.detail || message;
-                    } catch (_) {}
-                    throw new Error(message);
-                }
-
-                // DELETE /resumes/{id} answers 204 with no body, so there is nothing
-                // to parse. Calling json() on it throws a misleading SyntaxError.
-                if (response.status === 204) {
-                    return null;
-                }
-
-                const data = await response.json();
-                return data;
-            } finally {
-                clearTimeout(timeoutId);
+                // Define the abort callback once so we can remove it later
+                const abortCallback = () => controller.abort();
                 if (externalSignal) {
-                    externalSignal.removeEventListener("abort", abortCallback);
+                    if (externalSignal.aborted) {
+                        controller.abort();
+                    } else {
+                        externalSignal.addEventListener("abort", abortCallback, { once: true });
+                    }
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}${path}`, {
+                        ...options,
+                        signal: controller.signal,
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${accessToken}`,
+                            ...options.headers,
+                        },
+                    });
+
+                    if (!response.ok) {
+                        let message = "Request failed.";
+                        try {
+                            const error = await response.json();
+                            message = error.detail || message;
+                        } catch (_) {}
+                        throw new Error(message);
+                    }
+
+                    // DELETE /resumes/{id} answers 204 with no body, so there is nothing
+                    // to parse. Calling json() on it throws a misleading SyntaxError.
+                    if (response.status === 204) {
+                        return null;
+                    }
+
+                    const data = await response.json();
+                    return data;
+                } catch (requestError) {
+                    const abortedByCaller = Boolean(
+                        externalSignal && externalSignal.aborted
+                    );
+                    const timedOut = controller.signal.aborted && !abortedByCaller;
+                    if (timedOut && attempt < maxAttempts) {
+                        continue;
+                    }
+                    throw requestError;
+                } finally {
+                    clearTimeout(timeoutId);
+                    if (externalSignal) {
+                        externalSignal.removeEventListener("abort", abortCallback);
+                    }
                 }
             }
         }
@@ -5268,6 +5314,13 @@ analysisHistoryList.innerHTML =
         }
 
         async function loadResumes() {
+            // Stale-load guard: when loads overlap (for example a save
+            // refreshes the list while the first load is still waiting on a
+            // cold backend), only the newest load may update the list UI.
+            // An older load's failure must not paint its error over the
+            // newer load's state.
+            const loadSeq = ++resumeBuilderState.listLoadSeq;
+
             resumeElements.loading.classList.remove("hidden");
             resumeElements.list.classList.add("hidden");
             resumeElements.empty.classList.add("hidden");
@@ -5295,12 +5348,23 @@ analysisHistoryList.innerHTML =
                     return;
                 }
 
+                if (loadSeq !== resumeBuilderState.listLoadSeq) {
+                    // A newer load now owns the list; keep its state.
+                    return;
+                }
+
                 resumeBuilderState.resumes = Array.isArray(data) ? data : [];
                 renderResumeList();
             } catch (error) {
+                if (loadSeq !== resumeBuilderState.listLoadSeq) {
+                    // A newer load now owns the list; keep its state.
+                    return;
+                }
                 console.error("Load resumes error:", error);
                 resumeElements.loading.classList.add("hidden");
-                resumeElements.error.textContent = escapeHTML(error.message);
+                resumeElements.error.textContent = escapeHTML(
+                    describeRequestError(error)
+                );
                 resumeElements.error.classList.remove("hidden");
             }
         }
@@ -5443,7 +5507,7 @@ analysisHistoryList.innerHTML =
                 console.error("Load resume error:", error);
                 resumeElements.preview.innerHTML = `
                     <div class="resume-editor-error">
-                        ${escapeHTML(error.message)}
+                        ${escapeHTML(describeRequestError(error))}
                     </div>
                 `;
             }
@@ -5755,7 +5819,7 @@ analysisHistoryList.innerHTML =
             } catch (error) {
                 console.error("Open resume for editing error:", error);
                 resumeElements.editorError.textContent =
-                    escapeHTML(error.message);
+                    escapeHTML(describeRequestError(error));
                 resumeElements.editorError.classList.remove("hidden");
             }
         }
@@ -5904,7 +5968,9 @@ analysisHistoryList.innerHTML =
                 await selectResume(savedResume.id);
             } catch (error) {
                 console.error("Save resume error:", error);
-                resumeElements.editorError.textContent = escapeHTML(error.message);
+                resumeElements.editorError.textContent = escapeHTML(
+                    describeRequestError(error)
+                );
                 resumeElements.editorError.classList.remove("hidden");
             } finally {
                 resumeElements.saveBtn.disabled = false;
@@ -5958,7 +6024,7 @@ analysisHistoryList.innerHTML =
                 await loadResumes();
             } catch (error) {
                 console.error("Delete resume error:", error);
-                alert(error.message || "Unable to delete resume.");
+                alert(describeRequestError(error, "Unable to delete resume."));
             } finally {
                 resumeElements.deleteBtn.disabled = false;
                 resumeElements.deleteBtn.textContent = "Delete";
@@ -5996,7 +6062,7 @@ analysisHistoryList.innerHTML =
                 renderResumePreview(updated);
             } catch (error) {
                 console.error("Set default error:", error);
-                alert(error.message || "Unable to set as default.");
+                alert(describeRequestError(error, "Unable to set as default."));
             }
         }
 
@@ -6038,7 +6104,7 @@ analysisHistoryList.innerHTML =
                 window.URL.revokeObjectURL(url);
             } catch (error) {
                 console.error("Export error:", error);
-                alert(error.message || "Failed to export PDF.");
+                alert(describeRequestError(error, "Failed to export PDF."));
             } finally {
                 exportBtn.disabled = false;
                 exportBtn.textContent = originalText;
@@ -7610,7 +7676,7 @@ analysisHistoryList.innerHTML =
                             }
                         }
                     } else {
-                        alert("Failed to submit answers: " + escapeHTML(error.message || "Unknown error"));
+                        alert("Failed to submit answers: " + escapeHTML(describeRequestError(error, "Unknown error")));
                     }
                 } finally {
                     isSubmitting = false;
@@ -7744,7 +7810,7 @@ analysisHistoryList.innerHTML =
 
                 } catch (error) {
                     console.error("Generate session error:", error);
-                    showError(interviewSetupError, escapeHTML(error.message || "Failed to generate interview session."));
+                    showError(interviewSetupError, escapeHTML(describeRequestError(error, "Failed to generate interview session.")));
                 } finally {
                     setButtonLoading(interviewGenerateBtn, false,
                         interviewGenerateBtn.querySelector(".btn-text"),
@@ -7827,7 +7893,7 @@ analysisHistoryList.innerHTML =
                 } catch (error) {
                     if (thisLoadId !== historyLoadId) return;
                     console.error("Load history error:", error);
-                    interviewHistoryError.textContent = escapeHTML(error.message || "Failed to load history.");
+                    interviewHistoryError.textContent = escapeHTML(describeRequestError(error, "Failed to load history."));
                     interviewHistoryError.classList.remove("hidden");
                 } finally {
                     if (thisLoadId !== historyLoadId) return;
@@ -7843,7 +7909,7 @@ analysisHistoryList.innerHTML =
                     loadHistory();
                 } catch (error) {
                     console.error("Delete session error:", error);
-                    interviewHistoryError.textContent = escapeHTML(error.message || "Failed to delete session.");
+                    interviewHistoryError.textContent = escapeHTML(describeRequestError(error, "Failed to delete session."));
                     interviewHistoryError.classList.remove("hidden");
                 }
             }
@@ -8081,7 +8147,7 @@ analysisHistoryList.innerHTML =
                     renderReview(sessionData);
                 } catch (error) {
                     console.error("Open review error:", error);
-                    interviewReviewBody.innerHTML = `<div class="interview-error">${escapeHTML(error.message || "Failed to load session.")}</div>`;
+                    interviewReviewBody.innerHTML = `<div class="interview-error">${escapeHTML(describeRequestError(error, "Failed to load session."))}</div>`;
                 }
             }
 

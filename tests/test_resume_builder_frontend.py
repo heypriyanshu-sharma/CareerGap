@@ -714,3 +714,244 @@ def test_new_resume_and_list_click_reveal_panel_but_save_does_not():
     assert "selectResume(resumeId, { reveal: true })" in js
     # The post-save refresh calls selectResume without reveal.
     assert "await selectResume(savedResume.id);" in js
+
+
+# ============================================================
+# OVERLAPPING LIST LOADS AND ABORT ERROR TEXT (cold-start race)
+# ============================================================
+
+def test_loadresumes_ignores_stale_load_results():
+    """An older overlapping load must not paint its state over a newer one."""
+    source = _read_script_js()
+    load_fn = _extract_braced_block(source, "async function loadResumes(")
+
+    seq_pos = load_fn.index("++resumeBuilderState.listLoadSeq")
+    request_pos = load_fn.index('apiRequest("/resumes?limit=50"')
+    assert seq_pos < request_pos, (
+        "the sequence must increment before the request starts"
+    )
+
+    catch_pos = load_fn.index("catch (error)")
+    guard = "loadSeq !== resumeBuilderState.listLoadSeq"
+    guard_pos = load_fn.index(guard, catch_pos)
+    error_paint = load_fn.index("resumeElements.error.textContent", catch_pos)
+    assert guard_pos < error_paint, (
+        "a stale load must return before painting the error"
+    )
+    assert load_fn.count(guard) == 2, (
+        "success and failure paths must both defer to the newest load"
+    )
+
+
+def test_resume_errors_translate_abort_jargon():
+    """Raw AbortError text must never reach the resume list or editor."""
+    source = _read_script_js()
+    helper = _extract_braced_block(source, "function describeRequestError(")
+    assert 'error.name === "AbortError"' in helper
+    assert "signal is aborted" in helper
+    assert "waking up" in helper
+
+    load_fn = _extract_braced_block(source, "async function loadResumes(")
+    save_fn = _extract_braced_block(source, "async function saveResume(")
+    for fn in (load_fn, save_fn):
+        assert "describeRequestError(error)" in fn
+        assert "escapeHTML(error.message)" not in fn, (
+            "raw error.message must not reach the UI"
+        )
+
+
+# ============================================================
+# BEHAVIORAL: OVERLAPPING LIST LOAD RACE (real sources, fake DOM)
+# ============================================================
+
+_RACE_HARNESS = """
+__ESCAPE_HTML_SOURCE__
+
+__DESCRIBE_ERROR_SOURCE__
+
+__RESUME_STATE_SOURCE__
+
+function makeEl() {
+  const classes = new Set(["hidden"]);
+  return {
+    textContent: "",
+    innerHTML: "",
+    classList: {
+      add: (c) => classes.add(c),
+      remove: (c) => classes.delete(c),
+      contains: (c) => classes.has(c),
+    },
+    querySelectorAll: () => [],
+  };
+}
+
+const resumeElements = {
+  loading: makeEl(),
+  list: makeEl(),
+  empty: makeEl(),
+  error: makeEl(),
+};
+
+const apiCalls = [];
+function apiRequest(path, options, redirectIfMissing) {
+  return new Promise((resolve, reject) => {
+    apiCalls.push({ path, resolve, reject });
+  });
+}
+async function getAccessToken() { return "token"; }
+function setResumeSignedOut() {}
+
+__RENDER_LIST_SOURCE__
+
+__LOAD_RESUMES_SOURCE__
+
+function abortError() {
+  const e = new Error("signal is aborted without reason");
+  e.name = "AbortError";
+  return e;
+}
+
+async function scenarioStaleFailure() {
+  const p1 = loadResumes();
+  await Promise.resolve();
+  await Promise.resolve();
+  const p2 = loadResumes();
+  await Promise.resolve();
+  await Promise.resolve();
+  if (apiCalls.length !== 2) throw new Error("expected two list requests, got " + apiCalls.length);
+
+  apiCalls[1].resolve([{ id: "r1", title: "Newest", is_default: false, updated_at: null }]);
+  await p2;
+  apiCalls[0].reject(abortError());
+  await p1;
+
+  if (!resumeElements.error.classList.contains("hidden")) {
+    throw new Error("stale failure painted the error element over the newer load");
+  }
+  if (resumeElements.error.textContent !== "") {
+    throw new Error("stale failure wrote error text: " + resumeElements.error.textContent);
+  }
+  if (resumeElements.list.classList.contains("hidden")) {
+    throw new Error("newer load's list must stay visible");
+  }
+  if (!resumeElements.list.innerHTML.includes("Newest")) {
+    throw new Error("list must show the newer load's data");
+  }
+  console.log("stale-failure OK");
+}
+
+async function scenarioStaleSuccess() {
+  const p1 = loadResumes();
+  await Promise.resolve();
+  await Promise.resolve();
+  const p2 = loadResumes();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  apiCalls[0].resolve([]);
+  await p1;
+  if (!resumeElements.empty.classList.contains("hidden")) {
+    throw new Error("stale empty result painted the empty state over the newer load");
+  }
+  apiCalls[1].resolve([{ id: "r2", title: "Fresh", is_default: false, updated_at: null }]);
+  await p2;
+  if (!resumeElements.list.innerHTML.includes("Fresh")) {
+    throw new Error("newer load must render its data");
+  }
+  console.log("stale-success OK");
+}
+
+async function scenarioSingleFailureFriendly() {
+  const p1 = loadResumes();
+  await Promise.resolve();
+  await Promise.resolve();
+  apiCalls[0].reject(abortError());
+  await p1;
+
+  if (resumeElements.error.classList.contains("hidden")) {
+    throw new Error("a sole failing load must show the error");
+  }
+  if (resumeElements.error.textContent.indexOf("waking up") === -1) {
+    throw new Error("abort jargon not translated: " + resumeElements.error.textContent);
+  }
+  if (resumeElements.error.textContent.indexOf("signal is aborted") !== -1) {
+    throw new Error("raw abort text leaked to the UI");
+  }
+  console.log("single-failure-friendly OK");
+}
+
+const scenario = process.argv[2];
+const scenarios = {
+  "stale-failure": scenarioStaleFailure,
+  "stale-success": scenarioStaleSuccess,
+  "single-failure-friendly": scenarioSingleFailureFriendly,
+};
+scenarios[scenario]().catch((e) => { console.error(e); process.exit(1); });
+"""
+
+
+def _build_race_script() -> str:
+    """Assemble the real resume-list sources into the race harness."""
+    source = _read_script_js()
+    script = _RACE_HARNESS
+    script = script.replace(
+        "__ESCAPE_HTML_SOURCE__",
+        _extract_braced_block(source, "function escapeHTML("),
+    )
+    script = script.replace(
+        "__DESCRIBE_ERROR_SOURCE__",
+        _extract_braced_block(source, "function describeRequestError("),
+    )
+    script = script.replace(
+        "__RESUME_STATE_SOURCE__",
+        _extract_braced_block(source, "let resumeBuilderState ="),
+    )
+    script = script.replace(
+        "__RENDER_LIST_SOURCE__",
+        _extract_braced_block(source, "function renderResumeList("),
+    )
+    script = script.replace(
+        "__LOAD_RESUMES_SOURCE__",
+        _extract_braced_block(source, "async function loadResumes("),
+    )
+    return script
+
+
+def _run_race_scenario(tmp_path, scenario):
+    script = tmp_path / "resume_list_race.cjs"
+    script.write_text(_build_race_script(), encoding="utf-8")
+    result = subprocess.run(
+        ["node", str(script), scenario],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, (
+        f"scenario {scenario} failed:\n{result.stdout}\n{result.stderr}"
+    )
+
+
+def test_stale_load_failure_cannot_paint_over_newer_load(tmp_path):
+    _run_race_scenario(tmp_path, "stale-failure")
+
+
+def test_stale_load_success_cannot_paint_over_newer_load(tmp_path):
+    _run_race_scenario(tmp_path, "stale-success")
+
+
+def test_sole_failing_load_shows_friendly_abort_message(tmp_path):
+    _run_race_scenario(tmp_path, "single-failure-friendly")
+
+def test_abort_translation_covers_every_apirequest_error_display():
+    """Every apiRequest-driven error display routes through the translator."""
+    source = _read_script_js()
+    # Raw error.message must not reach any user-visible surface left.
+    for fragment in (
+        "escapeHTML(error.message)",
+        "alert(error.message",
+        "setUploadStatus(\n                    statusElement,\n                    error.message",
+    ):
+        assert fragment not in source, f"raw error.message still displayed: {fragment}"
+    assert source.count("describeRequestError(error") >= 12, (
+        "the translator should cover resume, interview, analysis and upload paths"
+    )
