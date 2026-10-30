@@ -508,7 +508,7 @@ a {
    ========================================================= */
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 
@@ -669,6 +669,13 @@ a {
     color: var(--olive);
 
     transform: translateX(-2px);
+
+}
+
+
+.back-link-forward:hover {
+
+    transform: translateX(2px);
 
 }
 
