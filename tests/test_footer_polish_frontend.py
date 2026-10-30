@@ -221,7 +221,7 @@ def test_github_link_has_light_chip_and_visible_states():
     assert footer.count('class="github-link"') == 1
     assert 'aria-label="Visit GitHub profile"' in footer
     assert 'title="Visit GitHub profile"' in footer
-    assert 'href="https://github.com/heypriyanshu-sharma"' in footer
+    assert 'href="https://github.com/priyanshumakes"' in footer
     assert 'target="_blank"' in footer
     assert 'rel="noopener noreferrer"' in footer
     assert 'class="github-icon"' in footer
